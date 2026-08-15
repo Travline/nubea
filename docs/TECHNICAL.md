@@ -6,6 +6,7 @@ Esto agrupa tanto toecnoligas a nivel stack como las usadas para manejar el desa
 - React (React Router, Tailwind, Zustand, Zod)
 - Postgre
 - Minio (Storage en desarrollo)
+- Pgweb / CloudBeaver (Visualizacion web de la bd en desarrollo)
 - Docker (Contenedores para api, bd, storage)
 
 # Servicios
