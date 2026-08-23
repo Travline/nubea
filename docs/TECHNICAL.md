@@ -40,7 +40,7 @@ Tiendas de los vendedores
 Tabla intermedia de los metodos de pago habilitados por el vendedor (de base todos solo 1)
 - store_payment_configs
   - store_id UUID PK FK
-  - method_id UUID PK FK
+  - method_id INTEGER PK FK
 
 Tabla para las categorias de las tiendas
 - categories
@@ -68,9 +68,41 @@ Productos de cada tienda
   - max_stock INT NULL
   - is_physical BOOLEAN DEFAULT TRUE
   - weight_kg NUMERIC(6,3) NULL (CHECK weight_kg >= 0)
-  - dimensions JSONB NULL
-  - images TEXT[] DEFAULT '{}'
+  - dimensions TEXT NULL (Solo haremos un formateo de las 3 medidas y pasarlas a un 5x10x45 por ejemplo ya que no haremos ninguna logica basado en esto)
+  - variant_group_id UUID NOT NULL (Esto para manejar la agrupación de variantes)
   - created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+
+Lista de imagenes de un producto
+- product_images
+  - image_id UUID PK (el nombre del recurso)
+  - format TEXT NOT NULL (el .jpg, .webp, etc)
+  - product_id FK NOT NULL
+  - is_poster BOOLEAN NOT NULL DEFAULT FALSE (esto especificará la imagen principal a mostrar por cada producto)
+  - is_active BOOLEAN NOT NULL DEFAULT TRUE
+
+Colecciones personalizadas del vendedor
+- collections
+  - collection_id UUID PK
+  - store_id UUID FK NOT NULL
+  - title TEXT NOT NULL
+  - slug TEXT NOT NULL
+
+Guarda los productos que contiene una colección
+- collection_products
+  - collection_id UUID PK FK
+  - product_id UUID PK FK
+
+Usuarios registrados por cada tienda
+- users
+  - user_id UUID PK
+  - store_id UUID FK
+  - email NOT NULL (se manejara restricción de email unico por tienda)
+  - name TEXT NOT NULL
+  - last_name TEXT NOT NULL
+  - phone TEXT NOT NULL (libphonenumber o alguna similar para el manejo de numeros de telefono) 
+  - created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+
+
 
 Usuarios de las tiendas 
 - users
