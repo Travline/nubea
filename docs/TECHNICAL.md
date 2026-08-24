@@ -95,26 +95,42 @@ Guarda los productos que contiene una colección
 Usuarios registrados por cada tienda
 - users
   - user_id UUID PK
-  - store_id UUID FK
-  - email NOT NULL (se manejara restricción de email unico por tienda)
+  - store_id UUID FK NOT NULL
+  - email NOT NULL (se manejara restricción de email unico por tienda UNIQUE(store_id, email))
   - name TEXT NOT NULL
   - last_name TEXT NOT NULL
   - phone TEXT NOT NULL (libphonenumber o alguna similar para el manejo de numeros de telefono) 
   - created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 
-
-
-Usuarios de las tiendas 
-- users
-
-Carros de compra de cada tienda
+Carritos de usuarios por tienda
 - carts
+  - cart_id UUID PK
+  - store_id UUID FK NOT NULL
+  - user_id UUID FK NOT NULL (los usuarios no autenticados tendran su carrito en local)
+  - updated_at TIMESTAMP NOT NULL
 
-Items de los carros
+Items del carrito
 - cart_items
+  - item_id UUID PK
+  - cart_id UUID FK NOT NULL
+  - quantity INTEGER CHECK (quantity > 0)
+  - unit_price NUMERIC(10,2)
 
+Orden creada al darle comprar (carrito -> pasarela de pago)
+- orders
+  - order_id UUID PK
+  - store_id UUID FK NOT NULL
+  - user_id UUID FK NOT NULL
+  - total NUMERIC(10,2)
+  - status TEXT NOT NULL (maneja el estado del pago como PENDING, REJECTED, APROVED, EXPIRED)
+  - created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 
-
+Items de la orden
+- order_items
+  - item_id UUID PK
+  - order_id UUID FK NOT NULL
+  - quantity INTEGER CHECK (quantity > 0)
+  - unit_price NUMERIC(10,2)
 
 # Tecnologias
 Esto agrupa tanto toecnoligas a nivel stack como las usadas para manejar el desarrollo
