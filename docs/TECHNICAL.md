@@ -11,36 +11,47 @@ Vendedores que crean y modifican su tienda con relación 1:M con la tabla stores
   - is_active BOOLEAN NOT NULL DEFAULT TRUE (Esto para el superadmin y no perder datos de un vendedor al borrar)
   - created_at TIMESTAMP NOT NULL DEFAULT NOW()
 
-Plantillas para elegir con relacion 1:1 con la tabla stores
+Plantillas para elegir con relacion 1:M con la tabla stores
 - templates
   - template_id SERIAl PK
   - name TEXT NOT NULL
   - description TEXT NOT NULL
-  - base_info JSONB NOT NUL (Esto es la estructura de un template con la info default)
   - is_active BOOLEAN NOT NULL DEFAULT TRUE (Manejar visibilidad de los templates)
-
-Provedores de pasarela de pagos con relacion 1:M con la tabla store_payment_configs
-- payment_methods
-  - method_id SERIAL PK
-  - name TEXT NOT NULL
-  - description TEXT NOT NULL
-  - is_active BOOLEAN NOT NULL DEFAULT TRUE (Visibilidad del metodo para los vendedores)
 
 Tiendas de los vendedores
 - stores
   - store_id UUID PK
   - seller_id UUID FK NOT NULL
-  - template_id INT FK NOT NULL (Se le asignará por defecto el primer template is_active = true)
+  - template_id INTEGER FK NOT NULL (Se le asignará por defecto el primer template is_active = true)
   - name TEXT NOT NULL
   - slug TEXT NOT NULL (La ruta para la tienda /mi-tienda)
-  - template_info JSONB NOT NULL (Esto queda por separarlo en campos normales para una estructura fija)
   - is_active BOOLEAN NOT NULL DEFAULT TRUE
   - created_at TIMESTAMP NOT NULL DEFAULT NOW()
 
+Info de las tiendas para mostrar en sus plantillas 
+- template_info
+  - info_id UUID PK
+  - store_id UUID FK
+  - name TEXT NOT NULL DEFAULT 'Mi tienda'
+  - hero_text TEXT NOT NULL DEFAULT 'Bienvenido a Mi tienda'
+  - logo_img TEXT (nombre del asset con su formato)
+  - hero_img TEXT (nombre del asset con su formato)
+  - ig_link TEXT
+  - twitter_link TEXT
+  - fb_link TEXT
+  - tiktok_link TEXT
+  - contact_email TEXT NOT NULL
+  - contact_phone TEXT
+  - updated_at TIMESTAMP
+
 Tabla intermedia de los metodos de pago habilitados por el vendedor (de base todos solo 1)
-- store_payment_configs
-  - store_id UUID PK FK
-  - method_id INTEGER PK FK
+- payment_configs
+  - config_id UUID PK
+  - store_id UUID FK NOT NULL
+  - access_token TEXT NOT NULL
+  - refresh_token TEXT NOT NULL
+  - expires_at TIMESTAMP NOT NULL
+  - socpe TEXT NOT NULL
 
 Tabla para las categorias de las tiendas
 - categories
@@ -70,6 +81,7 @@ Productos de cada tienda
   - weight_kg NUMERIC(6,3) NULL (CHECK weight_kg >= 0)
   - dimensions TEXT NULL (Solo haremos un formateo de las 3 medidas y pasarlas a un 5x10x45 por ejemplo ya que no haremos ninguna logica basado en esto)
   - variant_group_id UUID NOT NULL (Esto para manejar la agrupación de variantes)
+  - variant_name TEXT NOT NULL (puede ser como 'Rojo', 'Verde', 'Talla M', 'Con caja de regalo')
   - created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 
 Lista de imagenes de un producto
@@ -112,6 +124,7 @@ Carritos de usuarios por tienda
 Items del carrito
 - cart_items
   - item_id UUID PK
+  - product_id UUID FK NOT NULL
   - cart_id UUID FK NOT NULL
   - quantity INTEGER CHECK (quantity > 0)
   - unit_price NUMERIC(10,2)
@@ -128,8 +141,10 @@ Orden creada al darle comprar (carrito -> pasarela de pago)
 Items de la orden
 - order_items
   - item_id UUID PK
+  - product_id UUID FK NOT NULL
   - order_id UUID FK NOT NULL
   - quantity INTEGER CHECK (quantity > 0)
+  - product_name TEXT NOT NULL
   - unit_price NUMERIC(10,2)
 
 # Tecnologias
