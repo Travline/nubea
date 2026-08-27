@@ -30,7 +30,7 @@ export const HomeBanner = () => {
         </div>
       </div>
       <div className="max-w-100">
-        <img src="/assets/logo.png" alt="Logo" className="w-full h-auto" />
+        <img src="/assets/logo.webp" alt="Logo" className="w-full h-auto" />
       </div>
     </div>
   );
