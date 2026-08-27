@@ -1,12 +1,10 @@
 // El logo.png luego se cambiará por algo como una captura de un template
 
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 
 export const HomeBanner = () => {
-  const navigate = useNavigate();
-
   return (
     <div className="p-5 pt-35 sm:pt-0 w-full min-h-dvh max-w-250 m-auto flex flex-col gap-10 items-center md:flex-row md:justify-between bg-background text-foreground">
       <div className="flex flex-col gap-5 items-center md:items-start">
