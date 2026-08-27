@@ -1,7 +1,8 @@
 // El logo.png luego se cambiará por algo como una captura de un template
 
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { ArrowRight } from "lucide-react";
 
 export const HomeBanner = () => {
   const navigate = useNavigate();
@@ -13,12 +14,20 @@ export const HomeBanner = () => {
         <p className="text-lg text-center md:text-left text-muted-foreground">
           Crea y gestiona tu tienda online de forma rápida y sencilla. Sin complicaciones técnicas, para que puedas enfocarte en lo que realmente importa.
         </p>
-        <div>
-          <Button onClick={() => navigate("/register")} variant="default" size="lg" className="w-full md:w-auto text-lg">
-            Crear tienda
+        <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
+          <Button
+            size="lg"
+            className="text-base font-semibold px-8 py-6 rounded-2xl group shadow-lg w-full sm:w-auto cursor-pointer"
+          >
+            <Link to="/register">Crear tienda</Link>
+            <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
           </Button>
-          <Button onClick={() => navigate("/dashboard")} variant="outline" size="lg" className="w-full md:w-auto text-lg ml-0 md:ml-4 mt-4 md:mt-0">
-            Gestionar tienda
+          <Button
+            variant="outline"
+            size="lg"
+            className="text-base font-semibold px-8 py-6 rounded-2xl group border-border shadow-sm hover:shadow-md transition-all w-full sm:w-auto cursor-pointer"
+          >
+            <Link to="/dashboard">Gestionar tienda</Link>
           </Button>
         </div>
       </div>

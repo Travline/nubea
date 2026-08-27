@@ -1,4 +1,5 @@
 import { HomeBanner } from "@/components/home/home-banner";
+import { HomeFooter } from "@/components/home/home-footer";
 import { HomeHeader } from "@/components/home/home-header";
 import { HomeInfo } from "@/components/home/home-info";
 
@@ -8,6 +9,7 @@ export const Home = () => {
       <HomeHeader />
       <HomeBanner />
       <HomeInfo />
+      <HomeFooter />
     </div>
   );
 };
