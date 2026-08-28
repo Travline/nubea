@@ -1,151 +1,172 @@
 # Base de datos
-Vendedores que crean y modifican su tienda con relación 1:M con la tabla stores
-- sellers
-  - seller_id UUID PK
-  - full_name TEXT NOT NULL
-  - email TEXT NOT NULL UNIQUE 
-  - password TEXT NOT NULL
-  - tax_id TEXT (Esto para cosas como RUC o asi)
-  - phone TEXT NOT NULL
-  - address TEXT NOT NULL
-  - is_active BOOLEAN NOT NULL DEFAULT TRUE (Esto para el superadmin y no perder datos de un vendedor al borrar)
-  - created_at TIMESTAMP NOT NULL DEFAULT NOW()
+Usuarios globales del sistema (cuentas principales)
+- users
+  - user_id UUID PK
+  - email TEXT NOT NULL UNIQUE
+  - password_hash TEXT NOT NULL
+  - first_name TEXT NOT NULL
+  - last_name TEXT NOT NULL
+  - phone TEXT NULL
+  - is_active BOOLEAN NOT NULL DEFAULT TRUE
+  - created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 
-Plantillas para elegir con relacion 1:M con la tabla stores
+Administradores de la plataforma (Superadmin)
+- platform_admins
+  - user_id UUID PK FK REFERENCES users(user_id) ON DELETE CASCADE
+  - is_active INT NOT NULL DEFAULT 1
+  - created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+
+Plantillas para elegir con relación 1:M con la tabla stores
 - templates
-  - template_id SERIAl PK
+  - template_id SERIAL PK
   - name TEXT NOT NULL
   - description TEXT NOT NULL
-  - is_active BOOLEAN NOT NULL DEFAULT TRUE (Manejar visibilidad de los templates)
+  - is_active BOOLEAN NOT NULL DEFAULT TRUE
 
-Tiendas de los vendedores
+Tiendas creadas en la plataforma
 - stores
   - store_id UUID PK
-  - seller_id UUID FK NOT NULL
-  - template_id INTEGER FK NOT NULL (Se le asignará por defecto el primer template is_active = true)
+  - template_id INT FK NOT NULL REFERENCES templates(template_id)
   - name TEXT NOT NULL
-  - slug TEXT NOT NULL (La ruta para la tienda /mi-tienda)
+  - slug TEXT NOT NULL UNIQUE
   - is_active BOOLEAN NOT NULL DEFAULT TRUE
-  - created_at TIMESTAMP NOT NULL DEFAULT NOW()
+  - created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 
-Info de las tiendas para mostrar en sus plantillas 
+Personal de la tienda (Propietarios y Soporte)
+- store_staff
+  - staff_id SERIAL PK
+  - user_id UUID FK NOT NULL REFERENCES users(user_id) ON DELETE CASCADE
+  - store_id UUID FK NOT NULL REFERENCES stores(store_id) ON DELETE CASCADE
+  - role TEXT NOT NULL CHECK (role IN ('OWNER', 'SUPPORT'))
+  - tax_id TEXT NULL (RUC o documento fiscal)
+  - created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  - UNIQUE (store_id, user_id)
+
+Clientes registrados por cada tienda
+- customers
+  - customer_id SERIAL PK
+  - user_id UUID FK NULL REFERENCES users(user_id) ON DELETE SET NULL
+  - store_id UUID FK NOT NULL REFERENCES stores(store_id) ON DELETE CASCADE
+  - total_orders INT NOT NULL DEFAULT 0
+  - note TEXT NULL
+  - created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  - UNIQUE (store_id, user_id)
+
+Info de las tiendas para mostrar en sus plantillas
 - template_info
-  - info_id UUID PK
-  - store_id UUID FK
+  - info_id SERIAL PK
+  - store_id UUID FK NOT NULL UNIQUE REFERENCES stores(store_id) ON DELETE CASCADE
   - name TEXT NOT NULL DEFAULT 'Mi tienda'
   - hero_text TEXT NOT NULL DEFAULT 'Bienvenido a Mi tienda'
-  - logo_img TEXT (nombre del asset con su formato)
-  - hero_img TEXT (nombre del asset con su formato)
-  - ig_link TEXT
-  - twitter_link TEXT
-  - fb_link TEXT
-  - tiktok_link TEXT
+  - logo_img TEXT NULL
+  - hero_img TEXT NULL
+  - ig_link TEXT NULL
+  - twitter_link TEXT NULL
+  - fb_link TEXT NULL
+  - tiktok_link TEXT NULL
   - contact_email TEXT NOT NULL
-  - contact_phone TEXT
-  - updated_at TIMESTAMP
+  - contact_phone TEXT NULL
+  - updated_at TIMESTAMPTZ NULL
 
-Tabla intermedia de los metodos de pago habilitados por el vendedor (de base todos solo 1)
+Configuraciones y tokens de métodos de pago habilitados por tienda
 - payment_configs
-  - config_id UUID PK
-  - store_id UUID FK NOT NULL
+  - config_id SERIAL PK
+  - store_id UUID FK NOT NULL REFERENCES stores(store_id) ON DELETE CASCADE
   - access_token TEXT NOT NULL
   - refresh_token TEXT NOT NULL
-  - expires_at TIMESTAMP NOT NULL
-  - socpe TEXT NOT NULL
+  - expires_at TIMESTAMPTZ NOT NULL
+  - scope TEXT NOT NULL
 
-Tabla para las categorias de las tiendas
+Categorías del catálogo por tienda
 - categories
-  - category_id UUID PK
-  - store_id UUID FK NOT NULL
+  - category_id SERIAL PK
+  - store_id UUID FK NOT NULL REFERENCES stores(store_id) ON DELETE CASCADE
   - name TEXT NOT NULL
   - slug TEXT NOT NULL
   - is_active BOOLEAN NOT NULL DEFAULT TRUE
+  - UNIQUE (store_id, slug)
 
 Productos de cada tienda
 - products
-  - product_id UUID PK
-  - store_id UUID FK NOT NULL
-  - category_id UUID FK NULL (ON DELETE SET NULL)
+  - product_id SERIAL PK
+  - store_id UUID FK NOT NULL REFERENCES stores(store_id) ON DELETE CASCADE
+  - category_id INT FK NULL REFERENCES categories(category_id) ON DELETE SET NULL
   - title TEXT NOT NULL
   - slug TEXT NOT NULL
   - description TEXT NOT NULL
-  - price NUMERIC(10,2) NOT NULL (CHECK price >= 0)
-  - promo_price NUMERIC(10,2) NULL (CHECK promo_price >= 0)
+  - price NUMERIC(10,2) NOT NULL CHECK (price >= 0)
+  - promo_price NUMERIC(10,2) NULL CHECK (promo_price IS NULL OR promo_price >= 0)
   - sku TEXT NULL
-  - is_visible BOOLEAN DEFAULT TRUE
-  - is_unlimited_stock BOOLEAN DEFAULT FALSE
-  - stock INT DEFAULT 0 (CHECK stock >= 0)
-  - min_stock INT DEFAULT 0
-  - max_stock INT NULL
-  - is_physical BOOLEAN DEFAULT TRUE
-  - weight_kg NUMERIC(6,3) NULL (CHECK weight_kg >= 0)
-  - dimensions TEXT NULL (Solo haremos un formateo de las 3 medidas y pasarlas a un 5x10x45 por ejemplo ya que no haremos ninguna logica basado en esto)
-  - variant_group_id UUID NOT NULL (Esto para manejar la agrupación de variantes)
-  - variant_name TEXT NOT NULL (puede ser como 'Rojo', 'Verde', 'Talla M', 'Con caja de regalo')
-  - created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  - is_visible BOOLEAN NOT NULL DEFAULT TRUE
+  - is_unlimited_stock BOOLEAN NOT NULL DEFAULT FALSE
+  - stock INT NOT NULL DEFAULT 0 CHECK (stock >= 0)
+  - min_stock INT NOT NULL DEFAULT 0 CHECK (min_stock >= 0)
+  - max_stock INT NULL CHECK (max_stock IS NULL OR max_stock >= 0)
+  - is_physical BOOLEAN NOT NULL DEFAULT TRUE
+  - weight_kg NUMERIC(6,3) NULL CHECK (weight_kg IS NULL OR weight_kg >= 0)
+  - dimensions TEXT NULL
+  - variant_group_id UUID NOT NULL
+  - variant_name TEXT NOT NULL
+  - created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  - UNIQUE (store_id, slug)
+  - CHECK (max_stock IS NULL OR min_stock <= max_stock)
 
-Lista de imagenes de un producto
+Imágenes de productos
 - product_images
-  - image_id UUID PK (el nombre del recurso)
-  - format TEXT NOT NULL (el .jpg, .webp, etc)
-  - product_id FK NOT NULL
-  - is_poster BOOLEAN NOT NULL DEFAULT FALSE (esto especificará la imagen principal a mostrar por cada producto)
+  - image_id SERIAL PK
+  - product_id INT FK NOT NULL REFERENCES products(product_id) ON DELETE CASCADE
+  - format TEXT NOT NULL
+  - is_poster BOOLEAN NOT NULL DEFAULT FALSE
   - is_active BOOLEAN NOT NULL DEFAULT TRUE
 
-Colecciones personalizadas del vendedor
+Colecciones personalizadas por tienda
 - collections
-  - collection_id UUID PK
-  - store_id UUID FK NOT NULL
+  - collection_id SERIAL PK
+  - store_id UUID FK NOT NULL REFERENCES stores(store_id) ON DELETE CASCADE
   - title TEXT NOT NULL
   - slug TEXT NOT NULL
+  - UNIQUE (store_id, slug)
 
-Guarda los productos que contiene una colección
+Guarda los productos que contiene una colección (Tabla intermedia M:N)
 - collection_products
-  - collection_id UUID PK FK
-  - product_id UUID PK FK
+  - collection_id INT PK FK REFERENCES collections(collection_id) ON DELETE CASCADE
+  - product_id INT PK FK REFERENCES products(product_id) ON DELETE CASCADE
+  - PRIMARY KEY (collection_id, product_id)
 
-Usuarios registrados por cada tienda
-- users
-  - user_id UUID PK
-  - store_id UUID FK NOT NULL
-  - email NOT NULL (se manejara restricción de email unico por tienda UNIQUE(store_id, email))
-  - name TEXT NOT NULL
-  - last_name TEXT NOT NULL
-  - phone TEXT NOT NULL (libphonenumber o alguna similar para el manejo de numeros de telefono) 
-  - created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-
-Carritos de usuarios por tienda
+Carritos de compras de clientes por tienda
 - carts
-  - cart_id UUID PK
-  - store_id UUID FK NOT NULL
-  - user_id UUID FK NOT NULL (los usuarios no autenticados tendran su carrito en local)
-  - updated_at TIMESTAMP NOT NULL
+  - cart_id SERIAL PK
+  - store_id UUID FK NOT NULL REFERENCES stores(store_id) ON DELETE CASCADE
+  - customer_id INT FK NOT NULL REFERENCES customers(customer_id) ON DELETE CASCADE
+  - updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  - UNIQUE (store_id, customer_id)
 
-Items del carrito
+Ítems agregados dentro del carrito
 - cart_items
-  - item_id UUID PK
-  - product_id UUID FK NOT NULL
-  - cart_id UUID FK NOT NULL
-  - quantity INTEGER CHECK (quantity > 0)
-  - unit_price NUMERIC(10,2)
+  - item_id SERIAL PK
+  - cart_id INT FK NOT NULL REFERENCES carts(cart_id) ON DELETE CASCADE
+  - product_id INT FK NOT NULL REFERENCES products(product_id) ON DELETE RESTRICT
+  - quantity INT NOT NULL CHECK (quantity > 0)
+  - unit_price NUMERIC(10,2) NULL CHECK (unit_price IS NULL OR unit_price >= 0)
+  - UNIQUE (cart_id, product_id)
 
-Orden creada al darle comprar (carrito -> pasarela de pago)
+Órdenes de compra generadas
 - orders
-  - order_id UUID PK
-  - store_id UUID FK NOT NULL
-  - user_id UUID FK NOT NULL
-  - total NUMERIC(10,2)
-  - status TEXT NOT NULL (maneja el estado del pago como PENDING, REJECTED, APROVED, EXPIRED)
-  - created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  - order_id SERIAL PK
+  - store_id UUID FK NOT NULL REFERENCES stores(store_id) ON DELETE RESTRICT
+  - customer_id INT FK NOT NULL REFERENCES customers(customer_id) ON DELETE RESTRICT
+  - total NUMERIC(10,2) NOT NULL CHECK (total >= 0)
+  - status TEXT NOT NULL CHECK (status IN ('PENDING', 'REJECTED', 'APPROVED', 'EXPIRED'))
+  - created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 
-Items de la orden
+Ítems de una orden de compra
 - order_items
-  - item_id UUID PK
-  - product_id UUID FK NOT NULL
-  - order_id UUID FK NOT NULL
-  - quantity INTEGER CHECK (quantity > 0)
+  - item_id SERIAL PK
+  - order_id INT FK NOT NULL REFERENCES orders(order_id) ON DELETE CASCADE
+  - product_id INT FK NOT NULL REFERENCES products(product_id) ON DELETE RESTRICT
+  - quantity INT NOT NULL CHECK (quantity > 0)
   - product_name TEXT NOT NULL
-  - unit_price NUMERIC(10,2)
+  - unit_price NUMERIC(10,2) NOT NULL CHECK (unit_price >= 0)
 
 # Tecnologias
 Esto agrupa tanto toecnoligas a nivel stack como las usadas para manejar el desarrollo
