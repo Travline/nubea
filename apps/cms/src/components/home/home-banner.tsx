@@ -3,10 +3,22 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
+import { Aurora, Shader } from 'shaders/react'
 
 export const HomeBanner = () => {
   return (
-    <div className="p-5 pt-35 sm:pt-0 w-full min-h-dvh max-w-250 m-auto flex flex-col gap-10 items-center md:flex-row md:justify-between bg-background text-foreground">
+    <div className="p-5 pt-35 sm:pt-0 w-full min-h-dvh max-w-250 m-auto flex flex-col gap-10 items-center md:flex-row md:justify-between text-foreground">
+      <Shader className="absolute top-0 left-0 w-full h-full z-[-1]">
+        <Aurora
+          waviness={0}
+          height={60}
+          speed={15}
+          colorA="#6366F1"
+          colorB="#8B5CF6"
+          colorC="#EC4899"
+          curtainCount={3}
+        />
+      </Shader>
       <div className="flex flex-col gap-5 items-center md:items-start">
         <h1 className="text-6xl font-bold text-center md:text-left">Tu tienda online, sin vueltas</h1>
         <p className="text-lg text-center md:text-left text-muted-foreground">

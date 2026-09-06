@@ -1,187 +1,616 @@
 -- ============================================================
--- 1. IDENTIDAD CENTRAL Y ROLES
+-- PROYECTO: Plataforma e-commerce tipo Shopify
+-- MOTOR: PostgreSQL
+-- VERSION: MVP inicial
 -- ============================================================
 
-CREATE TABLE users (
-    user_id UUID PRIMARY KEY,
-    email TEXT NOT NULL UNIQUE,
-    password_hash TEXT NOT NULL,
-    first_name TEXT NOT NULL,
-    last_name TEXT NOT NULL,
-    phone TEXT,
+
+-- ============================================================
+-- 0. EXTENSION PARA GENERAR UUID
+-- ============================================================
+
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+
+
+-- ============================================================
+-- 1. USUARIO_PLATAFORMA
+-- Administradores y vendedores.
+-- ============================================================
+
+CREATE TABLE platform_users (
+    user_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    first_name VARCHAR(100) NOT NULL,
+    last_name VARCHAR(100) NOT NULL,
+    email VARCHAR(150) NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    phone VARCHAR(20),
+    role VARCHAR(20) NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT chk_user_role
+        CHECK (role IN ('ADMIN', 'SELLER')),
+
+    CONSTRAINT chk_user_status
+        CHECK (status IN ('ACTIVE', 'INACTIVE', 'BLOCKED'))
+);
+
+
+-- Evita duplicar correos ignorando mayúsculas/minúsculas.
+CREATE UNIQUE INDEX ux_user_email
+ON platform_user (LOWER(email));
+
+
+
+-- ============================================================
+-- 2. TIENDA
+-- Cada vendedor puede administrar su tienda.
+-- ============================================================
+
+CREATE TABLE store (
+    store_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    owner_id UUID NOT NULL,
+    name VARCHAR(150) NOT NULL,
+    slug VARCHAR(150) NOT NULL UNIQUE,
+    description TEXT,
+    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_store_owner
+        FOREIGN KEY (owner_id)
+        REFERENCES platform_user(user_id)
+        ON DELETE RESTRICT,
+
+    CONSTRAINT chk_store_status
+        CHECK (status IN ('ACTIVE', 'INACTIVE', 'SUSPENDED')),
+
+    CONSTRAINT chk_store_slug
+        CHECK (slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$')
+);
+
+
+
+-- ============================================================
+-- 3. PLANTILLA
+-- Diseños disponibles para crear las tiendas.
+-- ============================================================
+
+CREATE TABLE template (
+    template_id SMALLSERIAL PRIMARY KEY,
+    name VARCHAR(80) NOT NULL,
+    code VARCHAR(30) NOT NULL UNIQUE,
+    description VARCHAR(255),
+    preview_path TEXT NOT NULL,
+    status BOOLEAN NOT NULL DEFAULT TRUE
+);
+
+
+
+-- ============================================================
+-- 4. CONFIGURACION_TIENDA
+-- Configuración visual general.
+-- Relación TIENDA 1:1 CONFIGURACION_TIENDA
+-- ============================================================
+
+CREATE TABLE store_configuration (
+    configuration_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    store_id UUID NOT NULL UNIQUE,
+    template_id SMALLINT NOT NULL,
+    logo_path TEXT,
+    primary_color VARCHAR(7),
+    secondary_color VARCHAR(7),
+    instagram_url TEXT,
+    facebook_url TEXT,
+    whatsapp VARCHAR(20),
+
+    CONSTRAINT fk_store_configuration_store
+        FOREIGN KEY (store_id)
+        REFERENCES store(store_id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_store_configuration_template
+        FOREIGN KEY (template_id)
+        REFERENCES template(template_id)
+        ON DELETE RESTRICT,
+
+    CONSTRAINT chk_primary_color
+        CHECK (
+            primary_color IS NULL
+            OR primary_color ~ '^#[0-9A-Fa-f]{6}$'
+        ),
+
+    CONSTRAINT chk_secondary_color
+        CHECK (
+            secondary_color IS NULL
+            OR secondary_color ~ '^#[0-9A-Fa-f]{6}$'
+        )
+);
+
+
+
+-- ============================================================
+-- 5. BANNER_TIENDA
+-- Carrusel / banners de la página principal.
+-- ============================================================
+
+CREATE TABLE store_banner (
+    banner_id BIGSERIAL PRIMARY KEY,
+    store_id UUID NOT NULL,
+    title VARCHAR(150),
+    subtitle VARCHAR(255),
+    image_path TEXT NOT NULL,
+    button_text VARCHAR(50),
+    link TEXT,
+    display_order SMALLINT NOT NULL,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+
+    CONSTRAINT fk_store_banner_store
+        FOREIGN KEY (store_id)
+        REFERENCES store(store_id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT chk_banner_order
+        CHECK (display_order >= 1),
+
+    CONSTRAINT uq_banner_order
+        UNIQUE (store_id, display_order)
 );
 
-CREATE TABLE platform_admins (
-    user_id UUID PRIMARY KEY REFERENCES users(user_id) ON DELETE CASCADE,
-    is_active INT NOT NULL DEFAULT 1,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
 
 
 -- ============================================================
--- 2. TIENDAS Y PLANTILLAS
+-- 6. CLIENTE
+-- Cada tienda maneja sus propios clientes.
+-- La contraseña puede ser NULL si compra como invitado.
 -- ============================================================
 
-CREATE TABLE templates (
-    template_id SERIAL PRIMARY KEY,
-    name TEXT NOT NULL,
-    description TEXT NOT NULL,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE
+CREATE TABLE customer (
+    customer_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    store_id UUID NOT NULL,
+    first_name VARCHAR(100) NOT NULL,
+    last_name VARCHAR(100) NOT NULL,
+    email VARCHAR(150) NOT NULL,
+    phone VARCHAR(20),
+    password VARCHAR(255),
+    registered_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_customer_store
+        FOREIGN KEY (store_id)
+        REFERENCES store(store_id)
+        ON DELETE RESTRICT
 );
 
-CREATE TABLE stores (
-    store_id UUID PRIMARY KEY,
-    template_id INT NOT NULL REFERENCES templates(template_id),
-    name TEXT NOT NULL,
-    slug TEXT NOT NULL UNIQUE,
+
+-- El correo es único DENTRO DE UNA TIENDA,
+-- pero puede existir nuevamente en otra tienda.
+CREATE UNIQUE INDEX ux_customer_store_email
+ON customer (store_id, LOWER(email));
+
+
+
+-- ============================================================
+-- 7. DIRECCION_CLIENTE
+-- Un cliente puede almacenar múltiples direcciones.
+-- ============================================================
+
+CREATE TABLE customer_address (
+    address_id BIGSERIAL PRIMARY KEY,
+    customer_id UUID NOT NULL,
+    alias VARCHAR(50) NOT NULL,
+    address VARCHAR(255) NOT NULL,
+    district VARCHAR(100) NOT NULL,
+    city VARCHAR(100) NOT NULL,
+    state VARCHAR(100) NOT NULL,
+    postal_code VARCHAR(15),
+    reference VARCHAR(255),
+    is_primary BOOLEAN NOT NULL DEFAULT FALSE,
+
+    CONSTRAINT fk_customer_address_customer
+        FOREIGN KEY (customer_id)
+        REFERENCES customer(customer_id)
+        ON DELETE CASCADE
+);
+
+
+-- Un cliente puede tener muchas direcciones,
+-- pero solamente UNA principal.
+CREATE UNIQUE INDEX ux_primary_customer_address
+ON customer_address(customer_id)
+WHERE is_primary = TRUE;
+
+
+
+-- ============================================================
+-- 8. CATEGORIA
+-- Categorías independientes para cada tienda.
+-- ============================================================
+
+CREATE TABLE category (
+    category_id BIGSERIAL PRIMARY KEY,
+    store_id UUID NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    description VARCHAR(255),
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_category_store
+        FOREIGN KEY (store_id)
+        REFERENCES store(store_id)
+        ON DELETE RESTRICT,
+
+    CONSTRAINT uq_category_store_name
+        UNIQUE (store_id, name)
 );
 
-CREATE TABLE store_staff (
-    staff_id SERIAL PRIMARY KEY,
-    user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
-    store_id UUID NOT NULL REFERENCES stores(store_id) ON DELETE CASCADE,
-    role TEXT NOT NULL CHECK (role IN ('OWNER', 'SUPPORT')),
-    tax_id TEXT,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    UNIQUE (store_id, user_id)
-);
-
-CREATE TABLE customers (
-    customer_id SERIAL PRIMARY KEY,
-    user_id UUID REFERENCES users(user_id) ON DELETE SET NULL,
-    store_id UUID NOT NULL REFERENCES stores(store_id) ON DELETE CASCADE,
-    total_orders INT NOT NULL DEFAULT 0,
-    note TEXT,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    UNIQUE (store_id, user_id)
-);
-
-CREATE TABLE template_info (
-    info_id SERIAL PRIMARY KEY,
-    store_id UUID NOT NULL UNIQUE REFERENCES stores(store_id) ON DELETE CASCADE,
-    name TEXT NOT NULL DEFAULT 'Mi tienda',
-    hero_text TEXT NOT NULL DEFAULT 'Bienvenido a Mi tienda',
-    logo_img TEXT,
-    hero_img TEXT,
-    ig_link TEXT,
-    twitter_link TEXT,
-    fb_link TEXT,
-    tiktok_link TEXT,
-    contact_email TEXT NOT NULL,
-    contact_phone TEXT,
-    updated_at TIMESTAMPTZ
-);
-
-CREATE TABLE payment_configs (
-    config_id SERIAL PRIMARY KEY,
-    store_id UUID NOT NULL REFERENCES stores(store_id) ON DELETE CASCADE,
-    access_token TEXT NOT NULL,
-    refresh_token TEXT NOT NULL,
-    expires_at TIMESTAMPTZ NOT NULL,
-    scope TEXT NOT NULL
-);
 
 
 -- ============================================================
--- 3. CATÁLOGO DE PRODUCTOS
+-- 9. PRODUCTO
+-- Por ahora productos simples, SIN variantes.
 -- ============================================================
 
-CREATE TABLE categories (
-    category_id SERIAL PRIMARY KEY,
-    store_id UUID NOT NULL REFERENCES stores(store_id) ON DELETE CASCADE,
-    name TEXT NOT NULL,
-    slug TEXT NOT NULL,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    UNIQUE (store_id, slug)
-);
-
-CREATE TABLE products (
-    product_id SERIAL PRIMARY KEY,
-    store_id UUID NOT NULL REFERENCES stores(store_id) ON DELETE CASCADE,
-    category_id INT REFERENCES categories(category_id) ON DELETE SET NULL,
-    title TEXT NOT NULL,
-    slug TEXT NOT NULL,
-    description TEXT NOT NULL,
-    price NUMERIC(10,2) NOT NULL CHECK (price >= 0),
-    promo_price NUMERIC(10,2) CHECK (promo_price IS NULL OR promo_price >= 0),
-    sku TEXT,
+CREATE TABLE product (
+    product_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    store_id UUID NOT NULL,
+    category_id BIGINT NOT NULL,
+    name VARCHAR(200) NOT NULL,
+    description TEXT,
+    sku VARCHAR(100),
+    price NUMERIC(12,2) NOT NULL,
+    promotional_price NUMERIC(12,2),
+    stock INTEGER NOT NULL DEFAULT 0,
     is_visible BOOLEAN NOT NULL DEFAULT TRUE,
-    is_unlimited_stock BOOLEAN NOT NULL DEFAULT FALSE,
-    stock INT NOT NULL DEFAULT 0 CHECK (stock >= 0),
-    min_stock INT NOT NULL DEFAULT 0 CHECK (min_stock >= 0),
-    max_stock INT CHECK (max_stock IS NULL OR max_stock >= 0),
-    is_physical BOOLEAN NOT NULL DEFAULT TRUE,
-    weight_kg NUMERIC(6,3) CHECK (weight_kg IS NULL OR weight_kg >= 0),
-    dimensions TEXT,
-    variant_group_id UUID NOT NULL,
-    variant_name TEXT NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    UNIQUE (store_id, slug),
-    CHECK (max_stock IS NULL OR min_stock <= max_stock)
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_product_store
+        FOREIGN KEY (store_id)
+        REFERENCES store(store_id)
+        ON DELETE RESTRICT,
+
+    CONSTRAINT fk_product_category
+        FOREIGN KEY (category_id)
+        REFERENCES category(category_id)
+        ON DELETE RESTRICT,
+
+    CONSTRAINT chk_product_price
+        CHECK (price >= 0),
+
+    CONSTRAINT chk_product_promotional_price
+        CHECK (
+            promotional_price IS NULL
+            OR (
+                promotional_price >= 0
+                AND promotional_price < price
+            )
+        ),
+
+    CONSTRAINT chk_product_stock
+        CHECK (stock >= 0)
 );
 
-CREATE TABLE product_images (
-    image_id SERIAL PRIMARY KEY,
-    product_id INT NOT NULL REFERENCES products(product_id) ON DELETE CASCADE,
-    format TEXT NOT NULL,
-    is_poster BOOLEAN NOT NULL DEFAULT FALSE,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE
-);
 
-CREATE TABLE collections (
-    collection_id SERIAL PRIMARY KEY,
-    store_id UUID NOT NULL REFERENCES stores(store_id) ON DELETE CASCADE,
-    title TEXT NOT NULL,
-    slug TEXT NOT NULL,
-    UNIQUE (store_id, slug)
-);
+-- El SKU puede repetirse entre tiendas,
+-- pero no dentro de la misma tienda.
+CREATE UNIQUE INDEX ux_product_store_sku
+ON product(store_id, sku)
+WHERE sku IS NOT NULL;
 
-CREATE TABLE collection_products (
-    collection_id INT NOT NULL REFERENCES collections(collection_id) ON DELETE CASCADE,
-    product_id INT NOT NULL REFERENCES products(product_id) ON DELETE CASCADE,
-    PRIMARY KEY (collection_id, product_id)
-);
 
 
 -- ============================================================
--- 4. CARRITO Y PEDIDOS
+-- 10. IMAGEN_PRODUCTO
+-- Una imagen principal + galería.
 -- ============================================================
 
-CREATE TABLE carts (
-    cart_id SERIAL PRIMARY KEY,
-    store_id UUID NOT NULL REFERENCES stores(store_id) ON DELETE CASCADE,
-    customer_id INT NOT NULL REFERENCES customers(customer_id) ON DELETE CASCADE,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    UNIQUE (store_id, customer_id)
+CREATE TABLE product_image (
+    image_id BIGSERIAL PRIMARY KEY,
+    product_id UUID NOT NULL,
+    image_path TEXT NOT NULL,
+    display_order SMALLINT NOT NULL,
+    is_primary BOOLEAN NOT NULL DEFAULT FALSE,
+
+    CONSTRAINT fk_product_image_product
+        FOREIGN KEY (product_id)
+        REFERENCES product(product_id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT chk_product_image_order
+        CHECK (display_order >= 1),
+
+    CONSTRAINT uq_product_image_order
+        UNIQUE (product_id, display_order)
 );
 
-CREATE TABLE cart_items (
-    item_id SERIAL PRIMARY KEY,
-    cart_id INT NOT NULL REFERENCES carts(cart_id) ON DELETE CASCADE,
-    product_id INT NOT NULL REFERENCES products(product_id) ON DELETE RESTRICT,
-    quantity INT NOT NULL CHECK (quantity > 0),
-    unit_price NUMERIC(10,2) CHECK (unit_price IS NULL OR unit_price >= 0),
-    UNIQUE (cart_id, product_id)
+
+-- Solamente una imagen principal por producto.
+CREATE UNIQUE INDEX ux_primary_product_image
+ON product_image(product_id)
+WHERE is_primary = TRUE;
+
+
+
+-- ============================================================
+-- 11. COLECCION
+-- Ejemplos:
+-- Ofertas, Gamer, Novedades, Destacados.
+-- ============================================================
+
+CREATE TABLE collection (
+    collection_id BIGSERIAL PRIMARY KEY,
+    store_id UUID NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    description VARCHAR(255),
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_collection_store
+        FOREIGN KEY (store_id)
+        REFERENCES store(store_id)
+        ON DELETE RESTRICT,
+
+    CONSTRAINT uq_collection_store_name
+        UNIQUE (store_id, name)
 );
 
-CREATE TABLE orders (
-    order_id SERIAL PRIMARY KEY,
-    store_id UUID NOT NULL REFERENCES stores(store_id) ON DELETE RESTRICT,
-    customer_id INT NOT NULL REFERENCES customers(customer_id) ON DELETE RESTRICT,
-    total NUMERIC(10,2) NOT NULL CHECK (total >= 0),
-    status TEXT NOT NULL CHECK (status IN ('PENDING', 'REJECTED', 'APPROVED', 'EXPIRED')),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+
+
+-- ============================================================
+-- 12. COLECCION_PRODUCTO
+-- Resuelve relación muchos a muchos.
+-- ============================================================
+
+CREATE TABLE collection_product (
+    collection_id BIGINT NOT NULL,
+    product_id UUID NOT NULL,
+    PRIMARY KEY (collection_id, product_id),
+
+    CONSTRAINT fk_collection_product_collection
+        FOREIGN KEY (collection_id)
+        REFERENCES collection(collection_id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_collection_product_product
+        FOREIGN KEY (product_id)
+        REFERENCES product(product_id)
+        ON DELETE CASCADE
 );
 
-CREATE TABLE order_items (
-    item_id SERIAL PRIMARY KEY,
-    order_id INT NOT NULL REFERENCES orders(order_id) ON DELETE CASCADE,
-    product_id INT NOT NULL REFERENCES products(product_id) ON DELETE RESTRICT,
-    quantity INT NOT NULL CHECK (quantity > 0),
-    product_name TEXT NOT NULL,
-    unit_price NUMERIC(10,2) NOT NULL CHECK (unit_price >= 0)
+
+
+-- ============================================================
+-- 13. CUENTA_PAGO_TIENDA
+-- Cada tienda conecta UNA cuenta Mercado Pago.
+-- Relación 1:1.
+-- ============================================================
+
+CREATE TABLE store_payment_account (
+    payment_account_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    store_id UUID NOT NULL UNIQUE,
+    provider VARCHAR(30) NOT NULL DEFAULT 'MERCADO_PAGO',
+    external_account_id VARCHAR(150),
+    encrypted_access_token TEXT,
+    encrypted_refresh_token TEXT,
+    token_expiration_date TIMESTAMP,
+    connection_status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+    connected_at TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_store_payment_account_store
+        FOREIGN KEY (store_id)
+        REFERENCES store(store_id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT chk_payment_account_provider
+        CHECK (provider = 'MERCADO_PAGO'),
+
+    CONSTRAINT chk_payment_account_status
+        CHECK (
+            connection_status IN (
+                'PENDING',
+                'CONNECTED',
+                'DISCONNECTED',
+                'ERROR'
+            )
+        )
 );
+
+
+
+-- ============================================================
+-- 14. PEDIDO
+-- Guarda también una copia histórica de la dirección.
+-- ============================================================
+
+CREATE TABLE order (
+    order_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    store_id UUID NOT NULL,
+    customer_id UUID NOT NULL,
+    order_number VARCHAR(40) NOT NULL,
+    subtotal NUMERIC(12,2) NOT NULL,
+    discount NUMERIC(12,2) NOT NULL DEFAULT 0,
+    total NUMERIC(12,2) NOT NULL,
+    order_status VARCHAR(30) NOT NULL DEFAULT 'CREATED',
+    payment_status VARCHAR(30) NOT NULL DEFAULT 'PENDING',
+    recipient_name VARCHAR(200) NOT NULL,
+    recipient_phone VARCHAR(20) NOT NULL,
+    shipping_address VARCHAR(255) NOT NULL,
+    shipping_district VARCHAR(100) NOT NULL,
+    shipping_city VARCHAR(100) NOT NULL,
+    shipping_state VARCHAR(100) NOT NULL,
+    shipping_postal_code VARCHAR(15),
+    shipping_reference VARCHAR(255),
+    ordered_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_order_store
+        FOREIGN KEY (store_id)
+        REFERENCES store(store_id)
+        ON DELETE RESTRICT,
+
+    CONSTRAINT fk_order_customer
+        FOREIGN KEY (customer_id)
+        REFERENCES customer(customer_id)
+        ON DELETE RESTRICT,
+
+    CONSTRAINT uq_order_number
+        UNIQUE (store_id, order_number),
+
+    CONSTRAINT chk_order_subtotal
+        CHECK (subtotal >= 0),
+
+    CONSTRAINT chk_order_discount
+        CHECK (discount >= 0),
+
+    CONSTRAINT chk_order_discount_subtotal
+        CHECK (discount <= subtotal),
+
+    CONSTRAINT chk_order_total
+        CHECK (total >= 0),
+
+    CONSTRAINT chk_order_status
+        CHECK (
+            order_status IN (
+                'CREATED',
+                'CONFIRMED',
+                'PREPARING',
+                'COMPLETED',
+                'CANCELLED'
+            )
+        ),
+
+    CONSTRAINT chk_payment_status
+        CHECK (
+            payment_status IN (
+                'PENDING',
+                'PAID',
+                'REJECTED',
+                'REFUNDED'
+            )
+        )
+);
+
+
+
+-- ============================================================
+-- 15. DETALLE_PEDIDO
+-- Fotografía histórica del producto comprado.
+-- ============================================================
+
+CREATE TABLE order_item (
+    order_item_id BIGSERIAL PRIMARY KEY,
+    order_id UUID NOT NULL,
+    product_id UUID,
+    product_name VARCHAR(200) NOT NULL,
+    product_sku VARCHAR(100),
+    quantity INTEGER NOT NULL,
+    unit_price NUMERIC(12,2) NOT NULL,
+    subtotal NUMERIC(12,2) NOT NULL,
+
+    CONSTRAINT fk_order_item_order
+        FOREIGN KEY (order_id)
+        REFERENCES "order"(order_id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_order_item_product
+        FOREIGN KEY (product_id)
+        REFERENCES product(product_id)
+        ON DELETE SET NULL,
+
+    CONSTRAINT chk_order_item_quantity
+        CHECK (quantity > 0),
+
+    CONSTRAINT chk_order_item_unit_price
+        CHECK (unit_price >= 0),
+
+    CONSTRAINT chk_order_item_subtotal
+        CHECK (subtotal >= 0)
+);
+
+
+
+-- ============================================================
+-- 16. PAGO
+-- Registro de cada intento/transacción Mercado Pago.
+-- ============================================================
+
+CREATE TABLE payment (
+    payment_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    order_id UUID NOT NULL,
+    provider VARCHAR(30) NOT NULL DEFAULT 'MERCADO_PAGO',
+    external_payment_id VARCHAR(150),
+    amount NUMERIC(12,2) NOT NULL,
+    status VARCHAR(30) NOT NULL DEFAULT 'PENDING',
+    payment_method VARCHAR(50),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_payment_order
+        FOREIGN KEY (order_id)
+        REFERENCES "order"(order_id)
+        ON DELETE RESTRICT,
+
+    CONSTRAINT chk_payment_provider
+        CHECK (provider = 'MERCADO_PAGO'),
+
+    CONSTRAINT chk_payment_amount
+        CHECK (amount > 0),
+
+    CONSTRAINT chk_payment_status
+        CHECK (
+            status IN (
+                'PENDING',
+                'APPROVED',
+                'REJECTED',
+                'CANCELLED',
+                'REFUNDED'
+            )
+        )
+);
+
+
+-- Mercado Pago no debería aparecer dos veces con
+-- el mismo identificador de transacción.
+CREATE UNIQUE INDEX ux_external_payment
+ON payment(external_payment_id)
+WHERE external_payment_id IS NOT NULL;
+
+
+
+-- ============================================================
+-- INDICES ADICIONALES
+-- Ayudan en consultas muy utilizadas.
+-- ============================================================
+
+CREATE INDEX ix_store_owner
+ON store(owner_id);
+
+CREATE INDEX ix_customer_store
+ON customer(store_id);
+
+CREATE INDEX ix_category_store
+ON category(store_id);
+
+CREATE INDEX ix_product_store
+ON product(store_id);
+
+CREATE INDEX ix_product_category
+ON product(category_id);
+
+CREATE INDEX ix_order_store
+ON "order"(store_id);
+
+CREATE INDEX ix_order_customer
+ON "order"(customer_id);
+
+CREATE INDEX ix_order_item_order
+ON order_item(order_id);
+
+CREATE INDEX ix_payment_order
+ON payment(order_id);
