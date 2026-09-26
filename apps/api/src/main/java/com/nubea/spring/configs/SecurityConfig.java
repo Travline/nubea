@@ -19,17 +19,25 @@ import java.util.List;
 @EnableWebSecurity
 public class SecurityConfig {
   @Bean
-  public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+  public SecurityFilterChain filterChain(
+      HttpSecurity http
+  ) throws Exception {
     http
         .cors(cors -> cors.configurationSource(corsConfigurationSource()))
         .csrf(AbstractHttpConfigurer::disable)
         .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/scalar/**", "/v3/api-docs/**", "/swagger-ui/**")
-                .permitAll()
-                .anyRequest()
-                .authenticated()
+            .requestMatchers(
+                "/auth/**",
+                "/scalar/**",
+                "/v3/api-docs/**",
+                "/swagger-ui/**",
+                "/error"
             )
+            .permitAll()
+            .anyRequest()
+            .authenticated()
+        )
         .formLogin(AbstractHttpConfigurer::disable)
         .httpBasic(AbstractHttpConfigurer::disable);
 
@@ -40,9 +48,9 @@ public class SecurityConfig {
   public CorsConfigurationSource corsConfigurationSource() {
     CorsConfiguration config = new CorsConfiguration();
 
-    config.setAllowedOrigins(List.of("http://localhost:5173", "https://nubea-clients.com"));
+    config.setAllowedOrigins(List.of("http://localhost:5173", "http://localhost:8080", "https://nubea-clients.com"));
     config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
-    config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+    config.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With"));
     config.setAllowCredentials(true);
     config.setMaxAge(3600L);
 
@@ -53,6 +61,6 @@ public class SecurityConfig {
 
   @Bean
   public PasswordEncoder passwordEncoder() {
-    return new Argon2PasswordEncoder(16, 32, 1, 3268, 3);
+    return Argon2PasswordEncoder.defaultsForSpringSecurity_v5_8();
   }
 }
