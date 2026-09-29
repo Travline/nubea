@@ -32,6 +32,8 @@ public class SecurityConfig {
                 "/scalar/**",
                 "/v3/api-docs/**",
                 "/swagger-ui/**",
+                "/api/**",
+
                 "/error"
             )
             .permitAll()

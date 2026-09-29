@@ -17,9 +17,9 @@ spring:
       enabled: true
 
   datasource:
-    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/postgres}
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/nubea}
     username: ${DATABASE_USERNAME:postgres}
-    password: ${DATABASE_PASSWORD:secret}
+    password: ${DATABASE_PASSWORD:nubea123}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
