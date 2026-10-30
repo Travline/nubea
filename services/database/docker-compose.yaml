@@ -1,16 +1,16 @@
 services:
   db:
-    image: postgres:15
-    container_name: postgres_dev
+    image: postgres:18
+    container_name: nubeadb
     restart: always
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: secret
-      POSTGRES_DB: postgres
+      POSTGRES_DB: nubeadb
     ports:
       - "5432:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql
       - ./init:/docker-entrypoint-initdb.d
 
 volumes:

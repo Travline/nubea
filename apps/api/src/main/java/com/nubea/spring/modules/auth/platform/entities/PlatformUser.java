@@ -1,6 +1,5 @@
 package com.nubea.spring.modules.auth.platform.entities;
 
-import com.nubea.spring.shared.utils.GeneratedUuidV7;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -16,7 +15,6 @@ import java.util.UUID;
 @Builder
 public class PlatformUser {
   @Id
-  @GeneratedUuidV7
   @Column(name = "user_id", columnDefinition = "uuid", updatable = false, nullable = false)
   private UUID userId;
 

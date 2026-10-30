@@ -4,9 +4,10 @@ import com.nubea.spring.modules.auth.platform.dtos.RegisterPlatformUserDto;
 import com.nubea.spring.modules.auth.platform.dtos.UserResponseDto;
 import com.nubea.spring.modules.auth.platform.entities.PlatformUser;
 import com.nubea.spring.modules.auth.platform.entities.PlatformUserRoles;
-import com.nubea.spring.modules.auth.platform.errors.PlatformUserAlreadyExists;
 import com.nubea.spring.modules.auth.platform.repositories.AuthPlatformRepository;
+import com.nubea.spring.shared.errors.AppError;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -18,7 +19,12 @@ public class RegisterPlatformUser {
 
   public UserResponseDto execute(RegisterPlatformUserDto dto) {
     if(repo.findByEmail(dto.email().trim().toLowerCase()).isPresent()) {
-      throw new PlatformUserAlreadyExists("User already exists");
+      throw new AppError(
+              "USUARIO_EXISTENTE",
+              HttpStatus.CONFLICT,
+              String.format("El correo %s está en uso", dto.email().trim()),
+              true
+      );
     }
 
     var newUser = PlatformUser.builder()
