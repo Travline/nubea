@@ -1,2 +1,3 @@
 docker/.ev
 docker/.env.example
+.metals/
