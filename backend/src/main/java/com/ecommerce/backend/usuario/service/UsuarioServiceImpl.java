@@ -38,7 +38,7 @@ public class UsuarioServiceImpl implements UsuarioService {
                                     .apellidos(request.apellidos().trim())
                                     .correo(correo)
                                     .contrasena(passwordEncoder.encode(request.contrasena()))
-                                    .rol(RolesUser.VENDEDOR).build();
+                                    .rol(RolesUser.DUENO_TIENDA).build();
         UsuarioPlataforma guardado =
                  usuarioRepository.save(usuario);
         return UsuarioMapper.toResponse(guardado);
