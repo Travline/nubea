@@ -1,5 +1,7 @@
 package com.ecommerce.backend.plantilla.controller;
 
+import com.ecommerce.backend.plantilla.dto.ActualizarEstadoPlantillaRequest;
+import com.ecommerce.backend.plantilla.dto.ActualizarPlantillaRequest;
 import com.ecommerce.backend.plantilla.dto.CrearPlantillaRequest;
 import com.ecommerce.backend.plantilla.dto.PlantillaResponse;
 import com.ecommerce.backend.plantilla.service.PlantillaService;
@@ -8,6 +10,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -25,5 +29,23 @@ public class PlantillaController {
     public ResponseEntity<PlantillaResponse> crearPlantilla(@RequestBody @Valid CrearPlantillaRequest request) {
         PlantillaResponse response = plantillaService.crearPlantilla(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PatchMapping("/{idPlantilla}")
+    @PreAuthorize("hasRole('ADMIN_GENERAL')")
+    public ResponseEntity<PlantillaResponse> actualizarPlantilla(
+            @PathVariable Short idPlantilla,
+            @RequestBody @Valid ActualizarPlantillaRequest request) {
+        PlantillaResponse response = plantillaService.actualizarPlantilla(idPlantilla, request);
+        return ResponseEntity.ok(response);
+    }
+
+    @PatchMapping("/{idPlantilla}/estado")
+    @PreAuthorize("hasRole('ADMIN_GENERAL')")
+    public ResponseEntity<PlantillaResponse> actualizarEstadoPlantilla(
+            @PathVariable Short idPlantilla,
+            @RequestBody @Valid ActualizarEstadoPlantillaRequest request) {
+        PlantillaResponse response = plantillaService.actualizarEstadoPlantilla(idPlantilla, request);
+        return ResponseEntity.ok(response);
     }
 }
