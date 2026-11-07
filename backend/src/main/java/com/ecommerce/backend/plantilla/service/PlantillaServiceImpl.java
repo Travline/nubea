@@ -1,6 +1,9 @@
 package com.ecommerce.backend.plantilla.service;
 
 import com.ecommerce.backend.exception.PlantillaCodigoDuplicadoException;
+import com.ecommerce.backend.exception.PlantillaNoEncontradaException;
+import com.ecommerce.backend.plantilla.dto.ActualizarEstadoPlantillaRequest;
+import com.ecommerce.backend.plantilla.dto.ActualizarPlantillaRequest;
 import com.ecommerce.backend.plantilla.dto.CrearPlantillaRequest;
 import com.ecommerce.backend.plantilla.dto.PlantillaResponse;
 import com.ecommerce.backend.plantilla.mapper.PlantillaMapper;
@@ -49,5 +52,44 @@ public class PlantillaServiceImpl implements PlantillaService {
         } catch (DataIntegrityViolationException e) {
             throw new PlantillaCodigoDuplicadoException("Ya existe una plantilla con el código: " + codigo);
         }
+    }
+
+    @Override
+    @Transactional
+    public PlantillaResponse actualizarPlantilla(Short idPlantilla, ActualizarPlantillaRequest request) {
+        Plantilla plantilla = plantillaRepository.findById(idPlantilla)
+                .orElseThrow(() -> new PlantillaNoEncontradaException("No se encontró la plantilla con id: " + idPlantilla));
+
+        if (request.nombre() != null) {
+            String nombre = request.nombre().trim();
+            if (nombre.isEmpty()) {
+                throw new IllegalArgumentException("El nombre de la plantilla no puede estar vacío");
+            }
+            plantilla.setNombre(nombre);
+        }
+
+        if (request.previewUrl() != null) {
+            String previewUrl = request.previewUrl().isBlank() ? null : request.previewUrl().trim();
+            plantilla.setPreviewUrl(previewUrl);
+        }
+
+        if (request.activa() != null) {
+            plantilla.setActiva(request.activa());
+        }
+
+        Plantilla guardada = plantillaRepository.saveAndFlush(plantilla);
+        return PlantillaMapper.toResponse(guardada);
+    }
+
+    @Override
+    @Transactional
+    public PlantillaResponse actualizarEstadoPlantilla(Short idPlantilla, ActualizarEstadoPlantillaRequest request) {
+        Plantilla plantilla = plantillaRepository.findById(idPlantilla)
+                .orElseThrow(() -> new PlantillaNoEncontradaException("No se encontró la plantilla con id: " + idPlantilla));
+
+        plantilla.setActiva(request.activa());
+
+        Plantilla guardada = plantillaRepository.saveAndFlush(plantilla);
+        return PlantillaMapper.toResponse(guardada);
     }
 }
