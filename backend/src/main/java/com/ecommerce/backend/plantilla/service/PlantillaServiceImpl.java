@@ -9,16 +9,20 @@ import com.ecommerce.backend.plantilla.dto.PlantillaResponse;
 import com.ecommerce.backend.plantilla.mapper.PlantillaMapper;
 import com.ecommerce.backend.plantilla.model.Plantilla;
 import com.ecommerce.backend.plantilla.repository.PlantillaRepository;
+import com.ecommerce.backend.shared.security.CurrentUserProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class PlantillaServiceImpl implements PlantillaService {
 
     private final PlantillaRepository plantillaRepository;
+    private final CurrentUserProvider currentUserProvider;
 
     @Override
     @Transactional
@@ -91,5 +95,36 @@ public class PlantillaServiceImpl implements PlantillaService {
 
         Plantilla guardada = plantillaRepository.saveAndFlush(plantilla);
         return PlantillaMapper.toResponse(guardada);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PlantillaResponse> listarPlantillas(Boolean incluirInactivas) {
+        boolean esAdmin = currentUserProvider.hasRole("ADMIN_GENERAL");
+
+        List<Plantilla> plantillas;
+        if (esAdmin && Boolean.TRUE.equals(incluirInactivas)) {
+            plantillas = plantillaRepository.findAllByOrderByIdPlantillaAsc();
+        } else {
+            plantillas = plantillaRepository.findAllByActivaTrueOrderByIdPlantillaAsc();
+        }
+
+        return plantillas.stream()
+                .map(PlantillaMapper::toResponse)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PlantillaResponse obtenerPorId(Short idPlantilla) {
+        Plantilla plantilla = plantillaRepository.findById(idPlantilla)
+                .orElseThrow(() -> new PlantillaNoEncontradaException("No se encontró la plantilla con id: " + idPlantilla));
+
+        boolean esAdmin = currentUserProvider.hasRole("ADMIN_GENERAL");
+        if (!Boolean.TRUE.equals(plantilla.getActiva()) && !esAdmin) {
+            throw new PlantillaNoEncontradaException("No se encontró la plantilla con id: " + idPlantilla);
+        }
+
+        return PlantillaMapper.toResponse(plantilla);
     }
 }
