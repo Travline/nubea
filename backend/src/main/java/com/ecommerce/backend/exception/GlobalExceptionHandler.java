@@ -45,6 +45,33 @@ public class GlobalExceptionHandler {
         .body(new ErrorResponse("PLANTILLA_NO_ENCONTRADA", ex.getMessage()));
     }
 
+    // Configuración de tienda no encontrada 404 NOT FOUND
+    @ExceptionHandler(ConfiguracionTiendaNoEncontradaException.class)
+    public ResponseEntity<ErrorResponse> manejarConfiguracionTiendaNoEncontrada(
+        ConfiguracionTiendaNoEncontradaException ex
+    ){
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+        .body(new ErrorResponse("CONFIGURACION_NO_ENCONTRADA", ex.getMessage()));
+    }
+
+    // Tienda no modificable (suspendida o cerrada) 409 CONFLICT
+    @ExceptionHandler(TiendaNoModificableException.class)
+    public ResponseEntity<ErrorResponse> manejarTiendaNoModificable(
+        TiendaNoModificableException ex
+    ){
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+        .body(new ErrorResponse("TIENDA_NO_MODIFICABLE", ex.getMessage()));
+    }
+
+    // Plantilla inactiva al seleccionarla 409 CONFLICT
+    @ExceptionHandler(PlantillaInactivaException.class)
+    public ResponseEntity<ErrorResponse> manejarPlantillaInactiva(
+        PlantillaInactivaException ex
+    ){
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+        .body(new ErrorResponse("PLANTILLA_INACTIVA", ex.getMessage()));
+    }
+
     // Argumento inválido / regla de validación de servicio 400 BAD REQUEST
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorResponse> manejarIllegalArgument(
