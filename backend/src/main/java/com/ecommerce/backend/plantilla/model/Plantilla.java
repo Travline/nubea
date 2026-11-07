@@ -27,7 +27,7 @@ public class Plantilla {
     @Column(name = "id_plantilla", updatable = false)
     private Short idPlantilla;
 
-    @Column(name = "codigo", nullable = false, unique = true, length = 60)
+    @Column(name = "codigo", nullable = false, unique = true, length = 60, updatable = false)
     private String codigo;
 
     @Column(name = "nombre", nullable = false, length = 100)
