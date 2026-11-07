@@ -36,6 +36,24 @@ public class GlobalExceptionHandler {
         .body(new ErrorResponse("PLANTILLA_CODIGO_DUPLICADO", ex.getMessage()));
     }
 
+    // Plantilla no encontrada 404 NOT FOUND
+    @ExceptionHandler(PlantillaNoEncontradaException.class)
+    public ResponseEntity<ErrorResponse> manejarPlantillaNoEncontrada(
+        PlantillaNoEncontradaException ex
+    ){
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+        .body(new ErrorResponse("PLANTILLA_NO_ENCONTRADA", ex.getMessage()));
+    }
+
+    // Argumento inválido / regla de validación de servicio 400 BAD REQUEST
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ErrorResponse> manejarIllegalArgument(
+        IllegalArgumentException ex
+    ){
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+        .body(new ErrorResponse("DATOS_INVALIDOS", ex.getMessage()));
+    }
+
     // Credenciales Incorrectas 401 UNAUTHORIZED
     @ExceptionHandler (CredencialesInvalidasException.class)
     public ResponseEntity<ErrorResponse> manejarCredencialesInvalidas(
