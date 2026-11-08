@@ -45,6 +45,12 @@ public class GlobalExceptionHandler {
         .body(new ErrorResponse("PLANTILLA_NO_ENCONTRADA", ex.getMessage()));
     }
 
+    @ExceptionHandler(CuentaPagoNoConfiguradaException.class)
+    public ResponseEntity<ErrorResponse> manejarCuentaPagoNoConfigurada(CuentaPagoNoConfiguradaException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+            .body(new ErrorResponse("CUENTA_PAGO_NO_CONFIGURADA", ex.getMessage()));
+    }
+
     // Banner no encontrado 404 NOT FOUND
     @ExceptionHandler(BannerNoEncontradoException.class)
     public ResponseEntity<ErrorResponse> manejarBannerNoEncontrado(
