@@ -45,6 +45,15 @@ public class GlobalExceptionHandler {
         .body(new ErrorResponse("PLANTILLA_NO_ENCONTRADA", ex.getMessage()));
     }
 
+    // Banner no encontrado 404 NOT FOUND
+    @ExceptionHandler(BannerNoEncontradoException.class)
+    public ResponseEntity<ErrorResponse> manejarBannerNoEncontrado(
+        BannerNoEncontradoException ex
+    ){
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+        .body(new ErrorResponse("BANNER_NO_ENCONTRADO", ex.getMessage()));
+    }
+
     // Configuración de tienda no encontrada 404 NOT FOUND
     @ExceptionHandler(ConfiguracionTiendaNoEncontradaException.class)
     public ResponseEntity<ErrorResponse> manejarConfiguracionTiendaNoEncontrada(
@@ -52,6 +61,24 @@ public class GlobalExceptionHandler {
     ){
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
         .body(new ErrorResponse("CONFIGURACION_NO_ENCONTRADA", ex.getMessage()));
+    }
+
+    // Archivo de imagen inválido 400 BAD REQUEST
+    @ExceptionHandler(ArchivoInvalidoException.class)
+    public ResponseEntity<ErrorResponse> manejarArchivoInvalido(
+        ArchivoInvalidoException ex
+    ){
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+        .body(new ErrorResponse("ARCHIVO_INVALIDO", ex.getMessage()));
+    }
+
+    // Reordenamiento inválido 400 BAD REQUEST
+    @ExceptionHandler(ReordenInvalidoException.class)
+    public ResponseEntity<ErrorResponse> manejarReordenInvalido(
+        ReordenInvalidoException ex
+    ){
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+        .body(new ErrorResponse("REORDEN_INVALIDO", ex.getMessage()));
     }
 
     // Tienda no modificable (suspendida o cerrada) 409 CONFLICT
@@ -70,6 +97,15 @@ public class GlobalExceptionHandler {
     ){
         return ResponseEntity.status(HttpStatus.CONFLICT)
         .body(new ErrorResponse("PLANTILLA_INACTIVA", ex.getMessage()));
+    }
+
+    // Error de almacenamiento externo 502 BAD GATEWAY
+    @ExceptionHandler(StorageException.class)
+    public ResponseEntity<ErrorResponse> manejarStorageException(
+        StorageException ex
+    ){
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+        .body(new ErrorResponse("ERROR_ALMACENAMIENTO", "Error de comunicación con el servicio de almacenamiento"));
     }
 
     // Argumento inválido / regla de validación de servicio 400 BAD REQUEST
