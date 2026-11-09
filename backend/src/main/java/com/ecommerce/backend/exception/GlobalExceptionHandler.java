@@ -18,6 +18,21 @@ import java.util.stream.Collectors;
 @Order (Ordered.HIGHEST_PRECEDENCE)
 public class GlobalExceptionHandler {
 
+    @ExceptionHandler(com.ecommerce.backend.cuentapago.oauth.OAuthEstadoInvalidoException.class)
+    public ResponseEntity<ErrorResponse> manejarEstadoOAuthInvalido(Exception ex) {
+        return ResponseEntity.badRequest().body(new ErrorResponse("OAUTH_ESTADO_INVALIDO", "Estado OAuth inválido o vencido"));
+    }
+
+    @ExceptionHandler(com.ecommerce.backend.cuentapago.oauth.OAuthCuentaActivaException.class)
+    public ResponseEntity<ErrorResponse> manejarCuentaActivaOAuth(Exception ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(new ErrorResponse("CUENTA_PAGO_YA_ACTIVA", "La cuenta de pago ya está activa"));
+    }
+
+    @ExceptionHandler(com.ecommerce.backend.cuentapago.oauth.OAuthConflictoException.class)
+    public ResponseEntity<ErrorResponse> manejarConflictoOAuth(Exception ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(new ErrorResponse("OAUTH_CONFLICTO", ex.getMessage()));
+    }
+
     // Usuarios duplicados 409 CONFLICT
     @ExceptionHandler(UsuarioYaExisteException.class)
     public ResponseEntity<ErrorResponse> manejarUsuarioYaExiste(
