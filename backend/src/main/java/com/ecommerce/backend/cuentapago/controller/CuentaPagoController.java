@@ -15,10 +15,18 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class CuentaPagoController {
     private final CuentaPagoConsultaService service;
+    private final com.ecommerce.backend.cuentapago.service.CuentaPagoDesconexionService desconexionService;
 
     @GetMapping
     @PreAuthorize("@tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
     public CuentaPagoResponse consultar(@PathVariable UUID idTienda) {
         return service.consultar(idTienda);
     }
+    @org.springframework.web.bind.annotation.PostMapping("/desconexion")
+    @PreAuthorize("@tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
+    public org.springframework.http.ResponseEntity<Void> desconectar(@PathVariable UUID idTienda) {
+        desconexionService.desconectar(idTienda);
+        return org.springframework.http.ResponseEntity.noContent().build();
+    }
 }
+

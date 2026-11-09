@@ -37,6 +37,7 @@ class OAuthPostgresTest {
             s.execute("CREATE TABLE " + SCHEMA + ".cuenta_pago_tienda (id_tienda uuid PRIMARY KEY, proveedor text DEFAULT 'MERCADO_PAGO', estado text DEFAULT 'PENDIENTE', id_cuenta_externa text UNIQUE, referencia_credencial text, fecha_vinculacion timestamptz, fecha_actualizacion timestamptz DEFAULT now())");
             s.execute("CREATE TABLE " + SCHEMA + ".oauth_mercado_pago_intento (id_intento uuid PRIMARY KEY, id_tienda uuid NOT NULL, id_usuario uuid NOT NULL, state_hash bytea UNIQUE NOT NULL, verifier_cifrado text NOT NULL, retorno_panel text NOT NULL, fecha_creacion timestamptz NOT NULL, fecha_expiracion timestamptz NOT NULL, estado text NOT NULL)");
             s.execute("CREATE UNIQUE INDEX ON " + SCHEMA + ".oauth_mercado_pago_intento(id_tienda) WHERE estado='PENDIENTE'");
+            s.execute("CREATE TABLE " + SCHEMA + ".cuenta_pago_historial(id_historial bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY, id_tienda uuid, id_usuario uuid, estado_anterior text, estado_nuevo text, fecha_cambio timestamptz)");
         }
         servidor = com.sun.net.httpserver.HttpServer.create(new java.net.InetSocketAddress("127.0.0.1", 0), 0);
         servidor.createContext("/token", exchange -> {
@@ -206,6 +207,25 @@ class OAuthPostgresTest {
         }
         assertThrows(OAuthConflictoException.class, () -> store.activar(intento, "998", "cifrado"));
         assertThrows(OAuthConflictoException.class, () -> store.iniciar(UUID.randomUUID(), tienda, usuario, new byte[32], "cifrado", "https://panel.example", 10));
+    }
+
+    @Test
+    void desconexionInvalidaCallbackYEsIdempotente() throws Exception {
+        UUID tienda = UUID.randomUUID(), usuario = UUID.randomUUID();
+        try (Connection c = connection(); PreparedStatement p = c.prepareStatement("INSERT INTO " + SCHEMA + ".tienda(id_tienda,id_propietario,estado) VALUES (?,?,'ACTIVA')")) {
+            p.setObject(1, tienda); p.setObject(2, usuario); p.executeUpdate();
+        }
+        byte[] hash = new byte[32]; hash[0] = 81;
+        store.iniciar(UUID.randomUUID(), tienda, usuario, hash, "cifrado", "https://panel.example", 10);
+        var intento = store.consumir(hash);
+        var auth = UsernamePasswordAuthenticationToken.authenticated(usuario, null, List.of());
+        String ruta = "/api/tiendas/" + tienda + "/cuenta-pago/desconexion";
+        mvc.perform(post(ruta).with(authentication(auth))).andExpect(status().isNoContent());
+        mvc.perform(post(ruta).with(authentication(auth))).andExpect(status().isNoContent());
+        assertThrows(OAuthConflictoException.class, () -> store.activar(intento, "998", "cifrado"));
+        try (Connection c = connection(); PreparedStatement p = c.prepareStatement("SELECT estado, referencia_credencial, id_cuenta_externa, (SELECT count(*) FROM " + SCHEMA + ".cuenta_pago_historial h WHERE h.id_tienda=cp.id_tienda) FROM " + SCHEMA + ".cuenta_pago_tienda cp WHERE id_tienda=?")) {
+            p.setObject(1, tienda); try (ResultSet rs = p.executeQuery()) { assertTrue(rs.next()); assertEquals("DESCONECTADA", rs.getString(1)); assertNull(rs.getString(2)); assertNull(rs.getString(3)); assertEquals(1, rs.getInt(4)); }
+        }
     }
 
 }
