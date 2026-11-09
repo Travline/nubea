@@ -23,7 +23,7 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception{
         http.csrf(AbstractHttpConfigurer::disable).sessionManagement(session -> 
             session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)).authorizeHttpRequests(auth -> 
-                auth.requestMatchers(("/api/auth/**")).permitAll().anyRequest().authenticated()).
+                auth.requestMatchers("/api/auth/**", "/api/integraciones/mercado-pago/oauth/callback").permitAll().anyRequest().authenticated()).
                 formLogin(AbstractHttpConfigurer::disable).httpBasic(AbstractHttpConfigurer::disable);
                 return http.build();
     }
