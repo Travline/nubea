@@ -215,4 +215,259 @@ public PresentacionProductoResponse crearPresentacion(
 
 
 
+
+@Transactional(readOnly = true)
+public List<PresentacionProductoResponse> listarPresentaciones(
+        UUID idProducto,
+        UUID idTienda
+) {
+    // Verificar que el producto pertenezca a la tienda
+    productoRepository.findByIdProductoAndIdTienda(
+            idProducto,
+            idTienda
+    ).orElseThrow(() -> new IllegalArgumentException(
+            "El producto no existe en esta tienda"
+    ));
+
+    // Obtener las presentaciones del producto
+    return presentacionProductoRepository.findByIdProducto(idProducto)
+            .stream()
+            .map(PresentacionProductoMapper::toResponse)
+            .toList();
+}
+
+
+
+
+@Transactional(readOnly = true)
+public PresentacionProductoResponse obtenerPresentacionPorId(
+        UUID idPresentacion,
+        UUID idProducto,
+        UUID idTienda
+) {
+    // Verificar que el producto pertenezca a la tienda
+    productoRepository.findByIdProductoAndIdTienda(
+            idProducto,
+            idTienda
+    ).orElseThrow(() -> new IllegalArgumentException(
+            "El producto no existe en esta tienda"
+    ));
+
+    // Buscar la presentación
+    PresentacionProducto presentacion = presentacionProductoRepository
+            .findByIdPresentacionAndIdTienda(idPresentacion, idTienda)
+            .orElseThrow(() -> new IllegalArgumentException(
+                    "La presentación no existe en esta tienda"
+            ));
+
+    // Verificar que la presentación pertenezca al producto
+    if (!presentacion.getIdProducto().equals(idProducto)) {
+        throw new IllegalArgumentException(
+                "La presentación no pertenece a este producto"
+        );
+    }
+
+    return PresentacionProductoMapper.toResponse(presentacion);
+}
+
+
+@Transactional
+public PresentacionProductoResponse actualizarPresentacion(
+        UUID idPresentacion,
+        UUID idProducto,
+        UUID idTienda,
+        PresentacionProductoRequest request
+) {
+    // Validar la solicitud
+    if (request == null || request.getSku() == null
+            || request.getSku().isBlank()) {
+        throw new IllegalArgumentException(
+                "El SKU de la presentación es obligatorio"
+        );
+    }
+
+    // Verificar que el producto pertenezca a la tienda
+    productoRepository.findByIdProductoAndIdTienda(
+            idProducto,
+            idTienda
+    ).orElseThrow(() -> new IllegalArgumentException(
+            "El producto no existe en esta tienda"
+    ));
+
+    // Buscar la presentación
+    PresentacionProducto presentacion = presentacionProductoRepository
+            .findByIdPresentacionAndIdTienda(idPresentacion, idTienda)
+            .orElseThrow(() -> new IllegalArgumentException(
+                    "La presentación no existe en esta tienda"
+            ));
+
+    // Verificar que pertenezca al producto
+    if (!presentacion.getIdProducto().equals(idProducto)) {
+        throw new IllegalArgumentException(
+                "La presentación no pertenece a este producto"
+        );
+    }
+
+    String nuevoSku = request.getSku().trim();
+
+    // Comprobar que el SKU no pertenezca a otra presentación
+    if (!presentacion.getSku().equalsIgnoreCase(nuevoSku)
+            && presentacionProductoRepository.existsByIdTiendaAndSku(
+                    idTienda, nuevoSku)) {
+        throw new IllegalArgumentException(
+                "Ya existe una presentación con ese SKU en esta tienda"
+        );
+    }
+
+    // Actualizar los datos
+    presentacion.setSku(nuevoSku);
+    presentacion.setPrecioOverride(request.getPrecioOverride());
+
+    PresentacionProducto actualizado =
+            presentacionProductoRepository.save(presentacion);
+
+    return PresentacionProductoMapper.toResponse(actualizado);
+}
+
+
+
+
+
+
+@Transactional
+public PresentacionProductoResponse cambiarEstadoPresentacion(
+        UUID idPresentacion,
+        UUID idProducto,
+        UUID idTienda,
+        String nuevoEstado
+) {
+    // Validar el estado
+    if (nuevoEstado == null || nuevoEstado.isBlank()) {
+        throw new IllegalArgumentException(
+                "El estado no puede estar vacío"
+        );
+    }
+
+    String estado = nuevoEstado.trim().toUpperCase();
+
+    if (!estado.equals("ACTIVA") && !estado.equals("INACTIVA")) {
+        throw new IllegalArgumentException(
+                "El estado de la presentación no es válido"
+        );
+    }
+
+    // Verificar que el producto pertenezca a la tienda
+    productoRepository.findByIdProductoAndIdTienda(
+            idProducto,
+            idTienda
+    ).orElseThrow(() -> new IllegalArgumentException(
+            "El producto no existe en esta tienda"
+    ));
+
+    // Buscar la presentación
+    PresentacionProducto presentacion = presentacionProductoRepository
+            .findByIdPresentacionAndIdTienda(idPresentacion, idTienda)
+            .orElseThrow(() -> new IllegalArgumentException(
+                    "La presentación no existe en esta tienda"
+            ));
+
+    // Verificar que pertenezca al producto
+    if (!presentacion.getIdProducto().equals(idProducto)) {
+        throw new IllegalArgumentException(
+                "La presentación no pertenece a este producto"
+        );
+    }
+
+    // Actualizar el estado
+    presentacion.setEstado(estado);
+
+    PresentacionProducto actualizada =
+            presentacionProductoRepository.save(presentacion);
+
+    return PresentacionProductoMapper.toResponse(actualizada);
+}
+
+@Transactional
+public PresentacionProductoResponse actualizarValoresPresentacion(
+        UUID idPresentacion,
+        UUID idProducto,
+        UUID idTienda,
+        List<UUID> idsValores
+) {
+    // 1. Verificar que el producto pertenezca a la tienda.
+    productoRepository.findByIdProductoAndIdTienda(idProducto, idTienda)
+            .orElseThrow(() ->
+                    new IllegalArgumentException("El producto no existe en esta tienda")
+            );
+
+    // 2. Buscar la presentación y verificar que pertenezca al producto.
+    PresentacionProducto presentacion = presentacionProductoRepository
+            .findByIdPresentacionAndIdTienda(idPresentacion, idTienda)
+            .orElseThrow(() ->
+                    new IllegalArgumentException("La presentación no existe en esta tienda")
+            );
+
+    if (!presentacion.getIdProducto().equals(idProducto)) {
+        throw new IllegalArgumentException(
+                "La presentación no pertenece al producto indicado"
+        );
+    }
+
+    // 3. Validar los nuevos valores.
+    List<ValorVariante> valores = validarValores(idsValores, idTienda);
+
+    // 4. Construir la firma de la nueva combinación.
+    String nuevaFirma = construirFirmaValores(valores);
+
+    // 5. Comprobar que otra presentación no tenga la misma combinación.
+    boolean combinacionDuplicada = presentacionProductoRepository
+            .existsByIdProductoAndFirmaValoresAndIdPresentacionNot(
+                    idProducto,
+                    nuevaFirma,
+                    idPresentacion
+            );
+
+    if (combinacionDuplicada) {
+        throw new IllegalArgumentException(
+                "Ya existe otra presentación con esa combinación de valores"
+        );
+    }
+
+    // 6. Eliminar las relaciones anteriores.
+    List<PresentacionValor> relacionesAnteriores =
+        presentacionValorRepository.findById_IdPresentacion(idPresentacion);
+
+presentacionValorRepository.deleteAll(relacionesAnteriores);
+
+    // 7. Actualizar la firma de valores.
+    presentacion.setFirmaValores(nuevaFirma);
+    presentacionProductoRepository.save(presentacion);
+
+    // 8. Registrar las nuevas relaciones.
+    List<PresentacionValor> nuevasRelaciones = valores.stream()
+            .map(valor -> {
+                PresentacionValor relacion = new PresentacionValor();
+
+                relacion.setId(new PresentacionValorId(
+                        idPresentacion,
+                        valor.getIdValor()
+                ));
+
+                relacion.setIdVariante(valor.getIdVariante());
+
+                return relacion;
+            })
+            .toList();
+
+    presentacionValorRepository.saveAll(nuevasRelaciones);
+
+    return PresentacionProductoMapper.toResponse(presentacion);
+}
+
+
+
+
+
+
+
 }

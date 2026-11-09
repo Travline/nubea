@@ -1,6 +1,5 @@
-package com.ecommerce.backend.catalogo.service;
 
-import org.springframework.stereotype.Service;
+package com.ecommerce.backend.catalogo.service;
 
 import com.ecommerce.backend.catalogo.dto.request.ValorVarianteRequest;
 import com.ecommerce.backend.catalogo.dto.response.ValorVarianteResponse;
@@ -8,8 +7,11 @@ import com.ecommerce.backend.catalogo.mapper.ValorVarianteMapper;
 import com.ecommerce.backend.catalogo.model.ValorVariante;
 import com.ecommerce.backend.catalogo.repository.ValorVarianteRepository;
 import com.ecommerce.backend.catalogo.repository.VarianteRepository;
+
 import java.util.List;
 import java.util.UUID;
+
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -21,6 +23,7 @@ public class ValorVarianteService {
     public ValorVarianteService(
             ValorVarianteRepository valorVarianteRepository,
             VarianteRepository varianteRepository) {
+
         this.valorVarianteRepository = valorVarianteRepository;
         this.varianteRepository = varianteRepository;
     }
@@ -30,31 +33,20 @@ public class ValorVarianteService {
             UUID idVariante,
             UUID idTienda,
             ValorVarianteRequest request) {
-        if (request == null || request.getValor() == null
-                || request.getValor().isBlank()) {
-            throw new IllegalArgumentException(
-                    "El valor de la variante no puede estar vacío");
-        }
 
-        // Verificar que la variante pertenezca a la tienda
-        varianteRepository.findByIdVarianteAndIdTienda(idVariante, idTienda)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "La variante no existe en esta tienda"));
+        String valor = validarValor(request);
 
-        String valor = request.getValor().trim();
+        validarVariante(idVariante, idTienda);
 
-        // Verificar si el valor ya existe dentro de la variante
-        if (valorVarianteRepository.existsByIdVarianteAndValorIgnoreCase(
-                idVariante, valor)) {
-            throw new IllegalArgumentException(
-                    "Este valor ya existe para la variante");
-        }
+        validarValorDuplicado(idVariante, valor);
 
         ValorVariante nuevoValor = new ValorVariante();
+
         nuevoValor.setIdVariante(idVariante);
         nuevoValor.setValor(valor);
 
-        ValorVariante guardado = valorVarianteRepository.save(nuevoValor);
+        ValorVariante guardado =
+                valorVarianteRepository.save(nuevoValor);
 
         return ValorVarianteMapper.toResponse(guardado);
     }
@@ -63,13 +55,11 @@ public class ValorVarianteService {
     public List<ValorVarianteResponse> listarValores(
             UUID idVariante,
             UUID idTienda) {
-        // Verificar que la variante pertenezca a la tienda
-        varianteRepository.findByIdVarianteAndIdTienda(idVariante, idTienda)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "La variante no existe en esta tienda"));
 
-        // Obtener los valores de la variante
-        return valorVarianteRepository.findByIdVariante(idVariante)
+        validarVariante(idVariante, idTienda);
+
+        return valorVarianteRepository
+                .findByIdVariante(idVariante)
                 .stream()
                 .map(ValorVarianteMapper::toResponse)
                 .toList();
@@ -80,12 +70,9 @@ public class ValorVarianteService {
             UUID idValor,
             UUID idVariante,
             UUID idTienda) {
-        // Verificar que la variante pertenezca a la tienda
-        varianteRepository.findByIdVarianteAndIdTienda(idVariante, idTienda)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "La variante no existe en esta tienda"));
 
-        // Buscar el valor dentro de esa variante
+        validarVariante(idVariante, idTienda);
+
         ValorVariante valor = valorVarianteRepository
                 .findByIdValorAndIdVariante(idValor, idVariante)
                 .orElseThrow(() -> new IllegalArgumentException(
@@ -100,39 +87,73 @@ public class ValorVarianteService {
             UUID idVariante,
             UUID idTienda,
             ValorVarianteRequest request) {
-        // Validar la solicitud
-        if (request == null || request.getValor() == null
-                || request.getValor().isBlank()) {
-            throw new IllegalArgumentException(
-                    "El valor de la variante no puede estar vacío");
-        }
 
-        // Verificar que la variante pertenezca a la tienda
-        varianteRepository.findByIdVarianteAndIdTienda(idVariante, idTienda)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "La variante no existe en esta tienda"));
+        String nuevoValor = validarValor(request);
 
-        // Buscar el valor dentro de la variante
+        validarVariante(idVariante, idTienda);
+
         ValorVariante valorExistente = valorVarianteRepository
                 .findByIdValorAndIdVariante(idValor, idVariante)
                 .orElseThrow(() -> new IllegalArgumentException(
                         "El valor no existe en esta variante"));
 
-        String nuevoValor = request.getValor().trim();
-
-        // Comprobar que no exista otro valor con el mismo nombre
-        if (!valorExistente.getValor().equalsIgnoreCase(nuevoValor)
-                && valorVarianteRepository.existsByIdVarianteAndValorIgnoreCase(
-                        idVariante, nuevoValor)) {
-            throw new IllegalArgumentException(
-                    "Ya existe otro valor con ese nombre para esta variante");
+        if (!valorExistente.getValor().equalsIgnoreCase(nuevoValor)) {
+            validarValorDuplicado(idVariante, nuevoValor);
         }
 
         valorExistente.setValor(nuevoValor);
 
-        ValorVariante actualizado = valorVarianteRepository.save(valorExistente);
+        ValorVariante actualizado =
+                valorVarianteRepository.save(valorExistente);
 
         return ValorVarianteMapper.toResponse(actualizado);
     }
 
+    private void validarVariante(
+            UUID idVariante,
+            UUID idTienda) {
+
+        varianteRepository
+                .findByIdVarianteAndIdTienda(idVariante, idTienda)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "La variante no existe en esta tienda"));
+    }
+
+    private void validarValorDuplicado(
+            UUID idVariante,
+            String valor) {
+
+        if (valorVarianteRepository
+                .existsByIdVarianteAndValorIgnoreCase(
+                        idVariante, valor)) {
+
+            throw new IllegalArgumentException(
+                    "Este valor ya existe para la variante");
+        }
+    }
+
+    private String validarValor(ValorVarianteRequest request) {
+
+        if (request == null) {
+            throw new IllegalArgumentException(
+                    "La solicitud del valor no puede estar vacía");
+        }
+
+        if (request.getValor() == null
+                || request.getValor().isBlank()) {
+
+            throw new IllegalArgumentException(
+                    "El valor de la variante es obligatorio");
+        }
+
+        String valor = request.getValor().trim();
+
+        // Límite provisional: confirmar con el SQL maestro.
+        if (valor.length() > 100) {
+            throw new IllegalArgumentException(
+                    "El valor no puede superar los 100 caracteres");
+        }
+
+        return valor;
+    }
 }

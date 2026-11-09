@@ -25,5 +25,7 @@ public interface PresentacionValorRepository
             UUID idPresentacion,
             UUID idValor
     );
+
+    void deleteById_IdPresentacion(UUID idPresentacion);
     
 }

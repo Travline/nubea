@@ -1,62 +1,87 @@
+
 package com.ecommerce.backend.catalogo.service;
 
 import com.ecommerce.backend.catalogo.repository.ProductoRepository;
 import com.ecommerce.backend.catalogo.repository.CategoriaRepository;
-
-
-import java.util.UUID;
-import java.util.List;
-import org.springframework.transaction.annotation.Transactional;
-
 import com.ecommerce.backend.catalogo.dto.request.ProductoRequest;
 import com.ecommerce.backend.catalogo.dto.response.ProductoResponse;
 import com.ecommerce.backend.catalogo.mapper.ProductoMapper;
 import com.ecommerce.backend.catalogo.model.Producto;
+
+import java.util.UUID;
+import java.util.List;
+import java.util.Locale;
+
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.stereotype.Service;
 
 @Service
-
 public class ProductoService {
 
     private final ProductoRepository productoRepository;
     private final CategoriaRepository categoriaRepository;
-    
 
-   public ProductoService(
-        ProductoRepository productoRepository,
-        CategoriaRepository categoriaRepository) {
-    this.productoRepository = productoRepository;
-    this.categoriaRepository = categoriaRepository;
-}
+    public ProductoService(
+            ProductoRepository productoRepository,
+            CategoriaRepository categoriaRepository) {
+        this.productoRepository = productoRepository;
+        this.categoriaRepository = categoriaRepository;
+    }
+
+    private String validarNombre(String nombre) {
+        if (nombre == null || nombre.isBlank()) {
+            throw new IllegalArgumentException(
+                    "El nombre del producto es obligatorio");
+        }
+
+        String nombreLimpio = nombre.trim();
+
+        // Verificar la longitud según el modelo SQL
+        return nombreLimpio;
+    }
+
+    private void validarCategoria(UUID idCategoria, UUID idTienda) {
+        if (idCategoria == null) {
+            throw new IllegalArgumentException(
+                    "La categoría del producto es obligatoria");
+        }
+
+        categoriaRepository.findByIdCategoriaAndIdTienda(
+                idCategoria,
+                idTienda
+        ).orElseThrow(() -> new IllegalArgumentException(
+                "La categoría no existe en esta tienda"));
+    }
+
+    private Producto buscarProducto(UUID idProducto, UUID idTienda) {
+        return productoRepository
+                .findByIdProductoAndIdTienda(idProducto, idTienda)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "El producto no existe en esta tienda"));
+    }
 
     @Transactional
     public ProductoResponse crearProducto(
             UUID idTienda,
             ProductoRequest request) {
-        // Validar la solicitud
+
         if (request == null) {
             throw new IllegalArgumentException(
                     "La solicitud del producto no puede estar vacía");
         }
 
-        // Verificar que la categoría pertenezca a la tienda
-        categoriaRepository.findByIdCategoriaAndIdTienda(
-                request.getIdCategoria(),
-                idTienda).orElseThrow(
-                        () -> new IllegalArgumentException(
-                                "La categoría no existe en esta tienda"));
+        String nombre = validarNombre(request.getNombre());
+        validarCategoria(request.getIdCategoria(), idTienda);
 
-        // Crear el producto
         Producto producto = new Producto();
 
         producto.setIdTienda(idTienda);
         producto.setIdCategoria(request.getIdCategoria());
-        producto.setNombre(request.getNombre().trim());
+        producto.setNombre(nombre);
         producto.setDescripcion(request.getDescripcion());
         producto.setPrecioBase(request.getPrecioBase());
         producto.setEstado("BORRADOR");
 
-        // Guardar el producto
         Producto guardado = productoRepository.save(producto);
 
         return ProductoMapper.toResponse(guardado);
@@ -64,7 +89,6 @@ public class ProductoService {
 
     @Transactional(readOnly = true)
     public List<ProductoResponse> listarProductos(UUID idTienda) {
-
         return productoRepository.findByIdTienda(idTienda)
                 .stream()
                 .map(ProductoMapper::toResponse)
@@ -75,10 +99,8 @@ public class ProductoService {
     public ProductoResponse obtenerProductoPorId(
             UUID idProducto,
             UUID idTienda) {
-        Producto producto = productoRepository
-                .findByIdProductoAndIdTienda(idProducto, idTienda)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "El producto no existe en esta tienda"));
+
+        Producto producto = buscarProducto(idProducto, idTienda);
 
         return ProductoMapper.toResponse(producto);
     }
@@ -88,32 +110,22 @@ public class ProductoService {
             UUID idProducto,
             UUID idTienda,
             ProductoRequest request) {
-        // Validar la solicitud
+
         if (request == null) {
             throw new IllegalArgumentException(
                     "La solicitud del producto no puede estar vacía");
         }
 
-        // Buscar el producto dentro de la tienda
-        Producto producto = productoRepository
-                .findByIdProductoAndIdTienda(idProducto, idTienda)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "El producto no existe en esta tienda"));
+        Producto producto = buscarProducto(idProducto, idTienda);
 
-        // Verificar que la categoría pertenezca a la tienda
-        categoriaRepository.findByIdCategoriaAndIdTienda(
-                request.getIdCategoria(),
-                idTienda).orElseThrow(
-                        () -> new IllegalArgumentException(
-                                "La categoría no existe en esta tienda"));
+        String nombre = validarNombre(request.getNombre());
+        validarCategoria(request.getIdCategoria(), idTienda);
 
-        // Actualizar los datos del producto
         producto.setIdCategoria(request.getIdCategoria());
-        producto.setNombre(request.getNombre().trim());
+        producto.setNombre(nombre);
         producto.setDescripcion(request.getDescripcion());
         producto.setPrecioBase(request.getPrecioBase());
 
-        // Guardar los cambios
         Producto actualizado = productoRepository.save(producto);
 
         return ProductoMapper.toResponse(actualizado);
@@ -124,13 +136,13 @@ public class ProductoService {
             UUID idProducto,
             UUID idTienda,
             String nuevoEstado) {
-        // Validar el estado recibido
+
         if (nuevoEstado == null || nuevoEstado.isBlank()) {
             throw new IllegalArgumentException(
                     "El estado del producto no puede estar vacío");
         }
 
-        String estado = nuevoEstado.trim().toUpperCase();
+        String estado = nuevoEstado.trim().toUpperCase(Locale.ROOT);
 
         if (!estado.equals("BORRADOR")
                 && !estado.equals("PUBLICADO")
@@ -139,18 +151,18 @@ public class ProductoService {
                     "El estado indicado no es válido");
         }
 
-        // Buscar el producto dentro de la tienda
-        Producto producto = productoRepository
-                .findByIdProductoAndIdTienda(idProducto, idTienda)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "El producto no existe en esta tienda"));
+        if (estado.equals("PUBLICADO")) {
+            throw new IllegalStateException(
+                    "La publicación requiere validar la tienda, "
+                    + "la categoría, las presentaciones y el inventario");
+        }
 
-        // Actualizar el estado
+        Producto producto = buscarProducto(idProducto, idTienda);
+
         producto.setEstado(estado);
 
         Producto actualizado = productoRepository.save(producto);
 
         return ProductoMapper.toResponse(actualizado);
     }
-
 }

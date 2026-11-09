@@ -36,4 +36,17 @@ public interface PresentacionProductoRepository
         UUID idProducto,
         String firmaValores
 );
+
+boolean existsByIdProductoAndFirmaValoresAndIdPresentacionNot(
+        UUID idProducto,
+        String firmaValores,
+        UUID idPresentacion
+);
+
+Optional<PresentacionProducto> findByIdPresentacionAndIdProducto(
+        UUID idPresentacion,
+        UUID idProducto
+);
+
+
 }
