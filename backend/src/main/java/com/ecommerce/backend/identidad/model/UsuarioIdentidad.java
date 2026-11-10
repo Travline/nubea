@@ -37,7 +37,7 @@ public class UsuarioIdentidad {
     private UUID idIdentidad;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "id_identidad")
+    @JoinColumn(name = "id_usuario", nullable = false)
     private UsuarioPlataforma usuario;
 
     @Enumerated(EnumType.STRING)
