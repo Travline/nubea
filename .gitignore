@@ -1,3 +1,10 @@
-docker/.ev
-docker/.env.example
-.metals/
+# Variables de entorno (contraseñas)
+.env
+.env.*
+!.env.example
+
+# Código antiguo de referencia
+_legacy/
+
+# Editor
+.vscode/
