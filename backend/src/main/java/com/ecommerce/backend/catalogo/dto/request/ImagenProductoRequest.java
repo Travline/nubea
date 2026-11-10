@@ -3,7 +3,7 @@ package com.ecommerce.backend.catalogo.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.Size;
+
 
 public class ImagenProductoRequest {
 
