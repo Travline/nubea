@@ -5,10 +5,10 @@ import java.util.UUID;
 
 public record UsuarioResponse(
     UUID idUsuario,
-    String nombre,
+    String nombres,
     String apellidoPaterno,
     String apellidoMaterno,
-    String correo,
+    String correoElectronico,
     String estado,
     Set<String> roles,
     OffsetDateTime fechaCreacion

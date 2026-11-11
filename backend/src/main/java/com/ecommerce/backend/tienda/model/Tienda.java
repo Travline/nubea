@@ -11,7 +11,6 @@ import java.time.OffsetDateTime;
 
 import java.util.UUID;
 
-import org.hibernate.annotations.CreationTimestamp;
 @Entity 
 @Table (name = "tienda")
 @Getter 
@@ -41,11 +40,14 @@ public class Tienda {
     @Builder.Default
     private EstadoTienda estado = EstadoTienda.BORRADOR;
 
-    @CreationTimestamp
     @Column (name = "fecha_creacion", nullable = false, updatable = false)
     private OffsetDateTime fechaCreacion;
 
     @Column (name= "fecha_cierre")
     private OffsetDateTime fechaCierre;
 
+    @PrePersist 
+    protected void alCrear() {
+        this.fechaCreacion = OffsetDateTime.now();
+    }
 }

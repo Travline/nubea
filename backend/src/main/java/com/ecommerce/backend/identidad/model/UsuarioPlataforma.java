@@ -5,7 +5,6 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 
-import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
@@ -21,6 +20,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -73,7 +73,6 @@ public class UsuarioPlataforma {
     @Builder.Default
     private EstadoUsuario estado = EstadoUsuario.ACTIVO;
 
-    @CreationTimestamp 
     @Column(name = "fecha_creacion", nullable = false, updatable = false)
     private OffsetDateTime fechaCreacion;
 
@@ -88,5 +87,10 @@ public class UsuarioPlataforma {
     )
     @Builder.Default
     private Set<Rol> roles = new HashSet<>();
+
+    @PrePersist 
+    protected void alCrear(){
+        this.fechaCreacion = OffsetDateTime.now();
+    }
 
 }

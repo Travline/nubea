@@ -6,6 +6,7 @@ import java.util.LinkedHashMap;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -15,7 +16,15 @@ import java.util.Map;
 @RestControllerAdvice 
 public class GlobalExceptionHandler {
     
-    // 400: falló @NotBlank, @Email, @Pattern... del DTO
+  // 400: el JSON llegó mal escrito (falta una comilla, una coma...)
+@ExceptionHandler(HttpMessageNotReadableException.class)
+public ResponseEntity<ErrorResponse> jsonInvalido(HttpMessageNotReadableException ex) {
+    return ResponseEntity.badRequest()
+            .body(ErrorResponse.of(400, "JSON_INVALIDO",
+                    "El cuerpo de la petición no es un JSON válido. Revisa comillas, comas y llaves"));
+}
+  
+  // 400: falló @NotBlank, @Email, @Pattern... del DTO
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> validacion(MethodArgumentNotValidException ex) {
         Map<String, String> campos = new LinkedHashMap<>();
@@ -24,6 +33,7 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(new ErrorResponse(
                 400, "VALIDACION", "Hay campos con errores", campos, OffsetDateTime.now()));
     }
+
     
     
     @ExceptionHandler (RecursosDuplicadosException.class)

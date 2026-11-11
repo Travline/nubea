@@ -8,7 +8,6 @@ import lombok.*;
 import java.util.UUID;
 import java.time.OffsetDateTime;
 
-import org.hibernate.annotations.UpdateTimestamp;
 
 @Entity 
 @Table (name = "configuracion_tienda")
@@ -31,6 +30,10 @@ public class ConfiguracionTienda {
     @Column (name ="titulo_inicio", length = 160)
     private String tituloInicio;
 
+    @ManyToOne (fetch = FetchType.LAZY, optional = false)
+    @JoinColumn (name = "id_plantilla", nullable = false)
+    private Plantilla plantilla;
+
     @Column(name = "descripcion_inicio", columnDefinition = "text")
     private String descripcionInicio;
 
@@ -38,7 +41,12 @@ public class ConfiguracionTienda {
     @Builder.Default
     private boolean mostrarCarrusel = true;
 
-    @UpdateTimestamp 
     @Column(name = "fecha_actualizacion", nullable = false)
     private OffsetDateTime fechaActualizacion;
+
+    @PrePersist 
+    @PreUpdate 
+    protected void alGuardar() {
+        this.fechaActualizacion = OffsetDateTime.now();
+    }
 }

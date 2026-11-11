@@ -3,7 +3,6 @@ package com.ecommerce.backend.identidad.model;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
-import org.hibernate.annotations.CreationTimestamp;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -15,6 +14,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -52,7 +52,12 @@ public class UsuarioIdentidad {
     @Column(name = "password_hash", length = 255)
     private String passwordHash;
 
-    @CreationTimestamp 
     @Column(name = "fecha_vinculacion", nullable = false, updatable = false)
     private OffsetDateTime fechaVinculacion;
+
+    @PrePersist 
+    protected void alCrear() {
+        this.fechaVinculacion = OffsetDateTime.now();
+    }
+
 }
