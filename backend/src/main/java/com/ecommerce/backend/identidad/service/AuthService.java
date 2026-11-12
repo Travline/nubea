@@ -1,5 +1,4 @@
 package com.ecommerce.backend.identidad.service;
-import java.util.stream.Collectors;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -7,6 +6,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.ecommerce.backend.identidad.dto.RegistroUsuarioRequest;
 import com.ecommerce.backend.identidad.dto.UsuarioResponse;
+import com.ecommerce.backend.identidad.mapper.UsuarioMapper;
 import com.ecommerce.backend.identidad.model.NombreRol;
 import com.ecommerce.backend.identidad.model.ProveedorIdentidad;
 import com.ecommerce.backend.identidad.model.Rol;
@@ -64,7 +64,7 @@ public class AuthService {
             .build();
         identidadRepository.save(identidad);
 
-        return toResponse(usuario);
+        return UsuarioMapper.toResponse(usuario);
     }
 
     private void aplicarDocumento(UsuarioPlataforma usuario, RegistroUsuarioRequest req){
@@ -102,15 +102,6 @@ public class AuthService {
         usuario.setPaisEmisorDocumento(pais);
     }
   
-    private UsuarioResponse toResponse(UsuarioPlataforma u){
-        return new UsuarioResponse(
-            u.getIdUsuario(), u.getNombres(),
-            u.getApellidoPaterno(), u.getApellidoMaterno(),
-            u.getEmail(), u.getEstado().name(),
-            u.getRoles().stream().map(r -> r.getNombre().name()).collect(Collectors.toSet()),
-            u.getFechaCreacion());
-    }
-
     private String limpiar(String s){
        return (s == null || s.isBlank()) ? null : s.trim(); 
     }

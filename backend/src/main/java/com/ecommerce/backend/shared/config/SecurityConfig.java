@@ -27,6 +27,7 @@ public class SecurityConfig {
                 .requestMatchers("/error").permitAll()
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/api/tiendas/**").permitAll()
+                .requestMatchers("/api/usuarios/**").permitAll() //temporal hasta que se cree el JWT y el login
                 .anyRequest().authenticated()
             );
            return http.build();
