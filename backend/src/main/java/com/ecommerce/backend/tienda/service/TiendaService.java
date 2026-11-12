@@ -1,7 +1,7 @@
 package com.ecommerce.backend.tienda.service;
 
-import com.ecommerce.backend.identidad.model.NombreRol;
 import com.ecommerce.backend.identidad.model.EstadoUsuario;
+import com.ecommerce.backend.identidad.model.NombreRol;
 import com.ecommerce.backend.identidad.model.Rol;
 import com.ecommerce.backend.identidad.model.UsuarioPlataforma;
 import com.ecommerce.backend.identidad.repository.RolRepository;
@@ -21,11 +21,14 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+import java.util.UUID;
+
 @Service
 @RequiredArgsConstructor
 public class TiendaService {
 
-    private static final short PLANTILLA_POR_DEFECTO = 1;   // "Minimalista", insertada por Flyway
+    private static final short PLANTILLA_POR_DEFECTO = 1;
 
     private final TiendaRepository tiendaRepository;
     private final ConfiguracionTiendaRepository configuracionRepository;
@@ -33,41 +36,35 @@ public class TiendaService {
     private final UsuarioPlataformaRepository usuarioRepository;
     private final RolRepository rolRepository;
 
-    @Transactional      // tienda + rol + configuración: todo o nada
+    // ========== CREAR ==========
+    @Transactional
     public TiendaResponse crearTienda(CrearTiendaRequest req) {
-
-        // 1. El propietario existe y está activo
         UsuarioPlataforma propietario = usuarioRepository.findById(req.idPropietario())
                 .orElseThrow(() -> new RecursoNoEncontradoException("El usuario no existe"));
         if (propietario.getEstado() != EstadoUsuario.ACTIVO) {
             throw new ReglaNegocioException("Tu cuenta no está activa, no puedes crear tiendas");
         }
 
-        // 2. RN-M1-08 / RN-M1-10: rol de dueño
         boolean esDueno = propietario.getRoles().stream()
                 .anyMatch(r -> r.getNombre() == NombreRol.DUENO_TIENDA);
         boolean yaTieneTiendas = tiendaRepository.existsByPropietario_IdUsuario(propietario.getIdUsuario());
 
         if (!esDueno && yaTieneTiendas) {
-            // Tuvo tiendas pero un admin le quitó el rol (RN-M1-10)
-            throw new ReglaNegocioException("No tienes permiso para crear tiendas nuevas");
+            throw new ReglaNegocioException("No tienes permiso para crear tiendas nuevas");      // RN-M1-10
         }
         if (!esDueno) {
-            // Primera tienda: recibe el rol DUENO_TIENDA (RN-M1-08)
             Rol dueno = rolRepository.findByNombre(NombreRol.DUENO_TIENDA)
                     .orElseThrow(() -> new IllegalStateException("Falta el rol DUENO_TIENDA en la BD"));
-            propietario.getRoles().add(dueno);
+            propietario.getRoles().add(dueno);                                                  // RN-M1-08
         }
 
-        // 3. RN-M1-12: slug automático y único
-        String base = SlugUtil.generar(req.nombre());
+        String base = SlugUtil.generar(req.nombre());                                           // RN-M1-12
         String slug = base;
         int i = 2;
         while (tiendaRepository.existsBySlug(slug)) {
             slug = base + "-" + i++;
         }
 
-        // 4. Guardar la tienda (estado BORRADOR por defecto)
         Tienda tienda = Tienda.builder()
                 .propietario(propietario)
                 .nombre(req.nombre().trim())
@@ -75,23 +72,47 @@ public class TiendaService {
                 .build();
         tiendaRepository.save(tienda);
 
-        // 5. RN-M3-02: configuración con la plantilla por defecto
-        Plantilla plantilla = plantillaRepository.findById(PLANTILLA_POR_DEFECTO)
+        Plantilla plantilla = plantillaRepository.findById(PLANTILLA_POR_DEFECTO)              // RN-M3-02
                 .orElseThrow(() -> new IllegalStateException("Falta la plantilla por defecto en la BD"));
-        ConfiguracionTienda config = ConfiguracionTienda.builder()
+        configuracionRepository.save(ConfiguracionTienda.builder()
                 .tienda(tienda)
                 .plantilla(plantilla)
                 .tituloInicio(tienda.getNombre())
-                .build();
-        configuracionRepository.save(config);
+                .build());
 
+        return toResponse(tienda);
+    }
+
+    // ========== CONSULTAR ==========
+    @Transactional(readOnly = true)
+    public TiendaResponse obtenerPorSlug(String slug) {
+        Tienda tienda = tiendaRepository.findBySlug(slug)
+                .orElseThrow(() -> new RecursoNoEncontradoException("No existe la tienda " + slug));
+        return toResponse(tienda);
+    }
+
+    @Transactional(readOnly = true)
+    public List<TiendaResponse> listarPorPropietario(UUID idUsuario) {
+        if (!usuarioRepository.existsById(idUsuario)) {
+            throw new RecursoNoEncontradoException("El usuario no existe");
+        }
+        return tiendaRepository.findByPropietario_IdUsuario(idUsuario).stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    // ========== APOYO ==========
+    private TiendaResponse toResponse(Tienda t) {
+        String plantilla = configuracionRepository.findById(t.getIdTienda())
+                .map(c -> c.getPlantilla().getNombre())
+                .orElse(null);
         return new TiendaResponse(
-                tienda.getIdTienda(),
-                propietario.getIdUsuario(),
-                tienda.getNombre(),
-                tienda.getSlug(),
-                tienda.getEstado().name(),
-                plantilla.getNombre(),
-                tienda.getFechaCreacion());
+                t.getIdTienda(),
+                t.getPropietario().getIdUsuario(),
+                t.getNombre(),
+                t.getSlug(),
+                t.getEstado().name(),
+                plantilla,
+                t.getFechaCreacion());
     }
 }
