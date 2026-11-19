@@ -66,7 +66,7 @@ Introducir valores reales en la sección **Environment** de Render, sin guardarl
 | `STORAGE_PUBLIC_BASE_URL` | Base HTTPS pública del CDN o bucket, sin clave de objeto. |
 | `APP_CORS_ALLOWED_ORIGINS` | `https://nubea-clients.vercel.app`; añadir más adelante el origen exacto del frontend de tiendas, separado por coma. No usar `*`. |
 | `SESSION_COOKIE_SECURE` | `true` en HTTPS. |
-| `SESSION_COOKIE_SAME_SITE` | `none` para el frontend en Vercel y una API en `onrender.com`, con HTTPS y `Secure`. Algunos navegadores bloquean cookies de terceros aun con `none`; probar y considerar dominios propios bajo el mismo sitio. |
+| `SESSION_COOKIE_SAME_SITE` | `none` para el frontend en Vercel y una API en `onrender.com`, con HTTPS y `Secure`. También se aplica a la cookie CSRF. Algunos navegadores bloquean cookies de terceros aun con `none`; probar y considerar dominios propios bajo el mismo sitio. |
 | `MERCADOPAGO_OAUTH_ENABLED` | `false` hasta validar Mercado Pago con credenciales y URLs reales. |
 | `APP_BOOTSTRAP_ADMIN_EMAIL` | Dejar vacío hasta disponer de un procedimiento de inicialización seguro; no es una contraseña ni verifica la propiedad del correo. |
 

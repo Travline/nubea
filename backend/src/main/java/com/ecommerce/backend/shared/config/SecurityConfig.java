@@ -31,11 +31,15 @@ public class SecurityConfig {
     }
 
     @Bean 
-    public SecurityFilterChain filterChain(HttpSecurity http, UsuarioPlataformaRepository usuarios) throws Exception{
+    public SecurityFilterChain filterChain(HttpSecurity http, UsuarioPlataformaRepository usuarios,
+            @Value("${server.servlet.session.cookie.secure:true}") boolean cookieSecure,
+            @Value("${server.servlet.session.cookie.same-site:lax}") String cookieSameSite) throws Exception{
+        var csrfRepository = CookieCsrfTokenRepository.withHttpOnlyFalse();
+        csrfRepository.setCookieCustomizer(cookie -> cookie.secure(cookieSecure).sameSite(cookieSameSite));
         http
             .addFilterAfter(new ActiveUserFilter(usuarios), SecurityContextHolderFilter.class)
             .cors(cors -> {})
-            .csrf(csrf -> csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()))
+            .csrf(csrf -> csrf.csrfTokenRepository(csrfRepository))
             .logout(logout -> logout.logoutSuccessHandler((request, response, authentication) -> response.setStatus(204)))
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
             .authorizeHttpRequests(auth -> auth

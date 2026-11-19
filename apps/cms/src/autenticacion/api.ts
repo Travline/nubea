@@ -17,9 +17,11 @@ export class ErrorApi extends Error {
   }
 }
 
-const cliente = axios.create({ withCredentials: true, withXSRFToken: false, headers: { 'Cache-Control': 'no-store' } })
+const urlApi = import.meta.env.VITE_API_URL?.trim() || (import.meta.env.DEV ? 'http://localhost:8080' : '')
+const cliente = axios.create({ baseURL: urlApi, withCredentials: true, withXSRFToken: false })
 
 async function solicitar<T>(ruta: string, cuerpo?: object, cabeceras?: Record<string, string>): Promise<T> {
+  if (!urlApi) throw new ErrorApi(0, 'No se ha configurado la dirección de la API.')
   try {
     const respuesta = cuerpo === undefined && !cabeceras
       ? await cliente.get<T>(ruta)
