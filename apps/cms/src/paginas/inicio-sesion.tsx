@@ -21,7 +21,7 @@ export function PaginaInicioSesion() {
     try {
       await apiAutenticacion.iniciarSesion(correo, contrasena)
       await actualizar()
-      navegar('/dashboard', { replace: true })
+      navegar('/panel', { replace: true })
     } catch (err) {
       establecerError(err instanceof ErrorApi && err.codigoEstado === 401 ? 'El correo o la contraseña son incorrectos.' : err instanceof Error ? err.message : 'No se pudo iniciar sesión.')
     } finally { establecerOcupado(false) }
@@ -37,7 +37,7 @@ export function PaginaInicioSesion() {
           {error && <p role="alert" className="text-destructive text-sm">{error}</p>}
           <Button type="submit" className="w-full" disabled={ocupado}>{ocupado ? 'Ingresando...' : 'Ingresar'}</Button>
         </form>
-        <p className="mt-5 text-sm text-muted-foreground">¿Aún no tienes cuenta? <Link className="text-primary underline" to="/register">Crea una cuenta</Link></p>
+        <p className="mt-5 text-sm text-muted-foreground">¿Aún no tienes cuenta? <Link className="text-primary underline" to="/registro">Crea una cuenta</Link></p>
       </CardContent>
     </Card>
   </main>

@@ -16,7 +16,7 @@ export function Panel() {
   const esAdministrador = usuario.roles.includes('ADMIN_GENERAL')
   async function cerrarSesion() {
     establecerOcupado(true); establecerError('')
-    try { await apiAutenticacion.cerrarSesion(); limpiar(); navegar('/login', { replace: true }) }
+    try { await apiAutenticacion.cerrarSesion(); limpiar(); navegar('/iniciar-sesion', { replace: true }) }
     catch (err) { establecerError(err instanceof Error ? err.message : 'No se pudo cerrar la sesión.') }
     finally { establecerOcupado(false) }
   }

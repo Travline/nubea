@@ -5,13 +5,13 @@ export const PieInicio = () => {
         © {new Date().getFullYear()} Nubea.
       </p>
       <ul className="flex flex-wrap justify-center gap-4 text-sm">
-        <li><a href="/terms" className="text-muted-foreground hover:text-primary">
+        <li><a href="/terminos" className="text-muted-foreground hover:text-primary">
           Términos y Condiciones
         </a></li>
-        <li><a href="/privacy" className="text-muted-foreground hover:text-primary">
+        <li><a href="/privacidad" className="text-muted-foreground hover:text-primary">
           Política de Privacidad
         </a></li>
-        <li><a href="/contact" className="text-muted-foreground hover:text-primary">
+        <li><a href="/contacto" className="text-muted-foreground hover:text-primary">
           Contacto
         </a></li>
       </ul>

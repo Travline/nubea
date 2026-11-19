@@ -12,13 +12,13 @@ export const enrutador = createBrowserRouter([
     path: "/", element: <DisenoPublico />,
     children: [
       { index: true, element: <Inicio /> },
-      { path: "login", element: <PaginaInicioSesion /> },
-      { path: "register", element: <PaginaRegistro /> }
+      { path: "iniciar-sesion", element: <PaginaInicioSesion /> },
+      { path: "registro", element: <PaginaRegistro /> }
     ]
   },
   {
     element: <RutaProtegida />,
-    children: [{ path: "/dashboard", element: <Panel /> }]
+    children: [{ path: "/panel", element: <Panel /> }]
   },
   {
     path: "*", element: <PaginaNoEncontrada />

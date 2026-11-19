@@ -126,7 +126,7 @@ export const InformacionInicio = () => {
               size="lg"
               className="text-base font-semibold px-8 py-6 rounded-2xl group shadow-lg"
             >
-              <Link to="/register">Comenzar gratis</Link>
+              <Link to="/registro">Comenzar gratis</Link>
               <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
             </Button>
           </div>

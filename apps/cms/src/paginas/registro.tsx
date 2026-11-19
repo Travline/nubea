@@ -18,7 +18,7 @@ export function PaginaRegistro() {
     evento.preventDefault(); establecerError(''); establecerOcupado(true)
     try {
       await apiAutenticacion.registrar(nombres, correo, contrasena)
-      navegar('/login', { replace: true, state: { registroCompletado: true } })
+      navegar('/iniciar-sesion', { replace: true, state: { registroCompletado: true } })
     } catch (err) {
       if (err instanceof ErrorApi) establecerError(Object.values(err.campos || {}).join(' ') || err.message)
       else establecerError('No se pudo crear la cuenta.')
@@ -35,7 +35,7 @@ export function PaginaRegistro() {
           {error && <p role="alert" className="text-destructive text-sm">{error}</p>}
           <Button type="submit" className="w-full" disabled={ocupado}>{ocupado ? 'Creando cuenta...' : 'Crear cuenta'}</Button>
         </form>
-        <p className="mt-5 text-sm text-muted-foreground">¿Ya tienes cuenta? <Link className="text-primary underline" to="/login">Inicia sesión</Link></p>
+        <p className="mt-5 text-sm text-muted-foreground">¿Ya tienes cuenta? <Link className="text-primary underline" to="/iniciar-sesion">Inicia sesión</Link></p>
       </CardContent>
     </Card>
   </main>

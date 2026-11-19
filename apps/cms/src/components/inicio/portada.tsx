@@ -29,7 +29,7 @@ export const PortadaInicio = () => {
             size="lg"
             className="text-base font-semibold px-8 py-6 rounded-2xl group shadow-lg w-full sm:w-auto cursor-pointer"
           >
-            <Link to="/register">Crear tienda</Link>
+            <Link to="/registro">Crear tienda</Link>
             <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
           </Button>
           <Button
@@ -37,7 +37,7 @@ export const PortadaInicio = () => {
             size="lg"
             className="text-base font-semibold px-8 py-6 rounded-2xl group border-border shadow-sm hover:shadow-md transition-all w-full sm:w-auto cursor-pointer"
           >
-            <Link to="/dashboard">Gestionar tienda</Link>
+            <Link to="/panel">Gestionar tienda</Link>
           </Button>
         </div>
       </div>
