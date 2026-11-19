@@ -21,7 +21,7 @@ export function PaginaInicioSesion() {
     try {
       await apiAutenticacion.iniciarSesion(correo, contrasena)
       await actualizar()
-      navegar('/panel', { replace: true })
+      navegar(typeof ubicacion.state?.from === 'string' && ubicacion.state.from.startsWith('/panel') ? ubicacion.state.from : '/panel', { replace: true })
     } catch (err) {
       establecerError(err instanceof ErrorApi && err.codigoEstado === 401 ? 'El correo o la contraseña son incorrectos.' : err instanceof Error ? err.message : 'No se pudo iniciar sesión.')
     } finally { establecerOcupado(false) }

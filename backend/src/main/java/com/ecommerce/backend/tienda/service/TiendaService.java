@@ -12,6 +12,10 @@ import com.ecommerce.backend.shared.utils.SlugUtil;
 import com.ecommerce.backend.tienda.dto.CrearTiendaRequest;
 import com.ecommerce.backend.tienda.dto.TiendaResponse;
 import com.ecommerce.backend.tienda.model.ConfiguracionTienda;
+import com.ecommerce.backend.tienda.model.EstadoTienda;
+import com.ecommerce.backend.exception.TiendaNoModificableException;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
 import com.ecommerce.backend.tienda.model.Plantilla;
 import com.ecommerce.backend.tienda.model.Tienda;
 import com.ecommerce.backend.tienda.repository.ConfiguracionTiendaRepository;
@@ -40,6 +44,7 @@ public class TiendaService {
     private final RolRepository rolRepository;
     private final JdbcTemplate jdbcTemplate;
     private final CurrentUserProvider currentUserProvider;
+    private final EntityManager entityManager;
 
     // ========== CREAR ==========
     @Transactional
@@ -95,6 +100,37 @@ public class TiendaService {
                 .build());
         jdbcTemplate.update("INSERT INTO cuenta_pago_tienda (id_tienda) VALUES (?)", tienda.getIdTienda());
 
+        return toResponse(tienda);
+    }
+
+    @Transactional
+    public TiendaResponse activarTienda(UUID idTienda) {
+        UUID usuarioActual = currentUserProvider.getCurrentUserId()
+                .orElseThrow(() -> new AccessDeniedException("Usuario no autenticado"));
+
+        // El mismo orden que retirarDueno evita que una activación revierta una suspensión.
+        jdbcTemplate.queryForList("SELECT id_usuario FROM usuario_plataforma WHERE id_usuario = ? FOR UPDATE", usuarioActual);
+        Integer autorizados = jdbcTemplate.queryForObject("""
+                SELECT count(*) FROM usuario_plataforma u
+                JOIN usuario_rol ur ON ur.id_usuario = u.id_usuario
+                JOIN rol r ON r.id_rol = ur.id_rol
+                WHERE u.id_usuario = ? AND u.estado = 'ACTIVO' AND r.nombre = 'DUENO_TIENDA'
+                """, Integer.class, usuarioActual);
+        if (autorizados == null || autorizados == 0) {
+            throw new AccessDeniedException("No tienes permiso para activar tiendas");
+        }
+
+        Tienda tienda = tiendaRepository.findById(idTienda)
+                .orElseThrow(() -> new RecursoNoEncontradoException("La tienda no existe"));
+        entityManager.refresh(tienda, LockModeType.PESSIMISTIC_WRITE);
+        if (!tienda.getPropietario().getIdUsuario().equals(usuarioActual)) {
+            throw new AccessDeniedException("No puedes activar tiendas de otro usuario");
+        }
+        if (tienda.getEstado() == EstadoTienda.ACTIVA) return toResponse(tienda);
+        if (tienda.getEstado() != EstadoTienda.BORRADOR) {
+            throw new TiendaNoModificableException("Solo se puede activar una tienda en borrador");
+        }
+        tienda.setEstado(EstadoTienda.ACTIVA);
         return toResponse(tienda);
     }
 

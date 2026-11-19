@@ -6,7 +6,9 @@ La integración utiliza las entidades de M1 y M2 junto con los servicios de M3. 
 
 - El registro local e inicio de sesión usan Argon2 y sesión con cookie; `GET /api/auth/csrf` proporciona el token para las solicitudes de escritura. Configurar `APP_CORS_ALLOWED_ORIGINS` con orígenes explícitos y `SESSION_COOKIE_SECURE=true` con HTTPS. El cierre usa `POST /logout` con CSRF.
 - El primer administrador se asigna a una cuenta activa ya registrada mediante `APP_BOOTSTRAP_ADMIN_EMAIL`, únicamente si no existe ningún administrador. Retirar la variable después de la inicialización. Los administradores pueden asignar roles y retirar el rol de dueño; esta última operación suspende las tiendas activas o en borrador.
+- Las lecturas del catálogo administrativo requieren ser propietario o `ADMIN_GENERAL`; las presentaciones incluyen `idsValores` para mostrar sus variantes actuales. Las solicitudes protegidas sin sesión devuelven 401 y las solicitudes autenticadas sin permiso devuelven 403.
 - El propietario se obtiene de la sesión. Crear una tienda inicializa su configuración visual y cuenta de pago pendiente; crear una presentación inicializa el inventario. El administrador o propietario puede ajustar cantidades mediante `PUT /api/tiendas/{idTienda}/inventario/{idPresentacion}` con `stockActual` y `stockMinimo`.
+- El propietario con rol `DUENO_TIENDA` activa una tienda en borrador mediante `POST /api/tiendas/{idTienda}/activacion`, con sesión y CSRF. La operación es idempotente para una tienda activa y rechaza tiendas suspendidas o cerradas; no requiere una cuenta de pago. La publicación de productos mantiene sus propias validaciones.
 - M3 consulta inventario sin modificarlo en su endpoint de lectura. La política de cambios de apariencia y banners admite tiendas ACTIVAS o en BORRADOR. El OAuth y la desconexión mantienen sus bloqueos SQL sobre la tienda.
 
 ## M4: checkout y pagos

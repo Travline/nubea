@@ -1,0 +1,21 @@
+import { useState } from 'react'
+import { useOutletContext } from 'react-router-dom'
+import { Button } from '@/components/ui/button'
+import type { ContextoTienda } from '@/paginas/panel'
+import { api } from './datos'
+import type { Inventario, PaginaInventario } from './datos'
+import { Aviso, Bloque, EstadoCarga, campo, useCarga, useOperacion } from './comunes'
+
+export function InventarioTienda() {
+  const { apiBase } = useOutletContext<ContextoTienda>()
+  const [texto, setTexto] = useState(''); const [estadoProducto, setProducto] = useState(''); const [estadoPresentacion, setPresentacion] = useState(''); const [alertaStock, setAlerta] = useState(''); const [page, setPage] = useState(0)
+  const parametros = new URLSearchParams({ page: String(page), size: '20' })
+  for (const [clave, valor] of Object.entries({ texto, estadoProducto, estadoPresentacion, alertaStock })) if (valor) parametros.set(clave, valor)
+  const consulta = parametros.toString()
+  const { datos, error, recargar } = useCarga(() => api.leer<PaginaInventario>(`${apiBase}/inventario?${consulta}`), [apiBase, consulta])
+  return <Bloque titulo="Inventario"><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><input className={campo} aria-label="Buscar producto o SKU" placeholder="Buscar producto o SKU" value={texto} onChange={e => { setTexto(e.target.value); setPage(0) }} /><select className={campo} aria-label="Estado del producto" value={estadoProducto} onChange={e => { setProducto(e.target.value); setPage(0) }}><option value="">Todos los productos</option>{['BORRADOR','PUBLICADO','INACTIVO'].map(x => <option key={x}>{x}</option>)}</select><select className={campo} aria-label="Estado de presentación" value={estadoPresentacion} onChange={e => { setPresentacion(e.target.value); setPage(0) }}><option value="">Todas las presentaciones</option><option>ACTIVA</option><option>INACTIVA</option></select><select className={campo} aria-label="Alerta de stock" value={alertaStock} onChange={e => { setAlerta(e.target.value); setPage(0) }}><option value="">Todo el stock</option><option value="true">Stock bajo</option><option value="false">Stock suficiente</option></select></div>{error || !datos ? <EstadoCarga error={error} recargar={recargar} /> : <><p className="text-sm text-muted-foreground">{datos.totalElementos} presentaciones</p>{datos.contenido.length === 0 && <p>No se encontraron presentaciones.</p>}<div className="space-y-3">{datos.contenido.map(item => <FilaInventario key={`${item.idPresentacion}-${item.stockActual}-${item.stockMinimo}`} item={item} apiBase={apiBase} recargar={recargar} />)}</div><div className="flex items-center gap-3"><Button variant="outline" disabled={page === 0} onClick={() => setPage(page - 1)}>Anterior</Button><span className="text-sm">Página {page + 1} de {Math.max(datos.totalPaginas, 1)}</span><Button variant="outline" disabled={page + 1 >= datos.totalPaginas} onClick={() => setPage(page + 1)}>Siguiente</Button></div></>}</Bloque>
+}
+function FilaInventario({ item, apiBase, recargar }: { item: Inventario; apiBase: string; recargar: () => void }) {
+  const [actual, setActual] = useState(item.stockActual ?? 0); const [minimo, setMinimo] = useState(item.stockMinimo ?? 0); const op = useOperacion()
+  return <form className="grid items-end gap-3 rounded-lg border p-3 sm:grid-cols-[2fr_1fr_1fr_auto]" onSubmit={e => { e.preventDefault(); void op.ejecutar(async () => { await api.actualizar(`${apiBase}/inventario/${item.idPresentacion}`, { stockActual: actual, stockMinimo: minimo }); recargar() }) }}><div><strong>{item.nombreProducto}</strong><p className="text-sm text-muted-foreground">{item.sku} · {item.estadoProducto} · {item.estadoPresentacion}</p>{item.sinRegistroInventario ? <p className="text-destructive text-sm">Sin registro de inventario</p> : item.stockActual! <= item.stockMinimo! && <p className="text-sm text-destructive">Stock bajo</p>}<Aviso error={op.error} /></div><label className="text-sm">Stock actual<input className={campo} type="number" min="0" value={actual} onChange={e => setActual(Number(e.target.value))} required /></label><label className="text-sm">Stock mínimo<input className={campo} type="number" min="0" value={minimo} onChange={e => setMinimo(Number(e.target.value))} required /></label><Button disabled={op.ocupado || item.sinRegistroInventario}>Guardar</Button></form>
+}

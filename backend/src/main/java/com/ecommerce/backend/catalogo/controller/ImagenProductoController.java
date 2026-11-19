@@ -54,6 +54,7 @@ public class ImagenProductoController {
     }
 
     // Listar imágenes del producto.
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
     @GetMapping
     public ResponseEntity<List<ImagenProductoResponse>> listarImagenes(
             @PathVariable UUID idTienda,
@@ -67,6 +68,7 @@ public class ImagenProductoController {
     }
 
     // Obtener imagen por ID.
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
     @GetMapping("/{idImagen}")
     public ResponseEntity<ImagenProductoResponse> obtenerImagenPorId(
             @PathVariable UUID idTienda,

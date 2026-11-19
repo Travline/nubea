@@ -41,6 +41,7 @@ public class ValorVarianteController {
     }
 
     // Listar valores de una variante.
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
     @GetMapping
     public ResponseEntity<List<ValorVarianteResponse>> listarValores(
             @PathVariable UUID idTienda,
@@ -54,6 +55,7 @@ public class ValorVarianteController {
     }
 
     // Obtener un valor por ID.
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
     @GetMapping("/{idValor}")
     public ResponseEntity<ValorVarianteResponse> obtenerValorPorId(
             @PathVariable UUID idTienda,

@@ -14,6 +14,7 @@ export function ProveedorSesion({ children }: { children: ReactNode }) {
     catch (error) {
       establecerUsuario(null)
       establecerEstado(error instanceof ErrorApi && error.codigoEstado === 401 ? 'listo' : 'error')
+      throw error
     }
   }, [])
   const actualizar = useCallback(async () => { establecerEstado('cargando'); await cargar() }, [cargar])
@@ -24,6 +25,11 @@ export function ProveedorSesion({ children }: { children: ReactNode }) {
       error => { if (activo) { establecerUsuario(null); establecerEstado(error instanceof ErrorApi && error.codigoEstado === 401 ? 'listo' : 'error') } },
     )
     return () => { activo = false }
+  }, [])
+  useEffect(() => {
+    const vencer = () => { establecerUsuario(null); establecerEstado('listo') }
+    window.addEventListener('sesion-vencida', vencer)
+    return () => window.removeEventListener('sesion-vencida', vencer)
   }, [])
   return <ContextoSesion.Provider value={{ usuario, estado, actualizar, limpiar: () => { establecerUsuario(null); establecerEstado('listo') } }}>{children}</ContextoSesion.Provider>
 }

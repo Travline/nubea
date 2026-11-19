@@ -53,6 +53,8 @@ class CorsSesionIntegracionTest {
                 .andExpect(status().isOk()).andExpect(jsonPath("$.correoElectronico").value("cors@example.test"));
         mvc.perform(post("/logout").header("Origin", origen).session(session).cookie(cookie)
                 .header("X-XSRF-TOKEN", token)).andExpect(status().isNoContent());
+        mvc.perform(get("/api/tiendas/propietario/00000000-0000-0000-0000-000000000001").header("Origin", origen))
+                .andExpect(status().isUnauthorized());
     }
 
 }

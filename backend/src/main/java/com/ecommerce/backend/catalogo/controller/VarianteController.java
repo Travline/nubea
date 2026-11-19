@@ -38,6 +38,7 @@ public class VarianteController {
     }
 
     // Listar variantes de una tienda.
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
     @GetMapping
     public ResponseEntity<List<VarianteResponse>> listarVariantes(
             @PathVariable UUID idTienda) {
@@ -49,6 +50,7 @@ public class VarianteController {
     }
 
     // Obtener variante por ID.
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
     @GetMapping("/{idVariante}")
     public ResponseEntity<VarianteResponse> obtenerVariantePorId(
             @PathVariable UUID idTienda,

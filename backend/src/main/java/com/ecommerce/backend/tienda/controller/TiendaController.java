@@ -23,6 +23,11 @@ public class TiendaController {
         return ResponseEntity.status(HttpStatus.CREATED).body(tiendaService.crearTienda(req));
     }
 
+    @PostMapping("/{idTienda}/activacion")
+    public ResponseEntity<TiendaResponse> activar(@PathVariable UUID idTienda) {
+        return ResponseEntity.ok(tiendaService.activarTienda(idTienda));
+    }
+
     // Nos ayuda a ver una tienda por su URL
     @GetMapping("/{slug}")
     public ResponseEntity<TiendaResponse> obtener(@PathVariable String slug) {

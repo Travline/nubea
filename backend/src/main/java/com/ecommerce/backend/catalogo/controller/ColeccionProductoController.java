@@ -40,6 +40,7 @@ public class ColeccionProductoController {
     }
 
     // Listar productos de una colección.
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
     @GetMapping("/colecciones/{idColeccion}/productos")
     public ResponseEntity<List<ProductoResponse>> listarProductosPorColeccion(
             @PathVariable UUID idTienda,
@@ -51,6 +52,7 @@ public class ColeccionProductoController {
     }
 
     // Listar colecciones de un producto.
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
     @GetMapping("/productos/{idProducto}/colecciones")
     public ResponseEntity<List<ColeccionResponse>> listarColeccionesPorProducto(
             @PathVariable UUID idTienda,

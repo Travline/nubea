@@ -38,6 +38,7 @@ public class ColeccionController {
     }
 
     // Listar todas las colecciones.
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
     @GetMapping
     public ResponseEntity<List<ColeccionResponse>> listarColecciones(
             @PathVariable UUID idTienda) {
@@ -47,6 +48,7 @@ public class ColeccionController {
     }
 
     // Listar únicamente las colecciones activas.
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
     @GetMapping("/activas")
     public ResponseEntity<List<ColeccionResponse>> listarColeccionesActivas(
             @PathVariable UUID idTienda) {
@@ -56,6 +58,7 @@ public class ColeccionController {
     }
 
     // Obtener una colección por su ID.
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
     @GetMapping("/{idColeccion}")
     public ResponseEntity<ColeccionResponse> obtenerColeccionPorId(
             @PathVariable UUID idTienda,

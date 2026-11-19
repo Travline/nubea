@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { useSesion } from '@/autenticacion/sesion'
 import { ErrorApi, apiAutenticacion } from '@/autenticacion/api'
 
 export function PaginaRegistro() {
@@ -14,11 +15,18 @@ export function PaginaRegistro() {
   const [error, establecerError] = useState('')
   const [ocupado, establecerOcupado] = useState(false)
   const navegar = useNavigate()
+  const { actualizar } = useSesion()
   async function enviar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault(); establecerError(''); establecerOcupado(true)
     try {
       await apiAutenticacion.registrar(nombres, correo, contrasena)
-      navegar('/iniciar-sesion', { replace: true, state: { registroCompletado: true } })
+      try {
+        await apiAutenticacion.iniciarSesion(correo, contrasena)
+        await actualizar()
+        navegar('/panel', { replace: true })
+      } catch {
+        navegar('/iniciar-sesion', { replace: true, state: { registroCompletado: true } })
+      }
     } catch (err) {
       if (err instanceof ErrorApi) establecerError(Object.values(err.campos || {}).join(' ') || err.message)
       else establecerError('No se pudo crear la cuenta.')

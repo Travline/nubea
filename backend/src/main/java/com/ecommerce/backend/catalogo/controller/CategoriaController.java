@@ -38,6 +38,7 @@ public class CategoriaController {
     }
 
     // Listar categorías de una tienda.
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
     @GetMapping
     public ResponseEntity<List<CategoriaResponse>> listarCategorias(
             @PathVariable UUID idTienda) {
@@ -49,6 +50,7 @@ public class CategoriaController {
     }
 
     // Obtener categoría por ID.
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
     @GetMapping("/{idCategoria}")
     public ResponseEntity<CategoriaResponse> obtenerCategoriaPorId(
             @PathVariable UUID idTienda,

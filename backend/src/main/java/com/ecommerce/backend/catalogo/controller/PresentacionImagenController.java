@@ -38,6 +38,7 @@ public class PresentacionImagenController {
     }
 
     // Listar imágenes asociadas a una presentación.
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
     @GetMapping("/presentaciones/{idPresentacion}/imagenes")
     public ResponseEntity<List<ImagenProducto>> listarImagenesPorPresentacion(
             @PathVariable UUID idTienda,
@@ -49,6 +50,7 @@ public class PresentacionImagenController {
     }
 
     // Listar presentaciones asociadas a una imagen.
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
     @GetMapping("/imagenes/{idImagen}/presentaciones")
     public ResponseEntity<List<PresentacionProducto>> listarPresentacionesPorImagen(
             @PathVariable UUID idTienda,

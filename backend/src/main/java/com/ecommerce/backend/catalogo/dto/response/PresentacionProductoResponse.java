@@ -3,6 +3,7 @@ package com.ecommerce.backend.catalogo.dto.response;
 
 import java.math.BigDecimal;
 import java.util.UUID;
+import java.util.List;
 
 public class PresentacionProductoResponse {
 
@@ -12,6 +13,7 @@ public class PresentacionProductoResponse {
     private BigDecimal precioOverride;
     private BigDecimal precioEfectivo;
     private String estado;
+    private List<UUID> idsValores = List.of();
 
     public PresentacionProductoResponse() {
     }
@@ -50,6 +52,9 @@ public class PresentacionProductoResponse {
 
     public BigDecimal getPrecioEfectivo() { return precioEfectivo; }
     public void setPrecioEfectivo(BigDecimal precioEfectivo) { this.precioEfectivo = precioEfectivo; }
+
+    public List<UUID> getIdsValores() { return idsValores; }
+    public void setIdsValores(List<UUID> idsValores) { this.idsValores = idsValores; }
 
     public String getEstado() {
         return estado;

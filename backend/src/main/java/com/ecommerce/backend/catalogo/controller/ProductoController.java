@@ -38,6 +38,7 @@ public class ProductoController {
     }
 
     // Listar productos de una tienda.
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
     @GetMapping
     public ResponseEntity<List<ProductoResponse>> listarProductos(
             @PathVariable UUID idTienda) {
@@ -49,6 +50,7 @@ public class ProductoController {
     }
 
     // Obtener producto por ID.
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
     @GetMapping("/{idProducto}")
     public ResponseEntity<ProductoResponse> obtenerProductoPorId(
             @PathVariable UUID idTienda,

@@ -43,6 +43,7 @@ public class PresentacionProductoController {
     }
 
     // Listar presentaciones de un producto.
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
     @GetMapping
     public ResponseEntity<List<PresentacionProductoResponse>> listarPresentaciones(
             @PathVariable UUID idTienda,
@@ -56,6 +57,7 @@ public class PresentacionProductoController {
     }
 
     // Obtener presentación por ID.
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
     @GetMapping("/{idPresentacion}")
     public ResponseEntity<PresentacionProductoResponse> obtenerPresentacionPorId(
             @PathVariable UUID idTienda,

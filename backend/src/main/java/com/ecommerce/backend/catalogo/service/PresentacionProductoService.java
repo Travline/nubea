@@ -56,6 +56,8 @@ private PresentacionProductoResponse respuesta(PresentacionProducto presentacion
     var respuesta = PresentacionProductoMapper.toResponse(presentacion);
     var producto = productoRepository.findById(presentacion.getIdProducto()).orElseThrow();
     respuesta.setPrecioEfectivo(presentacion.getPrecioOverride() != null ? presentacion.getPrecioOverride() : producto.getPrecioBase());
+    respuesta.setIdsValores(presentacionValorRepository.findById_IdPresentacion(presentacion.getIdPresentacion())
+            .stream().map(relacion -> relacion.getId().getIdValor()).sorted().toList());
     return respuesta;
 }
 
@@ -241,7 +243,7 @@ public PresentacionProductoResponse crearPresentacion(
             .toList();
 
     // Guardar las relaciones
-    presentacionValorRepository.saveAll(relaciones);
+    presentacionValorRepository.saveAllAndFlush(relaciones);
 
     return respuesta(guardada);
 }
@@ -472,6 +474,7 @@ public PresentacionProductoResponse actualizarValoresPresentacion(
         presentacionValorRepository.findById_IdPresentacion(idPresentacion);
 
 presentacionValorRepository.deleteAll(relacionesAnteriores);
+    presentacionValorRepository.flush();
 
     // 7. Actualizar la firma de valores.
     presentacion.setFirmaValores(nuevaFirma);
@@ -493,7 +496,7 @@ presentacionValorRepository.deleteAll(relacionesAnteriores);
             })
             .toList();
 
-    presentacionValorRepository.saveAll(nuevasRelaciones);
+    presentacionValorRepository.saveAllAndFlush(nuevasRelaciones);
 
     return respuesta(presentacion);
 }

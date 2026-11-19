@@ -28,6 +28,9 @@ class IdentidadIntegracionTest {
     @Autowired JdbcTemplate jdbc;
     @Autowired jakarta.persistence.EntityManager entityManager;
     @Autowired com.ecommerce.backend.identidad.service.InicializacionAdministrador bootstrap;
+    @Autowired com.ecommerce.backend.identidad.service.UsuarioService usuarioService;
+    @Autowired com.ecommerce.backend.tienda.service.TiendaService tiendaService;
+    @Autowired org.springframework.transaction.support.TransactionTemplate transacciones;
 
     @Test
     void healthEsPublicoYCompruebaLaBase() throws Exception {
@@ -86,6 +89,98 @@ class IdentidadIntegracionTest {
     }
 
     @Test
+    void catalogoPrivadoExigePropiedadEnTodasLasLecturas() throws Exception {
+        UUID dueno = UUID.randomUUID(), ajeno = UUID.randomUUID(), admin = UUID.randomUUID(), tienda = UUID.randomUUID(), id = UUID.randomUUID();
+        jdbc.update("INSERT INTO usuario_plataforma(id_usuario,nombres,email) VALUES (?, 'Dueño', ?), (?, 'Ajeno', ?), (?, 'Admin', ?)", dueno, dueno + "@example.test", ajeno, ajeno + "@example.test", admin, admin + "@example.test");
+        jdbc.update("INSERT INTO usuario_rol(id_usuario,id_rol) SELECT ?, id_rol FROM rol WHERE nombre='ADMIN_GENERAL'", admin);
+        jdbc.update("INSERT INTO tienda(id_tienda,id_propietario,nombre,slug) VALUES (?,?,'Tienda',?)", tienda, dueno, "t-" + tienda);
+        var propietario = UsernamePasswordAuthenticationToken.authenticated(dueno, null, List.of());
+        var otro = UsernamePasswordAuthenticationToken.authenticated(ajeno, null, List.of());
+        var administrador = UsernamePasswordAuthenticationToken.authenticated(admin, null, List.of());
+        String base = "/api/tiendas/" + tienda;
+        var rutas = List.of("/categorias", "/categorias/" + id, "/productos", "/productos/" + id,
+                "/productos/" + id + "/presentaciones", "/productos/" + id + "/presentaciones/" + id,
+                "/productos/" + id + "/imagenes", "/productos/" + id + "/imagenes/" + id,
+                "/productos/" + id + "/colecciones", "/colecciones", "/colecciones/activas", "/colecciones/" + id,
+                "/colecciones/" + id + "/productos", "/variantes", "/variantes/" + id,
+                "/variantes/" + id + "/valores", "/variantes/" + id + "/valores/" + id,
+                "/presentaciones/" + id + "/imagenes", "/imagenes/" + id + "/presentaciones");
+        for (String ruta : rutas) {
+            mvc.perform(get(base + ruta)).andExpect(status().isUnauthorized());
+            mvc.perform(get(base + ruta).with(authentication(otro))).andExpect(status().isForbidden());
+        }
+        mvc.perform(get(base + "/productos").with(authentication(propietario))).andExpect(status().isOk());
+        mvc.perform(get(base + "/productos").with(authentication(administrador))).andExpect(status().isOk());
+    }
+
+    @Test
+    void activacionExigePropietarioRolCsrfYEstadoAdmisible() throws Exception {
+        UUID dueno = UUID.randomUUID(), ajeno = UUID.randomUUID(), sinRol = UUID.randomUUID();
+        UUID tienda = UUID.randomUUID(), suspendida = UUID.randomUUID(), cerrada = UUID.randomUUID(), tiendaSinRol = UUID.randomUUID();
+        jdbc.update("INSERT INTO usuario_plataforma(id_usuario,nombres,email) VALUES (?, 'Dueño', ?), (?, 'Ajeno', ?), (?, 'Sin rol', ?)", dueno, dueno + "@example.test", ajeno, ajeno + "@example.test", sinRol, sinRol + "@example.test");
+        jdbc.update("INSERT INTO usuario_rol(id_usuario,id_rol) SELECT ?, id_rol FROM rol WHERE nombre='DUENO_TIENDA'", dueno);
+        jdbc.update("INSERT INTO usuario_rol(id_usuario,id_rol) SELECT ?, id_rol FROM rol WHERE nombre='DUENO_TIENDA'", ajeno);
+        jdbc.update("INSERT INTO tienda(id_tienda,id_propietario,nombre,slug,estado,fecha_cierre) VALUES (?,?,'Borrador',?,'BORRADOR',NULL), (?,?,'Suspendida',?,'SUSPENDIDA',NULL), (?,?,'Cerrada',?,'CERRADA',now()), (?,?,'Sin rol',?,'BORRADOR',NULL)", tienda, dueno, "t-" + tienda, suspendida, dueno, "t-" + suspendida, cerrada, dueno, "t-" + cerrada, tiendaSinRol, sinRol, "t-" + tiendaSinRol);
+        var propietario = UsernamePasswordAuthenticationToken.authenticated(dueno, null, List.of());
+        var otro = UsernamePasswordAuthenticationToken.authenticated(ajeno, null, List.of());
+        var sinPermiso = UsernamePasswordAuthenticationToken.authenticated(sinRol, null, List.of());
+        String ruta = "/api/tiendas/" + tienda + "/activacion";
+        mvc.perform(post(ruta).with(csrf())).andExpect(status().isUnauthorized());
+        mvc.perform(post(ruta).with(authentication(propietario))).andExpect(status().isForbidden());
+        mvc.perform(post(ruta).with(csrf()).with(authentication(otro))).andExpect(status().isForbidden());
+        mvc.perform(post("/api/tiendas/" + tiendaSinRol + "/activacion").with(csrf()).with(authentication(sinPermiso))).andExpect(status().isForbidden());
+        mvc.perform(post("/api/tiendas/" + suspendida + "/activacion").with(csrf()).with(authentication(propietario))).andExpect(status().isConflict());
+        mvc.perform(post("/api/tiendas/" + cerrada + "/activacion").with(csrf()).with(authentication(propietario))).andExpect(status().isConflict());
+        mvc.perform(post("/api/tiendas/" + UUID.randomUUID() + "/activacion").with(csrf()).with(authentication(propietario))).andExpect(status().isNotFound());
+        mvc.perform(post(ruta).with(csrf()).with(authentication(propietario))).andExpect(status().isOk()).andExpect(jsonPath("$.estado").value("ACTIVA"));
+        entityManager.flush();
+        mvc.perform(post(ruta).with(csrf()).with(authentication(propietario))).andExpect(status().isOk()).andExpect(jsonPath("$.estado").value("ACTIVA"));
+        org.junit.jupiter.api.Assertions.assertEquals("ACTIVA", jdbc.queryForObject("SELECT estado FROM tienda WHERE id_tienda = ?", String.class, tienda));
+    }
+
+    @Test
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.NOT_SUPPORTED)
+    void activacionConcurrenteNoRevierteRetiroDeRol() throws Exception {
+        UUID dueno = UUID.randomUUID(), tienda = UUID.randomUUID();
+        jdbc.update("INSERT INTO usuario_plataforma(id_usuario,nombres,email) VALUES (?, 'Dueño', ?)", dueno, dueno + "@example.test");
+        jdbc.update("INSERT INTO usuario_rol(id_usuario,id_rol) SELECT ?, id_rol FROM rol WHERE nombre='DUENO_TIENDA'", dueno);
+        jdbc.update("INSERT INTO tienda(id_tienda,id_propietario,nombre,slug,estado) VALUES (?,?,'Tienda',?,'BORRADOR')", tienda, dueno, "t-" + tienda);
+        var ejecutor = java.util.concurrent.Executors.newSingleThreadExecutor();
+        try {
+            var iniciada = new java.util.concurrent.CountDownLatch(1);
+            var futuro = transacciones.execute(estado -> {
+                jdbc.queryForList("SELECT id_usuario FROM usuario_plataforma WHERE id_usuario = ? FOR UPDATE", dueno);
+                var activacion = ejecutor.submit(() -> {
+                    org.springframework.security.core.context.SecurityContextHolder.getContext().setAuthentication(
+                            UsernamePasswordAuthenticationToken.authenticated(dueno, null, List.of()));
+                    iniciada.countDown();
+                    try { tiendaService.activarTienda(tienda); }
+                    finally { org.springframework.security.core.context.SecurityContextHolder.clearContext(); }
+                });
+                try {
+                    org.junit.jupiter.api.Assertions.assertTrue(iniciada.await(5, java.util.concurrent.TimeUnit.SECONDS));
+                    org.junit.jupiter.api.Assertions.assertThrows(java.util.concurrent.TimeoutException.class,
+                            () -> activacion.get(300, java.util.concurrent.TimeUnit.MILLISECONDS));
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new IllegalStateException(e);
+                }
+                usuarioService.retirarDueno(dueno);
+                return activacion;
+            });
+            var error = org.junit.jupiter.api.Assertions.assertThrows(java.util.concurrent.ExecutionException.class,
+                    () -> futuro.get(10, java.util.concurrent.TimeUnit.SECONDS));
+            org.junit.jupiter.api.Assertions.assertInstanceOf(org.springframework.security.access.AccessDeniedException.class, error.getCause());
+            org.junit.jupiter.api.Assertions.assertEquals("SUSPENDIDA", jdbc.queryForObject("SELECT estado FROM tienda WHERE id_tienda = ?", String.class, tienda));
+        } finally {
+            ejecutor.shutdownNow();
+            jdbc.update("DELETE FROM tienda WHERE id_tienda = ?", tienda);
+            jdbc.update("DELETE FROM usuario_rol WHERE id_usuario = ?", dueno);
+            jdbc.update("DELETE FROM usuario_plataforma WHERE id_usuario = ?", dueno);
+        }
+    }
+
+    @Test
     void registroSesionCsrfPerfilYCierre() throws Exception {
         mvc.perform(get("/api/auth/me")).andExpect(status().isUnauthorized());
         mvc.perform(post("/api/auth/registro").contentType(MediaType.APPLICATION_JSON)
@@ -130,8 +225,24 @@ class IdentidadIntegracionTest {
         mvc.perform(put(ruta + "/inventario/" + presentacion).session(session).with(csrf())
                 .contentType(MediaType.APPLICATION_JSON).content("{\"stockActual\":3,\"stockMinimo\":1}"))
                 .andExpect(status().isNoContent());
-        mvc.perform(get(ruta + "/inventario").session(session)).andExpect(status().isOk())
-                .andExpect(jsonPath("$.contenido[0].stockActual").value(3));
+        mvc.perform(get(ruta + "/inventario").session(session).param("texto", "sku-prueba").param("alertaStock", "false").param("page", "0").param("size", "1")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElementos").value(1)).andExpect(jsonPath("$.contenido[0].stockActual").value(3));
+        mvc.perform(get(ruta + "/inventario").session(session).param("alertaStock", "true"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalElementos").value(0));
+        mvc.perform(patch(ruta + "/configuracion").session(session).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"idPlantilla\":1,\"tituloInicio\":\"Mi tienda\",\"mostrarCarrusel\":true}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.tituloInicio").value("Mi tienda"));
+        mvc.perform(get(ruta + "/cuenta-pago").session(session)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.estado").value("PENDIENTE"));
+        mvc.perform(post(ruta + "/cuenta-pago/mercado-pago/oauth/inicios").session(session).with(csrf()))
+                .andExpect(status().isNotFound());
+        mvc.perform(patch(ruta + "/productos/" + producto + "/estado?estado=PUBLICADO").session(session).with(csrf()))
+                .andExpect(status().isBadRequest());
+        mvc.perform(post(ruta + "/activacion").session(session).with(csrf()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.estado").value("ACTIVA"));
+        entityManager.flush();
+        mvc.perform(patch(ruta + "/productos/" + producto + "/estado?estado=PUBLICADO").session(session).with(csrf()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.estado").value("PUBLICADO"));
         mvc.perform(post("/logout").session(session).with(csrf())).andExpect(status().isNoContent());
         mvc.perform(get("/api/auth/me")).andExpect(status().isUnauthorized());
     }

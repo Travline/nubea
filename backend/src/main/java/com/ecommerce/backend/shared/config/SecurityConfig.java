@@ -39,6 +39,7 @@ public class SecurityConfig {
         http
             .addFilterAfter(new ActiveUserFilter(usuarios), SecurityContextHolderFilter.class)
             .cors(cors -> {})
+            .exceptionHandling(ex -> ex.authenticationEntryPoint((request, response, exception) -> response.setStatus(401)))
             .csrf(csrf -> csrf.csrfTokenRepository(csrfRepository))
             .logout(logout -> logout.logoutSuccessHandler((request, response, authentication) -> response.setStatus(204)))
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))

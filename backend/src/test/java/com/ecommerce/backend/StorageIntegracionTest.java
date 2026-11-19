@@ -118,7 +118,18 @@ class StorageIntegracionTest {
             mvc.perform(multipart(banners).file(archivo()).param("orden", "1").with(csrf()).with(authentication(owner)))
                     .andExpect(status().isCreated()).andExpect(jsonPath("$.url").exists()).andExpect(jsonPath("$.storageKey").doesNotExist());
             UUID banner = jdbc.queryForObject("SELECT id_banner FROM banner_tienda WHERE id_tienda=?", UUID.class, tienda);
+            mvc.perform(multipart(banners).file(archivo()).param("orden", "2").with(csrf()).with(authentication(owner)))
+                    .andExpect(status().isCreated());
+            UUID segundo = jdbc.queryForObject("SELECT id_banner FROM banner_tienda WHERE id_tienda=? AND orden=2", UUID.class, tienda);
+            mvc.perform(multipart(banners + "/" + banner + "/archivo").file(archivo())
+                    .with(r -> { r.setMethod("PUT"); return r; }).with(csrf()).with(authentication(owner)))
+                    .andExpect(status().isOk());
+            mvc.perform(put(banners + "/orden").with(csrf()).with(authentication(owner)).contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                    .content("{\"banners\":[{\"idBanner\":\"" + segundo + "\",\"orden\":1},{\"idBanner\":\"" + banner + "\",\"orden\":2}]}"))
+                    .andExpect(status().isOk());
+            assertEquals(1, jdbc.queryForObject("SELECT orden FROM banner_tienda WHERE id_banner=?", Integer.class, segundo));
             mvc.perform(delete(banners + "/" + banner).with(csrf()).with(authentication(owner))).andExpect(status().isNoContent());
+            mvc.perform(delete(banners + "/" + segundo).with(csrf()).with(authentication(owner))).andExpect(status().isNoContent());
             imagenes.procesarPendientes();
             assertThrows(Exception.class, () -> s3.headObject(HeadObjectRequest.builder().bucket(bucket).key(anterior).build()));
             assertThrows(Exception.class, () -> s3.headObject(HeadObjectRequest.builder().bucket(bucket).key(actual).build()));

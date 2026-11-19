@@ -32,9 +32,34 @@ class CatalogoIntegracionTest {
         request.setSku("rojo"); request.setIdsValores(List.of(rojo));
         var creada = presentaciones.crearPresentacion(producto, tienda, request);
         assertEquals(0, creada.getPrecioEfectivo().compareTo(new BigDecimal("20")));
+        assertEquals(List.of(rojo), creada.getIdsValores());
+        var duplicado = new PresentacionProductoRequest();
+        duplicado.setSku("rojo"); duplicado.setIdsValores(List.of(rojo));
+        assertThrows(IllegalArgumentException.class, () -> presentaciones.crearPresentacion(producto, tienda, duplicado));
         assertEquals(0, jdbc.queryForObject("SELECT stock_actual FROM inventario WHERE id_presentacion = ?", Integer.class, creada.getIdPresentacion()));
         var otra = new PresentacionProductoRequest();
         otra.setSku("grande"); otra.setIdsValores(List.of(grande));
         assertThrows(IllegalArgumentException.class, () -> presentaciones.crearPresentacion(producto, tienda, otra));
+    }
+
+    @Test
+    void presentacionesDevuelvenValoresActualesAlCrearConsultarYEditar() {
+        UUID usuario = UUID.randomUUID(), tienda = UUID.randomUUID(), categoria = UUID.randomUUID(), producto = UUID.randomUUID();
+        UUID color = UUID.randomUUID(), rojo = UUID.randomUUID(), azul = UUID.randomUUID();
+        jdbc.update("INSERT INTO usuario_plataforma(id_usuario,nombres,email) VALUES (?, 'Prueba', ?)", usuario, usuario + "@example.test");
+        jdbc.update("INSERT INTO tienda(id_tienda,id_propietario,nombre,slug) VALUES (?,?,'Tienda',?)", tienda, usuario, "t-" + tienda);
+        jdbc.update("INSERT INTO categoria(id_categoria,id_tienda,nombre,slug) VALUES (?,?,'Categoria','categoria')", categoria, tienda);
+        jdbc.update("INSERT INTO producto(id_producto,id_categoria,id_tienda,nombre,precio_base) VALUES (?,?,?,'Producto',20)", producto, categoria, tienda);
+        jdbc.update("INSERT INTO variante(id_variante,id_tienda,nombre) VALUES (?,?,'Color')", color, tienda);
+        jdbc.update("INSERT INTO valor_variante(id_valor,id_variante,valor) VALUES (?,?,'Rojo'),(?,?,'Azul')", rojo, color, azul, color);
+        var request = new PresentacionProductoRequest();
+        request.setSku("SKU-ROJO"); request.setIdsValores(List.of(rojo));
+        var creada = presentaciones.crearPresentacion(producto, tienda, request);
+        assertEquals(List.of(rojo), creada.getIdsValores());
+        assertEquals(List.of(rojo), presentaciones.listarPresentaciones(producto, tienda).get(0).getIdsValores());
+        var actualizada = presentaciones.actualizarValoresPresentacion(creada.getIdPresentacion(), producto, tienda, List.of(azul));
+        assertEquals(List.of(azul), actualizada.getIdsValores());
+        assertEquals(List.of(azul), presentaciones.obtenerPresentacionPorId(creada.getIdPresentacion(), producto, tienda).getIdsValores());
+        assertEquals(List.of(azul), presentaciones.actualizarValoresPresentacion(creada.getIdPresentacion(), producto, tienda, List.of(azul)).getIdsValores());
     }
 }
