@@ -9,6 +9,12 @@ export default defineConfig({
     react(),
     tailwindcss()
   ],
+  server: {
+    proxy: {
+      '/api': { target: process.env.BACKEND_URL || 'http://localhost:8080', changeOrigin: true },
+      '/logout': { target: process.env.BACKEND_URL || 'http://localhost:8080', changeOrigin: true },
+    },
+  },
   resolve: {
     alias: {
       '@': path.resolve(import.meta.dirname, './src'),

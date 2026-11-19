@@ -36,6 +36,7 @@ public class SecurityConfig {
             .addFilterAfter(new ActiveUserFilter(usuarios), SecurityContextHolderFilter.class)
             .cors(cors -> {})
             .csrf(csrf -> csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()))
+            .logout(logout -> logout.logoutSuccessHandler((request, response, authentication) -> response.setStatus(204)))
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/swagger-ui/**","/swagger-ui.html","/v3/api-docs/**").permitAll()

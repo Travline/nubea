@@ -4,6 +4,8 @@ import { NotFound } from "@/pages/not-found";
 import { PublicLayout } from "./layouts/public-layout";
 import { LoginPage } from "./pages/login";
 import { RegisterPage } from "./pages/register";
+import { ProtectedRoute } from "@/auth/protected-route";
+import { Dashboard } from "@/pages/dashboard";
 
 export const router = createBrowserRouter([
   {
@@ -13,6 +15,10 @@ export const router = createBrowserRouter([
       { path: "login", element: <LoginPage /> },
       { path: "register", element: <RegisterPage /> }
     ]
+  },
+  {
+    element: <ProtectedRoute />,
+    children: [{ path: "/dashboard", element: <Dashboard /> }]
   },
   {
     path: "*", element: <NotFound />

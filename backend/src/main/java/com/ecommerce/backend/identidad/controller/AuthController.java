@@ -10,6 +10,8 @@ import com.ecommerce.backend.identidad.dto.LoginRequest;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.Authentication;
+import java.util.UUID;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -32,6 +34,14 @@ public class AuthController {
 
     @GetMapping("/csrf")
     public CsrfToken csrf(CsrfToken token) { return token; }
+
+    @GetMapping("/me")
+    public ResponseEntity<UsuarioResponse> me(Authentication authentication) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof UUID id)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        return ResponseEntity.ok(authService.usuarioActual(id));
+    }
 
     @PostMapping("/login")
     public ResponseEntity<Void> login(@Valid @RequestBody LoginRequest req, HttpServletRequest request, HttpServletResponse response) {

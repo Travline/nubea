@@ -1,75 +1,15 @@
-# React + TypeScript + Vite
+# CMS de Nubea
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Aplicación React/Vite para acceder al espacio de Nubea. Usa una sesión del backend y solicita CSRF para cada operación de escritura. El dashboard muestra una bienvenida distinta para `ADMIN_GENERAL`; la gestión de tiendas se implementará en otra etapa.
 
-Currently, two official plugins are available:
+El CMS y `apps/store` son aplicaciones independientes: cada una mantiene sus propios tipos y dependencias. No se usarán paquetes de tipos compartidos, Turborepo ni pnpm workspaces; cada frontend se instala, compila y despliega por separado.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Desarrollo local
 
-## React Compiler
+Instala las dependencias con `pnpm install`. Inicia el backend en `http://localhost:8080` y ejecuta `pnpm dev`. Para otro servidor, usa `BACKEND_URL=https://tu-backend.onrender.com pnpm dev`. Vite reenvía `/api` y `/logout`, de modo que el navegador y las cookies usan el mismo origen. Para un backend local servido por HTTP, configura `SESSION_COOKIE_SECURE=false` en ese backend.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Vercel y Render
 
-## Expanding the ESLint configuration
+Configura `apps/cms` como directorio raíz del proyecto en Vercel y define en Vercel la variable de servidor `BACKEND_URL` con el origen HTTPS de Render, por ejemplo `https://tu-backend.onrender.com` (sin ruta ni barra final). No lleva el prefijo `VITE_`. El proxy reenvía `/api` y `/logout`; las demás rutas abren la aplicación. Despliega también el backend actualizado antes de probar la sesión. Mantén `SESSION_COOKIE_SECURE=true` en Render.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
-```
-
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
-```
+Comprueba en el navegador registro, inicio de sesión, recarga del dashboard y cierre de sesión. El registro otorga `CLIENTE`, no acceso administrativo. `APP_BOOTSTRAP_ADMIN_EMAIL` se evalúa cuando arranca el backend y requiere que la cuenta activa ya exista; la inicialización solo actúa cuando aún no hay otro administrador. La sesión actual se guarda en memoria y se pierde al reiniciar la instancia.

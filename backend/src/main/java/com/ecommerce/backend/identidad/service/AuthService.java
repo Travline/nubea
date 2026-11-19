@@ -1,5 +1,6 @@
 package com.ecommerce.backend.identidad.service;
 import java.util.stream.Collectors;
+import java.util.UUID;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -36,6 +37,11 @@ public class AuthService {
     private final RolRepository rolRepository;
     private final TipoDocumentoRepository tipoDocumentoRepository;
     private final PasswordEncoder passwordEncoder;  // el bean esta con Argon2 de SecurityConfig 
+
+    @Transactional(readOnly = true)
+    public UsuarioResponse usuarioActual(UUID id) {
+        return toResponse(usuarioRepository.findById(id).orElseThrow());
+    }
 
     @Transactional(readOnly = true)
     public Authentication autenticar(LoginRequest req) {

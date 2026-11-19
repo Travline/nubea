@@ -87,6 +87,7 @@ class IdentidadIntegracionTest {
 
     @Test
     void registroSesionCsrfPerfilYCierre() throws Exception {
+        mvc.perform(get("/api/auth/me")).andExpect(status().isUnauthorized());
         mvc.perform(post("/api/auth/registro").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"nombres\":\"Prueba\",\"correoElectronico\":\"sesion@example.test\",\"password\":\"password-seguro\"}"))
                 .andExpect(status().isForbidden());
@@ -94,10 +95,16 @@ class IdentidadIntegracionTest {
                 .content("{\"nombres\":\"Prueba\",\"correoElectronico\":\"sesion@example.test\",\"password\":\"password-seguro\"}"))
                 .andExpect(status().isCreated());
         var id = usuarios.findByEmail("sesion@example.test").orElseThrow().getIdUsuario();
+        mvc.perform(post("/api/auth/login").with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"sesion@example.test\",\"password\":\"incorrecta\"}"))
+                .andExpect(status().isUnauthorized());
         var login = mvc.perform(post("/api/auth/login").with(csrf()).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"email\":\"sesion@example.test\",\"password\":\"password-seguro\"}"))
                 .andExpect(status().isNoContent()).andReturn();
         var session = (MockHttpSession) login.getRequest().getSession(false);
+        mvc.perform(get("/api/auth/me").session(session)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.correoElectronico").value("sesion@example.test"))
+                .andExpect(jsonPath("$.roles[0]").value("CLIENTE"));
         mvc.perform(get("/api/usuarios/" + id).session(session)).andExpect(status().isOk());
         mvc.perform(get("/api/usuarios/" + java.util.UUID.randomUUID()).session(session)).andExpect(status().isForbidden());
         mvc.perform(post("/api/tiendas").session(session).with(csrf()).contentType(MediaType.APPLICATION_JSON)
@@ -125,6 +132,7 @@ class IdentidadIntegracionTest {
                 .andExpect(status().isNoContent());
         mvc.perform(get(ruta + "/inventario").session(session)).andExpect(status().isOk())
                 .andExpect(jsonPath("$.contenido[0].stockActual").value(3));
-        mvc.perform(post("/logout").session(session).with(csrf())).andExpect(status().is3xxRedirection());
+        mvc.perform(post("/logout").session(session).with(csrf())).andExpect(status().isNoContent());
+        mvc.perform(get("/api/auth/me")).andExpect(status().isUnauthorized());
     }
 }
