@@ -1,0 +1,11 @@
+# Variables de entorno (contraseñas)
+.env
+.env.*
+!.env.example
+.env.render.example
+
+# Código antiguo de referencia
+_legacy/
+
+# Editor
+.vscode/

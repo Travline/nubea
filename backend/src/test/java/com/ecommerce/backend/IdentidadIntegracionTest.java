@@ -1,0 +1,130 @@
+package com.ecommerce.backend;
+
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+import com.ecommerce.backend.identidad.repository.UsuarioPlataformaRepository;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockHttpSession;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.jdbc.core.JdbcTemplate;
+import java.util.UUID;
+import java.util.List;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+@Transactional
+class IdentidadIntegracionTest {
+    @Autowired MockMvc mvc;
+    @Autowired UsuarioPlataformaRepository usuarios;
+    @Autowired JdbcTemplate jdbc;
+    @Autowired jakarta.persistence.EntityManager entityManager;
+    @Autowired com.ecommerce.backend.identidad.service.InicializacionAdministrador bootstrap;
+
+    @Test
+    void healthEsPublicoYCompruebaLaBase() throws Exception {
+        mvc.perform(get("/health")).andExpect(status().isOk());
+    }
+
+    @Test
+    void aparienciaYBannersExigenPropiedadYPlantillasExigenRol() throws Exception {
+        UUID dueno = UUID.randomUUID(), ajeno = UUID.randomUUID(), tienda = UUID.randomUUID();
+        jdbc.update("INSERT INTO usuario_plataforma(id_usuario,nombres,email) VALUES (?, 'Dueño', ?), (?, 'Ajeno', ?)", dueno, dueno + "@example.test", ajeno, ajeno + "@example.test");
+        jdbc.update("INSERT INTO usuario_rol(id_usuario,id_rol) SELECT ?, id_rol FROM rol WHERE nombre='DUENO_TIENDA'", dueno);
+        jdbc.update("INSERT INTO tienda(id_tienda,id_propietario,nombre,slug,estado) VALUES (?,?,'Tienda',?,'ACTIVA')", tienda, dueno, "t-" + tienda);
+        jdbc.update("INSERT INTO configuracion_tienda(id_tienda,id_plantilla) VALUES (?,1)", tienda);
+        var propietario = UsernamePasswordAuthenticationToken.authenticated(dueno, null, List.of());
+        var otro = UsernamePasswordAuthenticationToken.authenticated(ajeno, null, List.of());
+        String ruta = "/api/tiendas/" + tienda;
+        mvc.perform(get(ruta + "/configuracion").with(authentication(propietario))).andExpect(status().isOk());
+        mvc.perform(get(ruta + "/configuracion").with(authentication(otro))).andExpect(status().isForbidden());
+        mvc.perform(get(ruta + "/banners").with(authentication(propietario))).andExpect(status().isOk());
+        mvc.perform(get(ruta + "/banners").with(authentication(otro))).andExpect(status().isForbidden());
+        mvc.perform(get("/api/plantillas").with(authentication(propietario))).andExpect(status().isOk());
+        mvc.perform(get("/api/plantillas").with(authentication(otro))).andExpect(status().isForbidden());
+    }
+
+    @Test
+    void inicializaSoloElPrimerAdministrador() {
+        UUID primero = UUID.randomUUID(), segundo = UUID.randomUUID();
+        String email = primero + "@example.test";
+        jdbc.update("INSERT INTO usuario_plataforma(id_usuario,nombres,email) VALUES (?, 'Primero', ?), (?, 'Segundo', ?)", primero, email, segundo, segundo + "@example.test");
+        try {
+            org.springframework.test.util.ReflectionTestUtils.setField(bootstrap, "email", email);
+            bootstrap.run(null);
+            org.springframework.test.util.ReflectionTestUtils.setField(bootstrap, "email", segundo + "@example.test");
+            bootstrap.run(null);
+            org.junit.jupiter.api.Assertions.assertEquals(1, jdbc.queryForObject("SELECT count(*) FROM usuario_rol ur JOIN rol r ON r.id_rol=ur.id_rol WHERE r.nombre='ADMIN_GENERAL' AND ur.id_usuario IN (?,?)", Integer.class, primero, segundo));
+        } finally {
+            org.springframework.test.util.ReflectionTestUtils.setField(bootstrap, "email", "");
+        }
+    }
+
+    @Test
+    void soloAdministradorRetiraRolYSuspendeTiendas() throws Exception {
+        UUID admin = UUID.randomUUID(), dueno = UUID.randomUUID(), tienda = UUID.randomUUID();
+        jdbc.update("INSERT INTO usuario_plataforma(id_usuario,nombres,email) VALUES (?, 'Admin', ?), (?, 'Dueño', ?)", admin, admin + "@example.test", dueno, dueno + "@example.test");
+        jdbc.update("INSERT INTO usuario_rol(id_usuario,id_rol) SELECT ?, id_rol FROM rol WHERE nombre = 'ADMIN_GENERAL'", admin);
+        jdbc.update("INSERT INTO usuario_rol(id_usuario,id_rol) SELECT ?, id_rol FROM rol WHERE nombre = 'DUENO_TIENDA'", dueno);
+        jdbc.update("INSERT INTO tienda(id_tienda,id_propietario,nombre,slug,estado) VALUES (?,?,'Tienda',?,'ACTIVA')", tienda, dueno, "t-" + tienda);
+        String ruta = "/api/usuarios/" + dueno + "/roles/DUENO_TIENDA";
+        var noAdmin = UsernamePasswordAuthenticationToken.authenticated(dueno, null, List.of());
+        mvc.perform(delete(ruta).with(csrf()).with(authentication(noAdmin))).andExpect(status().isForbidden());
+        var administrador = UsernamePasswordAuthenticationToken.authenticated(admin, null, List.of());
+        mvc.perform(delete(ruta).with(csrf()).with(authentication(administrador))).andExpect(status().isNoContent());
+        entityManager.flush();
+        org.junit.jupiter.api.Assertions.assertEquals("SUSPENDIDA", jdbc.queryForObject("SELECT estado FROM tienda WHERE id_tienda = ?", String.class, tienda));
+        org.junit.jupiter.api.Assertions.assertEquals(0, jdbc.queryForObject("SELECT count(*) FROM usuario_rol ur JOIN rol r ON r.id_rol=ur.id_rol WHERE ur.id_usuario=? AND r.nombre='DUENO_TIENDA'", Integer.class, dueno));
+    }
+
+    @Test
+    void registroSesionCsrfPerfilYCierre() throws Exception {
+        mvc.perform(post("/api/auth/registro").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"nombres\":\"Prueba\",\"correoElectronico\":\"sesion@example.test\",\"password\":\"password-seguro\"}"))
+                .andExpect(status().isForbidden());
+        mvc.perform(post("/api/auth/registro").with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"nombres\":\"Prueba\",\"correoElectronico\":\"sesion@example.test\",\"password\":\"password-seguro\"}"))
+                .andExpect(status().isCreated());
+        var id = usuarios.findByEmail("sesion@example.test").orElseThrow().getIdUsuario();
+        var login = mvc.perform(post("/api/auth/login").with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"sesion@example.test\",\"password\":\"password-seguro\"}"))
+                .andExpect(status().isNoContent()).andReturn();
+        var session = (MockHttpSession) login.getRequest().getSession(false);
+        mvc.perform(get("/api/usuarios/" + id).session(session)).andExpect(status().isOk());
+        mvc.perform(get("/api/usuarios/" + java.util.UUID.randomUUID()).session(session)).andExpect(status().isForbidden());
+        mvc.perform(post("/api/tiendas").session(session).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"nombre\":\"Tienda de prueba\"}")).andExpect(status().isCreated());
+        entityManager.flush();
+        UUID tienda = jdbc.queryForObject("SELECT id_tienda FROM tienda WHERE id_propietario = ?", UUID.class, id);
+        assert jdbc.queryForObject("SELECT count(*) FROM configuracion_tienda WHERE id_tienda = ?", Integer.class, tienda) == 1;
+        assert jdbc.queryForObject("SELECT count(*) FROM cuenta_pago_tienda WHERE id_tienda = ? AND estado = 'PENDIENTE'", Integer.class, tienda) == 1;
+        String ruta = "/api/tiendas/" + tienda;
+        mvc.perform(post(ruta + "/categorias").session(session).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"nombre\":\"Prueba\",\"slug\":\"prueba\"}")).andExpect(status().isCreated());
+        entityManager.flush();
+        UUID categoria = jdbc.queryForObject("SELECT id_categoria FROM categoria WHERE id_tienda = ?", UUID.class, tienda);
+        mvc.perform(post(ruta + "/productos").session(session).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"nombre\":\"Producto\",\"idCategoria\":\"" + categoria + "\",\"precioBase\":15.50}"))
+                .andExpect(status().isCreated());
+        entityManager.flush();
+        UUID producto = jdbc.queryForObject("SELECT id_producto FROM producto WHERE id_tienda = ?", UUID.class, tienda);
+        mvc.perform(post(ruta + "/productos/" + producto + "/presentaciones").session(session).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON).content("{\"sku\":\"sku-prueba\"}"))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.precioEfectivo").value(15.5));
+        UUID presentacion = jdbc.queryForObject("SELECT id_presentacion FROM presentacion_producto WHERE id_tienda = ?", UUID.class, tienda);
+        mvc.perform(put(ruta + "/inventario/" + presentacion).session(session).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON).content("{\"stockActual\":3,\"stockMinimo\":1}"))
+                .andExpect(status().isNoContent());
+        mvc.perform(get(ruta + "/inventario").session(session)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.contenido[0].stockActual").value(3));
+        mvc.perform(post("/logout").session(session).with(csrf())).andExpect(status().is3xxRedirection());
+    }
+}
