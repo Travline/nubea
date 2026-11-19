@@ -1,4 +1,4 @@
-export const HomeFooter = () => {
+export const PieInicio = () => {
   return (
     <div className="flex flex-col bg-secondary items-center justify-center gap-4 px-4 py-8">
       <p className="text-muted-foreground text-center">

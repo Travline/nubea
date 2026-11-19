@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import { Aurora, Shader } from 'shaders/react'
 
-export const HomeBanner = () => {
+export const PortadaInicio = () => {
   return (
     <div className="p-5 pt-35 sm:pt-0 w-full min-h-dvh max-w-250 m-auto flex flex-col gap-10 items-center md:flex-row md:justify-between text-foreground">
       <Shader className="absolute top-0 left-0 w-full h-full z-[-1]">

@@ -10,44 +10,44 @@ import {
   Store,
 } from "lucide-react"
 
-export const HomeInfo = () => {
+export const InformacionInicio = () => {
 
-  const features = [
+  const caracteristicas = [
     {
-      icon: ChartNoAxesCombined,
-      title: "Fácil Gestión",
-      description: "Crea tu tienda en cuestión de minutos y gestiona tus productos sin esfuerzo ni conocimientos técnicos.",
+      icono: ChartNoAxesCombined,
+      titulo: "Fácil Gestión",
+      descripcion: "Crea tu tienda en cuestión de minutos y gestiona tus productos sin esfuerzo ni conocimientos técnicos.",
     },
     {
-      icon: ShieldCheck,
-      title: "Pagos Seguros",
-      description: "Protege las transacciones de tus clientes y recibe pagos de forma segura y rápida a través de Mercado Pago.",
+      icono: ShieldCheck,
+      titulo: "Pagos Seguros",
+      descripcion: "Protege las transacciones de tus clientes y recibe pagos de forma segura y rápida a través de Mercado Pago.",
     },
     {
-      icon: Gauge,
-      title: "Velocidad Extrema",
-      description: "Tus clientes no deben esperar gracias al rendimiento optimizado para una experiencia fluida y agradable.",
+      icono: Gauge,
+      titulo: "Velocidad Extrema",
+      descripcion: "Tus clientes no deben esperar gracias al rendimiento optimizado para una experiencia fluida y agradable.",
     },
   ]
 
-  const steps = [
+  const pasos = [
     {
-      step: "01",
-      icon: Store,
-      title: "Crea tu cuenta",
-      description: "Regístrate en menos de dos minutos y personaliza el nombre, logo y estilo de tu tienda.",
+      paso: "01",
+      icono: Store,
+      titulo: "Crea tu cuenta",
+      descripcion: "Regístrate en menos de dos minutos y personaliza el nombre, logo y estilo de tu tienda.",
     },
     {
-      step: "02",
-      icon: PackagePlus,
-      title: "Publica tus productos",
-      description: "Carga fotos, añade variantes, gestiona tu inventario y establece precios sin complicaciones.",
+      paso: "02",
+      icono: PackagePlus,
+      titulo: "Publica tus productos",
+      descripcion: "Carga fotos, añade variantes, gestiona tu inventario y establece precios sin complicaciones.",
     },
     {
-      step: "03",
-      icon: Rocket,
-      title: "Comienza a vender",
-      description: "Comparte el enlace de tu tienda, recibe pedidos al instante y procesa cobros seguros.",
+      paso: "03",
+      icono: Rocket,
+      titulo: "Comienza a vender",
+      descripcion: "Comparte el enlace de tu tienda, recibe pedidos al instante y procesa cobros seguros.",
     },
   ]
 
@@ -58,20 +58,20 @@ export const HomeInfo = () => {
         <h2 className="text-3xl font-bold text-center mb-8">Confía en Nuestra Plataforma</h2>
 
         <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-6">
-          {features.map((item) => {
-            const Icon = item.icon
+          {caracteristicas.map((elemento) => {
+            const Icono = elemento.icono
             return (
               <div
-                key={item.title}
+                key={elemento.titulo}
                 className="relative flex flex-col gap-4 p-6 rounded-2xl border border-border bg-card shadow-sm hover:shadow-md transition-all group"
               >
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors shrink-0">
-                    <Icon className="w-6 h-6" />
+                    <Icono className="w-6 h-6" />
                   </div>
-                  <h3 className="text-xl font-bold text-foreground">{item.title}</h3>
+                  <h3 className="text-xl font-bold text-foreground">{elemento.titulo}</h3>
                 </div>
-                <p className="text-muted-foreground text-sm leading-relaxed">{item.description}</p>
+                <p className="text-muted-foreground text-sm leading-relaxed">{elemento.descripcion}</p>
               </div>
             )
           })}
@@ -89,30 +89,30 @@ export const HomeInfo = () => {
         </div>
 
         <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-6">
-          {steps.map((item) => {
-            const Icon = item.icon
+          {pasos.map((elemento) => {
+            const Icono = elemento.icono
             return (
               <div
-                key={item.step}
+                key={elemento.paso}
                 className="relative flex flex-col gap-4 p-6 rounded-2xl border border-border bg-card shadow-sm hover:shadow-md transition-all group"
               >
                 <div className="flex items-center justify-between">
                   <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-                    <Icon className="w-6 h-6" />
+                    <Icono className="w-6 h-6" />
                   </div>
                   <span className="text-3xl font-extrabold text-muted-foreground/30 group-hover:text-primary/40 transition-colors">
-                    {item.step}
+                    {elemento.paso}
                   </span>
                 </div>
-                <h4 className="text-xl font-bold text-foreground">{item.title}</h4>
-                <p className="text-muted-foreground text-sm leading-relaxed">{item.description}</p>
+                <h4 className="text-xl font-bold text-foreground">{elemento.titulo}</h4>
+                <p className="text-muted-foreground text-sm leading-relaxed">{elemento.descripcion}</p>
               </div>
             )
           })}
         </div>
       </section>
 
-      {/* Sección: Call to Action Final */}
+      {/* Sección: Acción final */}
       <section className="w-full max-w-250 m-auto">
         <div className="relative overflow-hidden rounded-3xl bg-linear-to-br from-primary/15 via-secondary to-background border border-primary/20 p-8 sm:p-12 flex flex-col md:flex-row items-center justify-between gap-8 text-center md:text-left">
           <div className="flex flex-col gap-3 max-w-lg">

@@ -4,6 +4,8 @@ Aplicación React/Vite para acceder al espacio de Nubea. Usa una sesión del bac
 
 El CMS y `apps/store` son aplicaciones independientes: cada una mantiene sus propios tipos y dependencias. No se usarán paquetes de tipos compartidos, Turborepo ni pnpm workspaces; cada frontend se instala, compila y despliega por separado.
 
+El código propio usa nombres y comentarios en español, en consonancia con el backend. Se mantienen los nombres exigidos por React, shadcn, las bibliotecas y los contratos HTTP; los hooks conservan el prefijo `use` que requiere React.
+
 ## Desarrollo local
 
 Instala las dependencias con `pnpm install`. Inicia el backend en `http://localhost:8080` y ejecuta `pnpm dev`. Para otro servidor, usa `BACKEND_URL=https://tu-backend.onrender.com pnpm dev`. Vite reenvía `/api` y `/logout`, de modo que el navegador y las cookies usan el mismo origen. Para un backend local servido por HTTP, configura `SESSION_COOKIE_SECURE=false` en ese backend.

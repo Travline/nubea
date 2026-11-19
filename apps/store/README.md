@@ -1,3 +1,7 @@
+# Tienda de Nubea
+
+El código propio usa nombres y comentarios en español, en consonancia con el backend. Se mantienen los nombres exigidos por React, las bibliotecas y los contratos HTTP; los hooks conservan el prefijo `use` que requiere React. Esta aplicación mantiene sus propios tipos y dependencias, de forma independiente del CMS.
+
 # React + TypeScript + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.

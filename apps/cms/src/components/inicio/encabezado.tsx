@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { AlternarTema } from "@/components/alternar-tema";
 
-export const HomeHeader = () => {
+export const EncabezadoInicio = () => {
   return (
     <header className="fixed z-50 max-w-250 m-auto top-4 left-4 right-4 md:left-0 md:right-0 flex flex-row items-center justify-between gap-4 p-4 shadow rounded-full bg-background/75 backdrop-blur-sm border border-border">
       <Link to="/" className="flex flex-row items-center justify-center gap-3">
@@ -13,7 +13,7 @@ export const HomeHeader = () => {
         </p>
       </Link>
       <div className="flex items-center gap-2">
-        <ThemeToggle />
+        <AlternarTema />
       </div>
     </header>
   );
