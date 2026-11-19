@@ -25,6 +25,7 @@ public class CategoriaController {
     }
 
     // Crear categoría.
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
     @PostMapping
     public ResponseEntity<CategoriaResponse> crearCategoria(
             @PathVariable UUID idTienda,
@@ -61,6 +62,7 @@ public class CategoriaController {
     }
 
     // Actualizar categoría.
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
     @PutMapping("/{idCategoria}")
     public ResponseEntity<CategoriaResponse> actualizarCategoria(
             @PathVariable UUID idTienda,
@@ -75,6 +77,7 @@ public class CategoriaController {
     }
 
     // Cambiar estado de la categoría.
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
     @PatchMapping("/{idCategoria}/estado")
     public ResponseEntity<CategoriaResponse> cambiarEstadoCategoria(
             @PathVariable UUID idTienda,

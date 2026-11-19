@@ -3,17 +3,26 @@ package com.ecommerce.backend.tienda.model;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.Builder;
+import lombok.AllArgsConstructor;
 
 @Entity 
 @Table (name = "plantilla")
 @Getter    
+@Setter
+@Builder
+@AllArgsConstructor
 @NoArgsConstructor 
 public class Plantilla {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id_plantilla")
     private Short idPlantilla;
 
@@ -27,5 +36,6 @@ public class Plantilla {
     private String previewUrl;
 
     @Column (nullable=false)
-    private boolean activa;
+    @Builder.Default
+    private boolean activa = true;
 }

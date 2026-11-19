@@ -25,6 +25,7 @@ public class ColeccionController {
     }
 
     // Crear una colección.
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
     @PostMapping
     public ResponseEntity<ColeccionResponse> crearColeccion(
             @PathVariable UUID idTienda,
@@ -66,6 +67,7 @@ public class ColeccionController {
     }
 
     // Actualizar una colección.
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
     @PutMapping("/{idColeccion}")
     public ResponseEntity<ColeccionResponse> actualizarColeccion(
             @PathVariable UUID idTienda,
@@ -78,6 +80,7 @@ public class ColeccionController {
     }
 
     // Cambiar el estado de una colección.
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
     @PatchMapping("/{idColeccion}/estado")
     public ResponseEntity<ColeccionResponse> cambiarEstadoColeccion(
             @PathVariable UUID idTienda,

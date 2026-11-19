@@ -25,6 +25,7 @@ public class ColeccionProductoController {
     }
 
     // Agregar un producto a una colección.
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
     @PostMapping("/colecciones/{idColeccion}/productos/{idProducto}")
     public ResponseEntity<ColeccionProductoResponse> agregarProducto(
             @PathVariable UUID idTienda,
@@ -61,6 +62,7 @@ public class ColeccionProductoController {
     }
 
     // Quitar un producto de una colección.
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
     @DeleteMapping("/colecciones/{idColeccion}/productos/{idProducto}")
     public ResponseEntity<Void> quitarProducto(
             @PathVariable UUID idTienda,

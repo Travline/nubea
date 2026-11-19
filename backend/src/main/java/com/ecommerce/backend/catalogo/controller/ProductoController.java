@@ -25,6 +25,7 @@ public class ProductoController {
     }
 
     // Crear producto.
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
     @PostMapping
     public ResponseEntity<ProductoResponse> crearProducto(
             @PathVariable UUID idTienda,
@@ -61,6 +62,7 @@ public class ProductoController {
     }
 
     // Actualizar producto.
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
     @PutMapping("/{idProducto}")
     public ResponseEntity<ProductoResponse> actualizarProducto(
             @PathVariable UUID idTienda,
@@ -75,6 +77,7 @@ public class ProductoController {
     }
 
     // Cambiar estado del producto.
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
     @PatchMapping("/{idProducto}/estado")
     public ResponseEntity<ProductoResponse> cambiarEstadoProducto(
             @PathVariable UUID idTienda,

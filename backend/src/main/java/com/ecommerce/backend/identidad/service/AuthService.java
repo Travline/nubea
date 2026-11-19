@@ -2,6 +2,12 @@ package com.ecommerce.backend.identidad.service;
 import java.util.stream.Collectors;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.Authentication;
+import com.ecommerce.backend.identidad.dto.LoginRequest;
+import com.ecommerce.backend.identidad.model.EstadoUsuario;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,6 +36,20 @@ public class AuthService {
     private final RolRepository rolRepository;
     private final TipoDocumentoRepository tipoDocumentoRepository;
     private final PasswordEncoder passwordEncoder;  // el bean esta con Argon2 de SecurityConfig 
+
+    @Transactional(readOnly = true)
+    public Authentication autenticar(LoginRequest req) {
+        var identidad = identidadRepository.findByUsuario_EmailAndProveedor(
+                req.email().trim().toLowerCase(java.util.Locale.ROOT), ProveedorIdentidad.LOCAL)
+                .orElseThrow(() -> new BadCredentialsException("Credenciales inválidas"));
+        var usuario = identidad.getUsuario();
+        if (usuario.getEstado() != EstadoUsuario.ACTIVO || !passwordEncoder.matches(req.password(), identidad.getPasswordHash())) {
+            throw new BadCredentialsException("Credenciales inválidas");
+        }
+        var roles = usuario.getRoles().stream()
+                .map(rol -> new SimpleGrantedAuthority("ROLE_" + rol.getNombre().name())).toList();
+        return UsernamePasswordAuthenticationToken.authenticated(usuario.getIdUsuario(), null, roles);
+    }
 
     @Transactional
     public UsuarioResponse registrar(RegistroUsuarioRequest req)

@@ -28,6 +28,7 @@ public class ImagenProductoController {
     }
 
     // Crear imagen.
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
     @PostMapping
     public ResponseEntity<ImagenProductoResponse> crearImagen(
             @PathVariable UUID idTienda,
@@ -69,6 +70,7 @@ public class ImagenProductoController {
     }
 
     // Actualizar información de una imagen.
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
     @PutMapping("/{idImagen}")
     public ResponseEntity<ImagenProductoResponse> actualizarImagen(
             @PathVariable UUID idTienda,
@@ -84,6 +86,7 @@ public class ImagenProductoController {
     }
 
     // Establecer imagen principal.
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
     @PatchMapping("/{idImagen}/principal")
     public ResponseEntity<ImagenProductoResponse> establecerImagenPrincipal(
             @PathVariable UUID idTienda,
@@ -98,6 +101,7 @@ public class ImagenProductoController {
     }
 
     // Eliminar imagen.
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
     @DeleteMapping("/{idImagen}")
     public ResponseEntity<Void> eliminarImagen(
             @PathVariable UUID idTienda,

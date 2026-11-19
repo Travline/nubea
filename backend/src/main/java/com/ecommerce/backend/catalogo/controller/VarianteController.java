@@ -25,6 +25,7 @@ public class VarianteController {
     }
 
     // Crear variante.
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
     @PostMapping
     public ResponseEntity<VarianteResponse> crearVariante(
             @PathVariable UUID idTienda,
@@ -61,6 +62,7 @@ public class VarianteController {
     }
 
     // Actualizar variante.
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
     @PutMapping("/{idVariante}")
     public ResponseEntity<VarianteResponse> actualizarVariante(
             @PathVariable UUID idTienda,

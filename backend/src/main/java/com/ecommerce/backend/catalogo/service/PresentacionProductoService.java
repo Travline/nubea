@@ -1,6 +1,7 @@
 package com.ecommerce.backend.catalogo.service;
 
 import org.springframework.stereotype.Service;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 
 
@@ -33,19 +34,48 @@ public class PresentacionProductoService {
     private final VarianteRepository varianteRepository;
     private final ValorVarianteRepository valorVarianteRepository;
     private final PresentacionValorRepository presentacionValorRepository;
+    private final JdbcTemplate jdbcTemplate;
 
    public PresentacionProductoService(
         PresentacionProductoRepository presentacionProductoRepository,
         ProductoRepository productoRepository,
         VarianteRepository varianteRepository,
         ValorVarianteRepository valorVarianteRepository,
-        PresentacionValorRepository presentacionValorRepository
+        PresentacionValorRepository presentacionValorRepository,
+        JdbcTemplate jdbcTemplate
 ) {
     this.presentacionProductoRepository = presentacionProductoRepository;
     this.productoRepository = productoRepository;
     this.varianteRepository = varianteRepository;
     this.valorVarianteRepository = valorVarianteRepository;
     this.presentacionValorRepository = presentacionValorRepository;
+    this.jdbcTemplate = jdbcTemplate;
+}
+
+private PresentacionProductoResponse respuesta(PresentacionProducto presentacion) {
+    var respuesta = PresentacionProductoMapper.toResponse(presentacion);
+    var producto = productoRepository.findById(presentacion.getIdProducto()).orElseThrow();
+    respuesta.setPrecioEfectivo(presentacion.getPrecioOverride() != null ? presentacion.getPrecioOverride() : producto.getPrecioBase());
+    return respuesta;
+}
+
+private void validarConjuntoVariantes(UUID producto, UUID tienda, UUID excluir, List<ValorVariante> valores) {
+    jdbcTemplate.queryForObject("SELECT id_producto FROM producto WHERE id_producto = ? AND id_tienda = ? FOR UPDATE", UUID.class, producto, tienda);
+    Set<UUID> esperado = valores.stream().map(ValorVariante::getIdVariante).collect(Collectors.toSet());
+    var filas = jdbcTemplate.queryForList("""
+        SELECT p.id_presentacion, pv.id_variante FROM presentacion_producto p
+        LEFT JOIN presentacion_valor pv ON pv.id_presentacion = p.id_presentacion
+        WHERE p.id_producto = ? AND p.id_tienda = ?
+        """, producto, tienda);
+    java.util.Map<UUID, Set<UUID>> conjuntos = new java.util.HashMap<>();
+    for (var fila : filas) {
+        UUID id = (UUID) fila.get("id_presentacion");
+        if (id.equals(excluir)) continue;
+        Set<UUID> conjunto = conjuntos.computeIfAbsent(id, ignored -> new HashSet<>());
+        if (fila.get("id_variante") != null) conjunto.add((UUID) fila.get("id_variante"));
+    }
+    if (conjuntos.values().stream().anyMatch(conjunto -> !conjunto.equals(esperado)))
+        throw new IllegalArgumentException("Todas las presentaciones deben usar las mismas variantes");
 }
 
 private List<ValorVariante> validarValores(
@@ -165,6 +195,7 @@ public PresentacionProductoResponse crearPresentacion(
             request.getIdsValores(),
             idTienda
     );
+    validarConjuntoVariantes(idProducto, idTienda, null, valores);
 
     // Construir la firma de valores
     String firmaValores = construirFirmaValores(valores);
@@ -189,7 +220,9 @@ public PresentacionProductoResponse crearPresentacion(
 
     // Guardar la presentación
     PresentacionProducto guardada =
-            presentacionProductoRepository.save(presentacion);
+            presentacionProductoRepository.saveAndFlush(presentacion);
+
+    jdbcTemplate.update("INSERT INTO inventario (id_presentacion) VALUES (?)", guardada.getIdPresentacion());
 
     // Crear las relaciones con los valores seleccionados
     List<PresentacionValor> relaciones = valores.stream()
@@ -210,7 +243,7 @@ public PresentacionProductoResponse crearPresentacion(
     // Guardar las relaciones
     presentacionValorRepository.saveAll(relaciones);
 
-    return PresentacionProductoMapper.toResponse(guardada);
+    return respuesta(guardada);
 }
 
 
@@ -232,7 +265,7 @@ public List<PresentacionProductoResponse> listarPresentaciones(
     // Obtener las presentaciones del producto
     return presentacionProductoRepository.findByIdProducto(idProducto)
             .stream()
-            .map(PresentacionProductoMapper::toResponse)
+            .map(this::respuesta)
             .toList();
 }
 
@@ -267,7 +300,7 @@ public PresentacionProductoResponse obtenerPresentacionPorId(
         );
     }
 
-    return PresentacionProductoMapper.toResponse(presentacion);
+    return respuesta(presentacion);
 }
 
 
@@ -326,7 +359,7 @@ public PresentacionProductoResponse actualizarPresentacion(
     PresentacionProducto actualizado =
             presentacionProductoRepository.save(presentacion);
 
-    return PresentacionProductoMapper.toResponse(actualizado);
+    return respuesta(actualizado);
 }
 
 
@@ -384,7 +417,7 @@ public PresentacionProductoResponse cambiarEstadoPresentacion(
     PresentacionProducto actualizada =
             presentacionProductoRepository.save(presentacion);
 
-    return PresentacionProductoMapper.toResponse(actualizada);
+    return respuesta(actualizada);
 }
 
 @Transactional
@@ -418,6 +451,7 @@ public PresentacionProductoResponse actualizarValoresPresentacion(
 
     // 4. Construir la firma de la nueva combinación.
     String nuevaFirma = construirFirmaValores(valores);
+    validarConjuntoVariantes(idProducto, idTienda, idPresentacion, valores);
 
     // 5. Comprobar que otra presentación no tenga la misma combinación.
     boolean combinacionDuplicada = presentacionProductoRepository
@@ -461,7 +495,7 @@ presentacionValorRepository.deleteAll(relacionesAnteriores);
 
     presentacionValorRepository.saveAll(nuevasRelaciones);
 
-    return PresentacionProductoMapper.toResponse(presentacion);
+    return respuesta(presentacion);
 }
 
 

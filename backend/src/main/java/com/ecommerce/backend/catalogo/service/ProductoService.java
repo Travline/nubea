@@ -15,6 +15,7 @@ import java.util.Locale;
 
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.stereotype.Service;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 @Service
 public class ProductoService {
@@ -22,15 +23,18 @@ public class ProductoService {
     private final ProductoRepository productoRepository;
     private final CategoriaRepository categoriaRepository;
     private final TiendaRepository tiendaRepository;
+    private final JdbcTemplate jdbcTemplate;
 
     public ProductoService(
             ProductoRepository productoRepository,
             CategoriaRepository categoriaRepository,
-            TiendaRepository tiendaRepository) {
+            TiendaRepository tiendaRepository,
+            JdbcTemplate jdbcTemplate) {
 
         this.productoRepository = productoRepository;
         this.categoriaRepository = categoriaRepository;
         this.tiendaRepository = tiendaRepository;
+        this.jdbcTemplate = jdbcTemplate;
     }
 
     // Validar nombre del producto
@@ -187,13 +191,24 @@ public class ProductoService {
                     "El estado indicado no es válido");
         }
 
-        if (estado.equals("PUBLICADO")) {
-            throw new IllegalStateException(
-                    "La publicación requiere validar la tienda, "
-                    + "la categoría, las presentaciones y el inventario");
-        }
-
         Producto producto = buscarProducto(idProducto, idTienda);
+
+        if (estado.equals("PUBLICADO")) {
+            Boolean publicable = jdbcTemplate.queryForObject("""
+                    SELECT EXISTS (
+                        SELECT 1 FROM producto p
+                        JOIN tienda t ON t.id_tienda = p.id_tienda
+                        JOIN categoria c ON c.id_categoria = p.id_categoria AND c.id_tienda = p.id_tienda
+                        JOIN presentacion_producto pp ON pp.id_producto = p.id_producto AND pp.id_tienda = p.id_tienda
+                        JOIN inventario i ON i.id_presentacion = pp.id_presentacion
+                        WHERE p.id_producto = ? AND p.id_tienda = ? AND t.estado = 'ACTIVA'
+                          AND c.activa = true AND pp.estado = 'ACTIVA'
+                    )
+                    """, Boolean.class, idProducto, idTienda);
+            if (!Boolean.TRUE.equals(publicable)) {
+                throw new IllegalArgumentException("El producto requiere tienda y categoría activas y una presentación activa con inventario");
+            }
+        }
 
         producto.setEstado(estado);
 

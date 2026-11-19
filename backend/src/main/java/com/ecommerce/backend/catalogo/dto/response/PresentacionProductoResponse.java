@@ -10,6 +10,7 @@ public class PresentacionProductoResponse {
     private UUID idProducto;
     private String sku;
     private BigDecimal precioOverride;
+    private BigDecimal precioEfectivo;
     private String estado;
 
     public PresentacionProductoResponse() {
@@ -46,6 +47,9 @@ public class PresentacionProductoResponse {
     public void setPrecioOverride(BigDecimal precioOverride) {
         this.precioOverride = precioOverride;
     }
+
+    public BigDecimal getPrecioEfectivo() { return precioEfectivo; }
+    public void setPrecioEfectivo(BigDecimal precioEfectivo) { this.precioEfectivo = precioEfectivo; }
 
     public String getEstado() {
         return estado;

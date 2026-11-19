@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import java.util.Map;
 
 @RestControllerAdvice 
-public class GlobalExceptionHandler {
+public class GlobalExceptionHandler extends Modulo3ExceptionHandler {
     
   // 400: el JSON llegó mal escrito (falta una comilla, una coma...)
 @ExceptionHandler(HttpMessageNotReadableException.class)

@@ -20,6 +20,9 @@ import com.ecommerce.backend.tienda.repository.TiendaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.jdbc.core.JdbcTemplate;
+import com.ecommerce.backend.shared.security.CurrentUserProvider;
+import org.springframework.security.access.AccessDeniedException;
 
 import java.util.List;
 import java.util.UUID;
@@ -35,11 +38,19 @@ public class TiendaService {
     private final PlantillaRepository plantillaRepository;
     private final UsuarioPlataformaRepository usuarioRepository;
     private final RolRepository rolRepository;
+    private final JdbcTemplate jdbcTemplate;
+    private final CurrentUserProvider currentUserProvider;
 
     // ========== CREAR ==========
     @Transactional
     public TiendaResponse crearTienda(CrearTiendaRequest req) {
-        UsuarioPlataforma propietario = usuarioRepository.findById(req.idPropietario())
+        UUID usuarioActual = currentUserProvider.getCurrentUserId()
+                .orElseThrow(() -> new AccessDeniedException("Usuario no autenticado"));
+        if (req.idPropietario() != null && !usuarioActual.equals(req.idPropietario())) {
+            throw new AccessDeniedException("No puedes crear tiendas para otro usuario");
+        }
+        jdbcTemplate.queryForList("SELECT id_usuario FROM usuario_plataforma WHERE id_usuario = ? FOR UPDATE", usuarioActual);
+        UsuarioPlataforma propietario = usuarioRepository.findById(usuarioActual)
                 .orElseThrow(() -> new RecursoNoEncontradoException("El usuario no existe"));
         if (propietario.getEstado() != EstadoUsuario.ACTIVO) {
             throw new ReglaNegocioException("Tu cuenta no está activa, no puedes crear tiendas");
@@ -70,15 +81,19 @@ public class TiendaService {
                 .nombre(req.nombre().trim())
                 .slug(slug)
                 .build();
-        tiendaRepository.save(tienda);
+        tiendaRepository.saveAndFlush(tienda);
 
         Plantilla plantilla = plantillaRepository.findById(PLANTILLA_POR_DEFECTO)              // RN-M3-02
                 .orElseThrow(() -> new IllegalStateException("Falta la plantilla por defecto en la BD"));
+        if (!plantilla.isActiva()) {
+            throw new ReglaNegocioException("La plantilla por defecto está inactiva");
+        }
         configuracionRepository.save(ConfiguracionTienda.builder()
                 .tienda(tienda)
                 .plantilla(plantilla)
                 .tituloInicio(tienda.getNombre())
                 .build());
+        jdbcTemplate.update("INSERT INTO cuenta_pago_tienda (id_tienda) VALUES (?)", tienda.getIdTienda());
 
         return toResponse(tienda);
     }
@@ -93,6 +108,9 @@ public class TiendaService {
 
     @Transactional(readOnly = true)
     public List<TiendaResponse> listarPorPropietario(UUID idUsuario) {
+        if (!currentUserProvider.hasRole("ADMIN_GENERAL") && !currentUserProvider.getCurrentUserId().filter(idUsuario::equals).isPresent()) {
+            throw new AccessDeniedException("No puedes consultar tiendas de otro usuario");
+        }
         if (!usuarioRepository.existsById(idUsuario)) {
             throw new RecursoNoEncontradoException("El usuario no existe");
         }

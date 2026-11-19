@@ -9,7 +9,6 @@ import jakarta.validation.constraints.Size;
 
 public record CrearTiendaRequest(
     //TEMPORAL PARA PROBAR JSON el id sale del Token
-    @NotNull(message = "El id del Propietario es obligatorio")
     UUID idPropietario,
 
     @NotBlank(message = "El nombre de la tienda es obligatorio")
