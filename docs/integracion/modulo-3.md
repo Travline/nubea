@@ -21,4 +21,4 @@ Checkout debe realizar reserva transaccional mediante actualización condicional
 
 El CMS debe interpretar los códigos de plantilla disponibles; la API solo administra metadatos. El flujo OAuth devuelve `urlAutorizacion`, navega al proveedor y retorna a la URL fija de panel con `resultado=exito|error|conflicto`; después consultar estado mediante GET. No confiar en el resultado de la URL como prueba de activación. El callback consume el estado incluso si falla el canje: iniciar otro intento para reintentar.
 
-Los endpoints de configuración y banners existentes son privados del propietario, no una API pública de vitrina. `BannerResponse` expone actualmente `storageKey`, no URL pública: definir explícitamente una estrategia de URL, CDN o firma y su autorización antes de usarlo en una tienda pública. No asumir que una clave interna es URL navegable.
+Los endpoints de configuración y banners son privados del propietario. Las respuestas de imágenes incluyen una URL pública; su acceso depende de la configuración del bucket y CDN. Véase [imágenes y almacenamiento](../technical/imagenes-almacenamiento.md).

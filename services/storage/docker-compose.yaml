@@ -42,6 +42,8 @@ services:
             --bucket nubea \
             --endpoint-url http://rustfs:9000
         fi
+        aws s3api put-bucket-policy --bucket nubea --endpoint-url http://rustfs:9000 \
+          --policy '{"Version":"2012-10-17","Statement":[{"Sid":"PublicImages","Effect":"Allow","Principal":"*","Action":"s3:GetObject","Resource":["arn:aws:s3:::nubea/banners/*","arn:aws:s3:::nubea/productos/*"]}]}'
         echo "Bucket nubea listo"
     restart: "no"
 

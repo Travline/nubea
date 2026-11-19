@@ -30,6 +30,11 @@ class IdentidadIntegracionTest {
     @Autowired com.ecommerce.backend.identidad.service.InicializacionAdministrador bootstrap;
 
     @Test
+    void healthEsPublicoYCompruebaLaBase() throws Exception {
+        mvc.perform(get("/health")).andExpect(status().isOk());
+    }
+
+    @Test
     void aparienciaYBannersExigenPropiedadYPlantillasExigenRol() throws Exception {
         UUID dueno = UUID.randomUUID(), ajeno = UUID.randomUUID(), tienda = UUID.randomUUID();
         jdbc.update("INSERT INTO usuario_plataforma(id_usuario,nombres,email) VALUES (?, 'Dueño', ?), (?, 'Ajeno', ?)", dueno, dueno + "@example.test", ajeno, ajeno + "@example.test");

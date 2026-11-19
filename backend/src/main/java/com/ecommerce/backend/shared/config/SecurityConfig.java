@@ -39,7 +39,7 @@ public class SecurityConfig {
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/swagger-ui/**","/swagger-ui.html","/v3/api-docs/**").permitAll()
-                .requestMatchers("/error").permitAll()
+                .requestMatchers("/error", "/health").permitAll()
                 .requestMatchers("/api/auth/**", "/api/integraciones/mercado-pago/oauth/callback").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/tiendas/{slug}").permitAll()
                 .anyRequest().authenticated()

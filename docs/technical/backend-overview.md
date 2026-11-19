@@ -1,6 +1,6 @@
 # Arquitectura y Visión General del Backend Nubea
 
-> **Actualización (9 de noviembre de 2026):** este documento conserva una visión histórica y contiene afirmaciones que no reflejan totalmente la implementación actual. En particular, el login no establece sesión, `BannerResponse` expone `storageKey`, las subidas de banners ocurren dentro de métodos transaccionales y la limpieza no tiene cola durable. Para el estado verificado y las prioridades de integración, consultar [flujos del módulo 3](modulo-3-flujos.md), [integración entre módulos](../integracion/modulo-3.md) y [preparación para producción](modulo-3-produccion.md).
+> **Nota:** este documento conserva una visión histórica. Para el estado actual consultar [flujos del módulo 3](modulo-3-flujos.md), [imágenes y almacenamiento](imagenes-almacenamiento.md) e [integración entre módulos](../integracion/modulo-3.md).
 
 Este documento describe la arquitectura, decisiones de diseño, convenciones de desarrollo y estructura técnica del backend de la plataforma **Nubea**. Sirve como referencia arquitectónica para sesiones de desarrollo actuales y futuras.
 

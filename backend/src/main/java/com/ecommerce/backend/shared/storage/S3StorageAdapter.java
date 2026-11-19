@@ -15,9 +15,9 @@ import java.io.InputStream;
 
 @Component
 @RequiredArgsConstructor
-public class S3BannerStorageAdapter implements BannerStoragePort {
+public class S3StorageAdapter implements StoragePort {
 
-    private static final Logger log = LoggerFactory.getLogger(S3BannerStorageAdapter.class);
+    private static final Logger log = LoggerFactory.getLogger(S3StorageAdapter.class);
 
     private final S3Client s3Client;
     private final S3Properties s3Properties;
@@ -53,6 +53,7 @@ public class S3BannerStorageAdapter implements BannerStoragePort {
         } catch (Exception e) {
             log.warn("Fallo al eliminar objeto huérfano en S3. Bucket: {}, Key: {}. Requiere limpieza pendiente.",
                     s3Properties.getBucket(), storageKey, e);
+            throw new StorageException("Error al eliminar archivo del almacenamiento", e);
         }
     }
 }

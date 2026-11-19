@@ -30,7 +30,7 @@ integraciones cuando los otros módulos estén listos.
 | Propiedad de tienda | Todas las operaciones de vendedor verifican `tienda.id_propietario == usuario autenticado`. | `TiendaAuthorizationService.esPropietario(idTienda, idUsuario)`. No confiar solo en el rol global. |
 | Estado de la tienda | Editar apariencia, banners y vincular pagos requiere tienda `ACTIVA` o `BORRADOR`; se rechaza `SUSPENDIDA` y `CERRADA`. | `TiendaStatePolicy`; confirmar la política definitiva al integrar el módulo 1. |
 | Plantillas | El backend persiste únicamente `codigo`, `nombre`, `previewUrl` y `activa`; el frontend interpreta el código y contiene los recursos/código visuales. | Ninguna carga de archivos ni ejecución de código de plantilla en este módulo. |
-| Archivos de banner | El módulo gestiona la subida, sustitución y eliminación de imágenes en un almacenamiento compatible con S3. PostgreSQL persiste solamente el `storage_key`, no el binario ni una URL pública permanente. | `BannerStoragePort` con primera implementación `S3BannerStorageAdapter`, basada en AWS SDK for Java v2 (`software.amazon.awssdk:s3`) configurado para un endpoint S3 compatible. Variables de entorno para endpoint, región, bucket y credenciales. |
+| Archivos de banner | El módulo gestiona la subida, sustitución y eliminación de imágenes en un almacenamiento compatible con S3. PostgreSQL persiste solamente el `storage_key`, no el binario ni una URL pública permanente. | `StoragePort` con implementación `S3StorageAdapter`, basada en AWS SDK for Java v2 (`software.amazon.awssdk:s3`) configurado para un endpoint S3 compatible. Variables de entorno para endpoint, región, bucket y credenciales. |
 | OAuth de Mercado Pago | Se propone OAuth Authorization Code, con `state` de un solo uso y callback de backend. | `MercadoPagoOAuthPort`, `OAuthStateStore` y configuración por ambiente; no usar llamadas reales en pruebas unitarias. |
 | Token de Mercado Pago | La primera implementación cifra simétricamente la credencial de forma reversible antes de persistirla y jamás la expone en respuestas, logs o excepciones. | `PaymentCredentialVault` con `EncryptedDatabaseCredentialVault`. Puede cambiarse después a un gestor externo sin cambiar los casos de uso. La clave vive fuera de PostgreSQL (variable/secret del despliegue) y debe soportar rotación. `referencia_credencial` contiene el sobre cifrado, nunca el token en claro. |
 
@@ -162,7 +162,7 @@ el carrusel o las promociones visibles en ella.
    `idBanner`/`orden`, sin repetidos, compuesto exactamente por los banners de
    la tienda. Se ejecuta en una transacción; la restricción diferible
    `uq_banner_tienda_orden` valida el resultado al confirmar.
-8. Eliminar un banner borra el registro y solicita al `BannerStoragePort` la
+8. Eliminar un banner borra el registro y solicita al `StoragePort` la
    limpieza del objeto solo después de confirmar la transacción. Si la limpieza
    externa falla, queda un evento/reintento y nunca se revierte la BD.
 9. Si la subida al storage falla, no se crea el registro en la BD. Si falla la

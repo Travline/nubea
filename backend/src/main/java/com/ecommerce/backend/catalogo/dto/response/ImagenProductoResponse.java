@@ -6,7 +6,7 @@ import java.util.UUID;
 public class ImagenProductoResponse {
 
     private UUID idImagen;
-    private String storageKey;
+    private String url;
     private Integer orden;
     private Boolean esPrincipal;
 
@@ -21,12 +21,12 @@ public class ImagenProductoResponse {
         this.idImagen = idImagen;
     }
 
-    public String getStorageKey() {
-        return storageKey;
+    public String getUrl() {
+        return url;
     }
 
-    public void setStorageKey(String storageKey) {
-        this.storageKey = storageKey;
+    public void setUrl(String url) {
+        this.url = url;
     }
 
     public Integer getOrden() {

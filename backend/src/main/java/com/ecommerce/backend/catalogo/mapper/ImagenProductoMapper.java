@@ -6,7 +6,7 @@ import com.ecommerce.backend.catalogo.model.ImagenProducto;
 
 public class ImagenProductoMapper {
 
-    public static ImagenProductoResponse toResponse(ImagenProducto imagen) {
+    public static ImagenProductoResponse toResponse(ImagenProducto imagen, String url) {
 
         if (imagen == null) {
             return null;
@@ -15,7 +15,7 @@ public class ImagenProductoMapper {
         ImagenProductoResponse response = new ImagenProductoResponse();
 
         response.setIdImagen(imagen.getIdImagen());
-        response.setStorageKey(imagen.getStorageKey());
+        response.setUrl(url);
         response.setOrden(imagen.getOrden());
         response.setEsPrincipal(imagen.getEsPrincipal());
 

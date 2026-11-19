@@ -10,6 +10,7 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.S3Configuration;
 
 import java.net.URI;
+import java.time.Duration;
 
 @Configuration
 @RequiredArgsConstructor
@@ -20,6 +21,7 @@ public class S3Config {
     @Bean
     public S3Client s3Client() {
         return S3Client.builder()
+                .overrideConfiguration(config -> config.apiCallTimeout(Duration.ofMinutes(2)))
                 .endpointOverride(URI.create(s3Properties.getEndpoint()))
                 .region(Region.of(s3Properties.getRegion()))
                 .credentialsProvider(StaticCredentialsProvider.create(

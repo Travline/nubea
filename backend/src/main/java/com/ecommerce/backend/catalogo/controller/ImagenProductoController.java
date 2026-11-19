@@ -9,6 +9,8 @@ import jakarta.validation.Valid;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.MediaType;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -29,17 +31,26 @@ public class ImagenProductoController {
 
     // Crear imagen.
     @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
-    @PostMapping
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ImagenProductoResponse> crearImagen(
             @PathVariable UUID idTienda,
             @PathVariable UUID idProducto,
-            @Valid @RequestBody ImagenProductoRequest request) {
+            @RequestPart("archivo") MultipartFile archivo,
+            @RequestParam Integer orden,
+            @RequestParam(defaultValue = "false") Boolean esPrincipal) {
 
         ImagenProductoResponse response =
                 imagenProductoService.crearImagen(
-                        idProducto, idTienda, request);
+                        idProducto, idTienda, archivo, orden, esPrincipal);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
+    @PutMapping(value = "/{idImagen}/archivo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ImagenProductoResponse> sustituirImagen(@PathVariable UUID idTienda,
+            @PathVariable UUID idProducto, @PathVariable UUID idImagen, @RequestPart("archivo") MultipartFile archivo) {
+        return ResponseEntity.ok(imagenProductoService.sustituirImagen(idImagen, idProducto, idTienda, archivo));
     }
 
     // Listar imágenes del producto.

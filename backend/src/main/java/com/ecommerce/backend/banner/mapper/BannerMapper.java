@@ -9,14 +9,14 @@ public final class BannerMapper {
         // Constructor privado para evitar instanciación
     }
 
-    public static BannerResponse toResponse(BannerTienda banner) {
+    public static BannerResponse toResponse(BannerTienda banner, String url) {
         if (banner == null) {
             return null;
         }
         return new BannerResponse(
                 banner.getIdBanner(),
                 banner.getIdTienda(),
-                banner.getStorageKey(),
+                url,
                 banner.getEnlaceDestino(),
                 banner.getOrden(),
                 banner.getActivo(),

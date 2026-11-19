@@ -6,7 +6,7 @@ import java.util.UUID;
 public record BannerResponse(
         UUID idBanner,
         UUID idTienda,
-        String storageKey,
+        String url,
         String enlaceDestino,
         Short orden,
         Boolean activo,

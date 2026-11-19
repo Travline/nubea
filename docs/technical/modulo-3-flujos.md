@@ -23,9 +23,7 @@ La vinculación local no prueba que el proveedor conserve autorización en el fu
 
 ## Banners: comportamiento y trabajo pendiente
 
-`BannerStoragePort` tiene operaciones de subir/eliminar y `S3BannerStorageAdapter` usa SDK S3 compatible. Se valida tamaño y cabecera real de imágenes. El orden es único por tienda y la restricción SQL es diferible. Las eliminaciones del objeto anterior se publican como evento posterior al commit.
-
-**Brechas actuales:** `BannerMapper` devuelve `storageKey`; no entrega URL. Las subidas y ciertas compensaciones de almacenamiento se realizan dentro de métodos `@Transactional`, pese a la regla funcional de no hacer llamadas externas dentro de transacciones. El listener posterior al commit no tiene `@Async` ni cola persistente; el adaptador captura fallos de borrado y solo registra una advertencia, sin reintento durable. Un fallo al confirmar después de subir puede dejar objetos huérfanos. Para producción, rediseñar el flujo con persistencia de tareas/outbox, reconciliación y pruebas de caída, y definir la exposición de imágenes.
+Las imágenes de banners y productos utilizan el almacenamiento compartido compatible con S3. Las cargas se registran antes de acceder al servicio externo y las eliminaciones se conservan como tareas durables; el procesador reintenta y evita borrar claves todavía referenciadas. Las respuestas devuelven una URL pública configurada. Consultar [imágenes y almacenamiento](imagenes-almacenamiento.md) para contratos, límites y operación. El acceso mediante CDN real todavía debe configurarse y verificarse en el entorno de despliegue.
 
 ## Puntos de modificación
 
