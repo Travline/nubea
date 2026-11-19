@@ -33,6 +33,59 @@ class IdentidadIntegracionTest {
     @Autowired org.springframework.transaction.support.TransactionTemplate transacciones;
 
     @Test
+    void administradorGestionaPlantillasYRolesSinCambiarSusPropiosRoles() throws Exception {
+        UUID admin = UUID.randomUUID(), usuario = UUID.randomUUID();
+        jdbc.update("INSERT INTO usuario_plataforma(id_usuario,nombres,email) VALUES (?, 'Admin', ?), (?, 'Usuario', ?)", admin, admin + "@example.test", usuario, usuario + "@example.test");
+        jdbc.update("INSERT INTO usuario_rol(id_usuario,id_rol) SELECT ?,id_rol FROM rol WHERE nombre='ADMIN_GENERAL'", admin);
+        var administrador = UsernamePasswordAuthenticationToken.authenticated(admin, null, List.of());
+        var otro = UsernamePasswordAuthenticationToken.authenticated(usuario, null, List.of());
+        String codigo = "plantilla-" + UUID.randomUUID();
+        String cuerpo = "{\"codigo\":\"" + codigo + "\",\"nombre\":\"Plantilla prueba\",\"activa\":false}";
+        mvc.perform(post("/api/plantillas").with(csrf()).with(authentication(otro)).contentType(MediaType.APPLICATION_JSON).content(cuerpo))
+                .andExpect(status().isForbidden());
+        mvc.perform(post("/api/plantillas").with(csrf()).with(authentication(administrador)).contentType(MediaType.APPLICATION_JSON).content(cuerpo))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.activa").value(false));
+        Short id = jdbc.queryForObject("SELECT id_plantilla FROM plantilla WHERE codigo = ?", Short.class, codigo);
+        mvc.perform(patch("/api/plantillas/" + id).with(csrf()).with(authentication(administrador)).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"nombre\":\"Actualizada\"}")).andExpect(status().isOk()).andExpect(jsonPath("$.nombre").value("Actualizada"));
+        mvc.perform(patch("/api/plantillas/" + id + "/estado").with(csrf()).with(authentication(administrador)).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"activa\":true}")).andExpect(status().isOk()).andExpect(jsonPath("$.activa").value(true));
+        mvc.perform(put("/api/usuarios/" + usuario + "/roles/DUENO_TIENDA").with(csrf()).with(authentication(administrador)))
+                .andExpect(status().isNoContent());
+        entityManager.flush();
+        org.junit.jupiter.api.Assertions.assertEquals(1, jdbc.queryForObject("SELECT count(*) FROM usuario_rol WHERE id_usuario = ?", Integer.class, admin));
+        org.junit.jupiter.api.Assertions.assertEquals(1, jdbc.queryForObject("SELECT count(*) FROM usuario_rol ur JOIN rol r ON r.id_rol = ur.id_rol WHERE ur.id_usuario = ? AND r.nombre = 'DUENO_TIENDA'", Integer.class, usuario));
+    }
+
+    @Test
+    void administracionListaUsuariosYTiendasSoloParaAdministrador() throws Exception {
+        UUID admin = UUID.randomUUID(), vendedor = UUID.randomUUID(), tienda = UUID.randomUUID();
+        String clave = UUID.randomUUID().toString().substring(0, 8);
+        jdbc.update("INSERT INTO usuario_plataforma(id_usuario,nombres,email) VALUES (?, 'Admin', ?), (?, ?, ?)", admin, admin + "@example.test", vendedor, "Vendedor " + clave, vendedor + "@example.test");
+        jdbc.update("INSERT INTO usuario_rol(id_usuario,id_rol) SELECT ?,id_rol FROM rol WHERE nombre='ADMIN_GENERAL'", admin);
+        jdbc.update("INSERT INTO usuario_rol(id_usuario,id_rol) SELECT ?,id_rol FROM rol WHERE nombre='DUENO_TIENDA'", vendedor);
+        jdbc.update("INSERT INTO tienda(id_tienda,id_propietario,nombre,slug) VALUES (?,?,?,?)", tienda, vendedor, "Tienda " + clave, "tienda-" + clave);
+        var administrador = UsernamePasswordAuthenticationToken.authenticated(admin, null, List.of());
+        var propietario = UsernamePasswordAuthenticationToken.authenticated(vendedor, null, List.of());
+        for (String ruta : List.of("/api/admin/usuarios", "/api/admin/tiendas")) {
+            mvc.perform(get(ruta)).andExpect(status().isUnauthorized());
+            mvc.perform(get(ruta).with(authentication(propietario))).andExpect(status().isForbidden());
+            mvc.perform(get(ruta).with(authentication(administrador)).param("size", "101")).andExpect(status().isBadRequest());
+            mvc.perform(get(ruta).with(authentication(administrador)).param("page", "-1")).andExpect(status().isBadRequest());
+        }
+        mvc.perform(get("/api/admin/usuarios").with(authentication(administrador)).param("texto", clave).param("size", "1"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalElementos").value(1))
+                .andExpect(jsonPath("$.contenido[0].idUsuario").value(vendedor.toString()))
+                .andExpect(jsonPath("$.contenido[0].roles[0]").value("DUENO_TIENDA"));
+        mvc.perform(get("/api/admin/tiendas").with(authentication(administrador)).param("texto", clave).param("size", "1"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalElementos").value(1))
+                .andExpect(jsonPath("$.contenido[0].idTienda").value(tienda.toString()))
+                .andExpect(jsonPath("$.contenido[0].idPropietario").value(vendedor.toString()));
+        mvc.perform(get("/api/admin/usuarios").with(authentication(administrador)).param("texto", clave).param("size", "1").param("page", "1"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.contenido.length()").value(0));
+    }
+
+    @Test
     void healthEsPublicoYCompruebaLaBase() throws Exception {
         mvc.perform(get("/health")).andExpect(status().isOk());
     }

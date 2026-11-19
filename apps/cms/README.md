@@ -33,6 +33,14 @@ Ejecuta `pnpm build` y `pnpm lint`. Con el backend y almacenamiento activos, ver
 
 ## Pendiente
 
-La administración general, la vitrina pública, el carrito y el checkout quedan fuera de esta etapa. Las tiendas nuevas nacen en BORRADOR; para publicar productos deben activarse y cada producto debe cumplir los requisitos del backend. La activación no abre todavía una vitrina pública. Las presentaciones muestran su combinación actual de variantes y permiten modificarla desde el producto. La vitrina pública se desarrollará más adelante en `apps/store`. El checkout depende de capacidades pendientes del backend.
+La vitrina pública, el carrito y el checkout quedan fuera de esta etapa. Las tiendas nuevas nacen en BORRADOR; para publicar productos deben activarse y cada producto debe cumplir los requisitos del backend. La activación no abre todavía una vitrina pública. Las presentaciones muestran su combinación actual de variantes y permiten modificarla desde el producto. La vitrina pública se desarrollará más adelante en `apps/store`. El checkout depende de capacidades pendientes del backend.
 
 En la revisión del panel se ejecutaron pruebas de integración de sesión, permisos entre tiendas, catálogo, inventario, apariencia, imágenes y banners contra PostgreSQL y almacenamiento temporales. La comprobación visual en navegador y el flujo OAuth completo requieren una verificación adicional en un entorno configurado.
+
+## Administración general
+
+La cuenta con `ADMIN_GENERAL` accede desde `/panel` a `/panel/administracion`, con secciones de usuarios, tiendas y plantillas. Se puede buscar y paginar usuarios y tiendas; las tiendas se consultan sin modificar su contenido. En usuarios se pueden asignar roles o retirar `DUENO_TIENDA`: esta última acción suspende sus tiendas activas y en borrador. El panel no ofrece cambiar los roles de la cuenta administradora actual ni crea una tienda para ella.
+
+En plantillas se administran su código, nombre, URL de vista previa y estado. El código es inmutable y representa una plantilla que deberá existir en la futura vitrina; agregar metadatos no implementa un diseño. Desactivar la plantilla predeterminada impide crear tiendas hasta volver a activarla.
+
+Las consultas `/api/admin/usuarios` y `/api/admin/tiendas` requieren `ADMIN_GENERAL` y admiten `texto`, `page` (desde 0) y `size` (1 a 100). Las acciones de modificación mantienen sesión y CSRF. La asignación del primer administrador se gestiona fuera del panel; este no modifica roles existentes automáticamente.

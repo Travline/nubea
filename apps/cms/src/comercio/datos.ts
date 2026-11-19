@@ -1,6 +1,6 @@
 import { solicitar } from '@/autenticacion/api'
 
-export interface Tienda { idTienda: string; nombre: string; slug: string; estado: string; plantilla: string }
+export interface Tienda { idTienda: string; idPropietario: string; nombre: string; slug: string; estado: string; plantilla: string }
 export interface Categoria { idCategoria: string; nombre: string; slug: string; activa: boolean }
 export interface Coleccion { idColeccion: string; nombre: string; slug: string; activa: boolean }
 export interface Producto { idProducto: string; idCategoria: string; nombre: string; descripcion: string; precioBase: number; estado: string }

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { Link, Outlet, useNavigate, useOutletContext, useParams } from 'react-router-dom'
+import { Link, Navigate, Outlet, useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { AlternarTema } from '@/components/alternar-tema'
 import { apiAutenticacion } from '@/autenticacion/api'
@@ -15,6 +15,11 @@ export function Panel() {
   const { error, ocupado, ejecutar } = useOperacion()
   async function salir() { await ejecutar(async () => { await apiAutenticacion.cerrarSesion(); limpiar(); navegar('/iniciar-sesion', { replace: true }) }) }
   return <div className="min-h-screen bg-muted/30"><header className="border-b bg-background"><div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-5 py-4"><Link to="/panel" className="flex items-center gap-2 text-xl font-bold"><img className="w-10" src="/assets/logo.webp" alt="" />Nubea</Link><div className="flex items-center gap-2"><span className="text-sm">{usuario?.nombres}</span><AlternarTema /><Button variant="outline" disabled={ocupado} onClick={() => void salir()}>Cerrar sesión</Button></div></div></header><main className="mx-auto max-w-6xl space-y-6 px-5 py-8"><Aviso error={error} /><Outlet /></main></div>
+}
+
+export function InicioPanel() {
+  const { usuario } = useSesion()
+  return usuario?.roles.includes('ADMIN_GENERAL') ? <Navigate to="/panel/administracion" replace /> : <MisTiendas />
 }
 
 export function MisTiendas() {

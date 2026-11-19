@@ -26,6 +26,15 @@ public class UsuarioService {
                 u.getEmail(), u.getEstado().name(), u.getRoles().stream().map(r -> r.getNombre().name()).collect(Collectors.toSet()), u.getFechaCreacion());
     }
 
+    @Transactional(readOnly = true)
+    public org.springframework.data.domain.Page<UsuarioResponse> listarAdministracion(String texto, int page, int size) {
+        var pagina = org.springframework.data.domain.PageRequest.of(page, size,
+                org.springframework.data.domain.Sort.by("nombres").ascending().and(org.springframework.data.domain.Sort.by("idUsuario")));
+        return usuarios.buscarAdministracion(texto == null ? "" : texto.trim(), pagina)
+                .map(u -> new UsuarioResponse(u.getIdUsuario(), u.getNombres(), u.getApellidoPaterno(), u.getApellidoMaterno(),
+                        u.getEmail(), u.getEstado().name(), u.getRoles().stream().map(r -> r.getNombre().name()).collect(Collectors.toSet()), u.getFechaCreacion()));
+    }
+
     @Transactional
     public void asignarRol(UUID id, NombreRol nombre) {
         jdbc.queryForList("SELECT id_usuario FROM usuario_plataforma WHERE id_usuario = ? FOR UPDATE", id);

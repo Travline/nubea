@@ -155,6 +155,13 @@ public class TiendaService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public org.springframework.data.domain.Page<TiendaResponse> listarAdministracion(String texto, int page, int size) {
+        var pagina = org.springframework.data.domain.PageRequest.of(page, size,
+                org.springframework.data.domain.Sort.by("nombre").ascending().and(org.springframework.data.domain.Sort.by("idTienda")));
+        return tiendaRepository.buscarAdministracion(texto == null ? "" : texto.trim(), pagina).map(this::toResponse);
+    }
+
     // ========== APOYO ==========
     private TiendaResponse toResponse(Tienda t) {
         String plantilla = configuracionRepository.findById(t.getIdTienda())

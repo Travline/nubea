@@ -6,6 +6,15 @@ import java.util.UUID;
 import java.util.List;
 
 public interface TiendaRepository extends JpaRepository<Tienda, UUID> {
+    @org.springframework.data.jpa.repository.Query("""
+        SELECT t FROM Tienda t
+        WHERE :texto = '' OR LOWER(t.nombre) LIKE LOWER(CONCAT('%', :texto, '%'))
+            OR LOWER(t.slug) LIKE LOWER(CONCAT('%', :texto, '%'))
+        """)
+    org.springframework.data.domain.Page<Tienda> buscarAdministracion(
+            @org.springframework.data.repository.query.Param("texto") String texto,
+            org.springframework.data.domain.Pageable pageable);
+
     boolean existsByPropietario_IdUsuario(UUID idUsuario); //Verifica si ya tiene alguna tienda 
     boolean existsBySlug(String slug); //Verificar si un slug ya existe
     List<Tienda> findByNombreContainingIgnoreCase(String nombre); //Buscar tiendas por nombre (sin importar mayúsculas/minúsculas)
