@@ -13,7 +13,7 @@ La integración utiliza las entidades de M1 y M2 junto con los servicios de M3. 
 
 ## M4: checkout y pagos
 
-Solo una cuenta `ACTIVA` puede servir para nuevos cobros; M4 aún debe implementar y hacer cumplir esa comprobación. `GET cuenta-pago` devuelve identificador enmascarado, no credenciales: no usarlo como fuente de credenciales de servidor ni descifrar en React. El vault actual es una abstracción genérica de cifrado, no existe todavía un puerto de M4 que devuelva credenciales tipadas, gestione refresh ni coordine pagos con desconexión.
+Solo una cuenta `ACTIVA` debe servir para nuevos cobros; el núcleo interno de reserva comprueba ese estado, pero no hay API de checkout ni flujo de cobro completo. `GET cuenta-pago` devuelve identificador enmascarado, no credenciales: no usarlo como fuente de credenciales de servidor ni descifrar en React. El vault actual es una abstracción genérica de cifrado, no existe todavía un puerto de M4 que devuelva credenciales tipadas, gestione refresh ni coordine pagos con desconexión.
 
 Antes de integrar, acordar un servicio interno de credenciales que valide tienda y estado, use `PaymentCredentialVault` solo en servidor y no registre tokens. El sobre cifrado actual contiene tres componentes separados por `.`: access token y refresh token en Base64 URL sin padding y vencimiento absoluto ISO-8601 opcional; la finalidad autenticada es `mercadopago:{idTienda}`. Tratar ese formato como implementación interna versionable, no como API pública. Coordinar semántica de pagos ya iniciados y carreras entre comprobación, uso y desconexión; esta última no cancela pagos en curso.
 

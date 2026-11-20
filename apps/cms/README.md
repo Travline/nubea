@@ -27,7 +27,7 @@ Para habilitarla, configura el backend según [la guía OAuth](../../docs/techni
 
 ## Despliegue y comprobaciones
 
-En Vercel configura `apps/cms` como directorio raíz y `VITE_API_URL` con el origen HTTPS del backend. En el backend configura el origen exacto de Vercel en `APP_CORS_ALLOWED_ORIGINS`, `SESSION_COOKIE_SECURE=true` y `SESSION_COOKIE_SAME_SITE=none`. Algunas políticas del navegador pueden bloquear cookies entre sitios. La sesión actual del backend se guarda en memoria y se pierde al reiniciar la instancia.
+Para desplegar CMS y vitrinas juntos en Vercel usa la raíz del repositorio, no `apps/cms` como directorio raíz. Sigue la [guía de dominio único](../../docs/despliegue/dominio-unico.md). El backend necesita CORS y cookies configuradas para el origen del frontend; algunas políticas del navegador pueden bloquear cookies entre sitios. La sesión actual se guarda en memoria y se pierde al reiniciar la instancia.
 
 Ejecuta `pnpm build` y `pnpm lint`. Con el backend y almacenamiento activos, verifica registro, recarga y cierre de sesión; crea dos tiendas y cambia entre ellas; crea categoría, producto y presentación, ajusta stock, prueba filtros y publicación; carga imágenes, colecciones y banners; cambia la configuración visual. Comprueba validaciones, acceso a una tienda ajena y vencimiento de sesión. La prueba completa de OAuth requiere habilitar la integración y usar cuentas de prueba de Mercado Pago.
 
@@ -35,7 +35,7 @@ Ejecuta `pnpm build` y `pnpm lint`. Con el backend y almacenamiento activos, ver
 
 La vitrina pública y el carrito están en `apps/store`, bajo `/tienda/{slug}`. Las tiendas nuevas nacen en BORRADOR; para aparecer en la vitrina deben activarse y los productos deben cumplir los requisitos de publicación. El checkout y los cobros todavía no están implementados. Las presentaciones muestran su combinación de variantes y permiten modificarla desde el producto.
 
-En la revisión del panel se ejecutaron pruebas de integración de sesión, permisos entre tiendas, catálogo, inventario, apariencia, imágenes y banners contra PostgreSQL y almacenamiento temporales. La comprobación visual en navegador y el flujo OAuth completo requieren una verificación adicional en un entorno configurado.
+En la revisión del panel se ejecutaron pruebas de integración de sesión, permisos entre tiendas, catálogo, inventario, apariencia, imágenes y banners contra PostgreSQL y almacenamiento temporales. Se observó una vinculación OAuth con retorno exitoso y estado ACTIVA en el panel; aún falta validar cuentas de prueba y el ciclo de cobro completo.
 
 ## Administración general
 

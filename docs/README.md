@@ -15,4 +15,6 @@
 - [Inventario](technical/inventario-consulta.md), [consulta de cuenta](technical/cuenta-pago-consulta.md) y [OAuth y desconexión](technical/mercadopago-oauth.md): contratos específicos.
 - [Visión general del backend](technical/backend-overview.md): panorama arquitectónico anterior. Contrastar sus detalles con las guías anteriores y el código actual: contiene descripciones de diseño que requieren actualización, especialmente sobre autenticación y banners.
 
-- [Módulo 4: estado actual](technical/modulo-4.md): carrito, direcciones, pedidos existentes, impuestos y trabajo pendiente de checkout y pagos.
+- [Módulo 4: estado actual](technical/modulo-4.md): carrito, direcciones, pedidos existentes, verificaciones y trabajo pendiente de checkout, Orders y Google Places.
+- [Migraciones de la base](integracion/base-de-datos.md): Flyway y versiones actuales. La [guía histórica del modelo](technical/database.md) usa nombres anteriores y no es el esquema vigente.
+- [Dominio único](despliegue/dominio-unico.md) y [backend Render](despliegue/render-backend.md): configuración y límites del despliegue observado.

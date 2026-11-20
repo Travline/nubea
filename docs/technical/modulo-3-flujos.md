@@ -19,7 +19,7 @@ Para cada historia, los criterios funcionales están en [HU-M3](../functional/uh
 3. Activación: volver a bloquear tienda y verificar el intento y la titularidad; guardar cuenta externa, sobre cifrado y estado ACTIVA en una transacción. Un nuevo inicio o desconexión invalida intentos consumidos en curso.
 4. Desconexión: bloquear tienda y cuenta, invalidar intentos y borrar credencial/identificador dentro de la transacción; registrar historial. Al repetirse, no duplica historial.
 
-La vinculación local no prueba que el proveedor conserve autorización en el futuro. Falta diseñar renovación, desautorización externa/webhooks, reconciliación y operaciones de pagos de M4. Ningún secreto, state, code, URL completa de autorización ni cabeceras de proveedor debe registrarse o enviarse a frontend.
+La vinculación no prueba que el proveedor conserve autorización en el futuro. Faltan renovación, desautorización externa/webhooks, reconciliación y pagos de M4. La URL de autorización se entrega al navegador para redirigir al proveedor; no debe registrarse. Los tokens, secretos, códigos del callback ni cabeceras del proveedor deben registrarse o entregarse al frontend.
 
 ## Banners: comportamiento y trabajo pendiente
 

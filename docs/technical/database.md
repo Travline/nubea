@@ -1,5 +1,7 @@
 # Guía técnica de la Base de Datos E-commerce Multi‑Tienda
 
+> **Documento histórico de diseño:** los nombres en inglés y el modelo de 19 entidades no describen el esquema actual. Para implementar o migrar, consultar las migraciones Flyway en `backend/src/main/resources/db/migration`, la [guía de migraciones](../integracion/base-de-datos.md) y el [estado del módulo 4](modulo-4.md). El checkout y los pagos no están disponibles mediante la API.
+
 PostgreSQL + Spring Boot | Modelo DDL final
 
 Documento de contexto para el equipo: explica la función de cada entidad, sus campos, restricciones, índices, relaciones, reglas multi‑tenant y decisiones de integridad.

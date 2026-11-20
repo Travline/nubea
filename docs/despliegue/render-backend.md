@@ -2,16 +2,16 @@
 
 ## Estado y alcance
 
-**El backend todavía no está listo para producción.** Esta guía prepara un despliegue de prueba y enumera lo necesario antes de recibir usuarios reales. No se ha hecho un despliegue en Render ni se ha probado la conexión con el proyecto real de Supabase o Mercado Pago.
+**El backend todavía no está listo para cobros en producción.** En el entorno observado, `https://nubea.onrender.com/health` respondió 200 y se mostró una cuenta de Mercado Pago ACTIVA tras el retorno OAuth. Son comprobaciones puntuales, no validan el checkout, Orders, la renovación OAuth, las notificaciones ni todas las operaciones de almacenamiento.
 
-El repositorio incluye `backend/Dockerfile`, el plugin de empaquetado ejecutable y un endpoint `/health`. El repositorio contiene cambios locales sin commit. Render despliega la revisión presente en la rama remota, no los cambios locales. La etapa de imágenes se probó localmente con PostgreSQL y RustFS, pero requiere publicar esos cambios en la rama elegida antes de desplegarlos. No configurar Google OAuth en esta etapa.
+El repositorio incluye `backend/Dockerfile`, el plugin de empaquetado ejecutable y un endpoint `/health`. Render despliega la revisión presente en la rama remota, no los cambios locales. La etapa de imágenes se probó localmente con PostgreSQL y RustFS; la compatibilidad con el almacenamiento configurado en Render requiere comprobación independiente. Google OAuth no forma parte de esta etapa.
 
 Bloqueos y riesgos antes de producción:
 
 - Completar y probar el acceso con cookies, CSRF y CORS desde el frontend y sus dominios reales. La sesión actual vive en memoria: se pierde al reiniciar y no se comparte entre instancias. Para varias instancias, implementar sesiones compartidas; con una sola, asumir la interrupción de sesiones durante los despliegues y reinicios.
 - Asegurar el aprovisionamiento del primer administrador. Actualmente el registro es público, no verifica la titularidad del correo y la variable `APP_BOOTSTRAP_ADMIN_EMAIL` otorga el rol a la cuenta activa con ese correo cuando no existe otro administrador. **No confiar en este mecanismo en una aplicación abierta al público**: implementar una inicialización fuera de banda o impedir el acceso público hasta comprobar la identidad. Retirar la variable tras utilizarla.
 - Provisionar almacenamiento S3 compatible y CDN, y verificar subida, lectura y limpieza desde Render. Las URLs son públicas incluso para imágenes de borradores. La validación actual comprueba tamaño y cabeceras, pero no decodifica el archivo completo.
-- La vinculación con Mercado Pago está implementada, pero no se ha validado con una aplicación y cuentas reales. La renovación de credenciales y la revocación remota siguen pendientes; las operaciones de cobro son de M4. Mantener OAuth desactivado hasta completar esas verificaciones.
+- Se observó una vinculación OAuth exitosa, pero su entorno de token no quedó confirmado. La renovación de credenciales, la revocación remota, el checkout y los cobros siguen pendientes. La bandera OAuth controla la vinculación; habilitarla no habilita cobros. No realizar pruebas de pago reales hasta completar [M4](../technical/modulo-4.md).
 - La limpieza de imágenes depende del proceso programado del backend mientras esté activo; conservar los datos de PostgreSQL y los archivos del proveedor elegido.
 
 ## 1. Preparar el artefacto
@@ -64,15 +64,15 @@ Introducir valores reales en la sección **Environment** de Render, sin guardarl
 | `STORAGE_S3_BUCKET` | Nombre del bucket. |
 | `STORAGE_S3_ACCESS_KEY` / `STORAGE_S3_SECRET_KEY` | Credenciales de acceso con permisos mínimos para subir y eliminar objetos. |
 | `STORAGE_PUBLIC_BASE_URL` | Base HTTPS pública del CDN o bucket, sin clave de objeto. |
-| `APP_CORS_ALLOWED_ORIGINS` | `https://nubea-clients.vercel.app`; añadir más adelante el origen exacto del frontend de tiendas, separado por coma. No usar `*`. |
+| `APP_CORS_ALLOWED_ORIGINS` | `https://nubea.vercel.app`; añadir, separados por coma, otros orígenes exactos autorizados. No usar `*`. |
 | `SESSION_COOKIE_SECURE` | `true` en HTTPS. |
 | `SESSION_COOKIE_SAME_SITE` | `none` para el frontend en Vercel y una API en `onrender.com`, con HTTPS y `Secure`. También se aplica a la cookie CSRF. Algunos navegadores bloquean cookies de terceros aun con `none`; probar y considerar dominios propios bajo el mismo sitio. |
-| `MERCADOPAGO_OAUTH_ENABLED` | `false` hasta validar Mercado Pago con credenciales y URLs reales. |
+| `MERCADOPAGO_OAUTH_ENABLED` | `false` por defecto; `true` habilita la vinculación OAuth cuando sus credenciales y URLs estén configuradas. No habilita cobros. |
 | `APP_BOOTSTRAP_ADMIN_EMAIL` | Dejar vacío hasta disponer de un procedimiento de inicialización seguro; no es una contraseña ni verifica la propiedad del correo. |
 
 Los formatos completos están en [`.env.render.example`](../../.env.render.example). Sustituir los marcadores con datos del panel, sin compartir contraseñas ni claves en chats o commits. El bucket y las credenciales aún no han sido verificados contra Supabase.
 
-Si más adelante se habilita Mercado Pago, configurar además las variables `MERCADOPAGO_OAUTH_*` descritas en [la guía de OAuth](../technical/mercadopago-oauth.md), incluyendo claves de cifrado persistentes, URL exacta del callback y retorno fijo del panel. No exponer secretos ni registrar las consultas del callback. Google OAuth sigue fuera de alcance.
+Para habilitar OAuth configurar las variables `MERCADOPAGO_OAUTH_*` descritas en [la guía de OAuth](../technical/mercadopago-oauth.md), incluyendo claves de cifrado persistentes, URL exacta del callback y retorno fijo del panel. No exponer secretos ni registrar las consultas del callback. Google OAuth sigue fuera de alcance.
 
 ## Primer administrador para la prueba
 

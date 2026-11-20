@@ -5,7 +5,7 @@ Esta es una hoja de ruta, no una afirmación de que el sistema esté listo para 
 ## Requisitos previos
 
 1. Configurar la sesión y CORS para el entorno y verificar accesos de propietario, usuario ajeno, administrador y cuentas inactivas. El login local usa cookie de sesión y CSRF.
-2. La creación de tienda inicializa configuración y cuenta, y M2 crea inventario al crear una presentación. M4 queda pendiente para reservas y uso seguro de cuentas ACTIVAS; probar las condiciones de carrera propias del checkout al implementarlo.
+2. La creación de tienda inicializa configuración y cuenta, y M2 crea inventario al crear una presentación. M4 tiene un núcleo interno de reserva, pero falta conectarlo al checkout y al uso seguro de cuentas ACTIVAS; probar las condiciones de carrera antes de habilitar cobros.
 3. Configurar el dominio CDN y las políticas de acceso público de imágenes; verificar la operación y alertas de la cola durable de limpieza. Ver [imágenes y almacenamiento](imagenes-almacenamiento.md).
 4. Para pagos, verificar con Mercado Pago y cuentas de prueba reales la aplicación, callback exacto, PKCE, vencimiento y refresh. Implementar gestión de expiración y credenciales, desautorización externa, monitoreo y política para pagos en curso. El código actual no implementa refresh ni revocación remota. Acordar con seguridad/operaciones protección de secretos y retención de respaldos.
 

@@ -1,6 +1,6 @@
 # Plataforma y vitrinas en un dominio
 
-El proyecto de Vercel utiliza la raíz del repositorio. Node 20.19 o superior y pnpm son necesarios para construir los dos proyectos Vite con sus propios lockfiles. El servidor raíz tiene su propio lockfile de npm.
+El proyecto de Vercel utiliza la raíz del repositorio. Usar Node 22 y conservar los lockfiles del servidor raíz y de ambas aplicaciones. `npm ci` instala pnpm 10.28.2 como dependencia de desarrollo; el script raíz utiliza explícitamente esa versión para compilar ambas aplicaciones.
 
 ## Desarrollo local
 
@@ -11,10 +11,12 @@ El proyecto de Vercel utiliza la raíz del repositorio. Node 20.19 o superior y 
 
 ## Vercel y backend
 
-Crear un proyecto Vercel con la raíz del repositorio como Root Directory. Configurar `VITE_API_URL` con el origen HTTPS real del backend y mantener `VITE_MERCADOPAGO_OAUTH_ENABLED=false`. La compilación raíz instala cada frontend con `pnpm install --frozen-lockfile` y publica sus archivos en `public/plataforma` y `public/tienda`. Vercel sirve esos archivos desde su CDN; Express los sirve solamente en local. Ver [Express en Vercel](https://vercel.com/docs/frameworks/backend/express).
+Crear un proyecto Vercel con la raíz del repositorio como Root Directory y preset `Other`; no importar `cms` o `store` por separado para este despliegue conjunto. El `vercel.json` configura `pnpm run build`; la salida está en `public`. No seleccionar el preset `Services` sin implementar su configuración propia. La compilación raíz instala cada frontend con `pnpm install --frozen-lockfile` y publica sus archivos en `public/plataforma` y `public/tienda`.
 
-Configurar `APP_CORS_ALLOWED_ORIGINS` en el backend con el origen exacto de Vercel, sin ruta ni barra final. Incluir también los orígenes de vista previa autorizados cuando se necesiten. Si frontend y backend son sitios distintos, configurar `SESSION_COOKIE_SECURE=true` y `SESSION_COOKIE_SAME_SITE=none`; tanto la cookie de sesión como la CSRF usan esos ajustes. El cliente envía credenciales y obtiene el token CSRF del backend. Algunos navegadores bloquean cookies de terceros incluso con esta configuración; comprobar registro, sesión y cierre en los navegadores objetivo y considerar dominios que compartan sitio si fuera necesario.
+En el entorno observado, configurar `VITE_API_URL=https://nubea.onrender.com` en Vercel. `VITE_MERCADOPAGO_OAUTH_ENABLED=true` muestra la conexión OAuth del CMS cuando el backend también está configurado; con `false` la oculta. Esta opción no habilita cobros. Las variables `VITE_*` son públicas y sus cambios requieren recompilar. Comprobar que los lockfiles de ambas aplicaciones estén incluidos en la revisión remota: si faltan o se usa una versión incompatible de pnpm falla la instalación congelada.
+
+Configurar `APP_CORS_ALLOWED_ORIGINS=https://nubea.vercel.app` en el backend, sin ruta ni barra final. Incluir también los orígenes de vista previa autorizados cuando se necesiten. Si frontend y backend son sitios distintos, configurar `SESSION_COOKIE_SECURE=true` y `SESSION_COOKIE_SAME_SITE=none`; tanto la cookie de sesión como la CSRF usan esos ajustes. El cliente envía credenciales y obtiene el token CSRF del backend. Algunos navegadores bloquean cookies de terceros incluso con esta configuración; comprobar registro, sesión y cierre en los navegadores objetivo y considerar dominios que compartan sitio si fuera necesario.
 
 Una vez desplegado, comprobar la raíz, recargas de ambos frontends, archivos inexistentes, una tienda activa y los flujos de sesión desde el dominio real. Actualizar el origen permitido en el backend antes de esas pruebas.
 
-OAuth de Mercado Pago permanece desactivado. Para habilitarlo, seguir `../technical/mercadopago-oauth.md`, configurar `MERCADOPAGO_OAUTH_RETORNO_PANEL=https://<dominio>/plataforma/panel/retorno-pago` y activar también `VITE_MERCADOPAGO_OAUTH_ENABLED` antes de recompilar el CMS. El callback registrado en Mercado Pago sigue apuntando al backend.
+Para configurar la vinculación OAuth seguir [la guía de Mercado Pago](../technical/mercadopago-oauth.md). Se observó un retorno exitoso en el panel, pero los pagos y webhooks aún no están implementados. No almacenar `client_secret`, claves de cifrado o tokens en Vercel ni en variables `VITE_*`.

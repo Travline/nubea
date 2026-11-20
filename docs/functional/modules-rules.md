@@ -1,5 +1,7 @@
 # NUBEA · Reglas de Negocio por Módulo v1.2
 
+> **Referencia de diseño:** las reglas siguientes incluyen comportamiento objetivo y simulaciones del modelo; no implican que todos los flujos estén implementados o disponibles. En particular, checkout, pagos, renovación OAuth y vencimiento de reservas siguen pendientes. El [estado del módulo 4](../technical/modulo-4.md) y el código prevalecen sobre este documento.
+
 El modelo v1.2 (30 tablas, 4 módulos, PostgreSQL) está bien definido: cada regla de negocio se garantiza en la base de datos, en el backend Spring Boot, o en ambos. Este documento indica para cada regla dónde se controla y con qué elemento concreto.
 
 ## Alcance y convenciones
@@ -29,7 +31,7 @@ Una sola cuenta global por persona; los roles indican el tipo de usuario y la ti
 | **RN-M1-03** | El documento es opcional; si se registra, tipo, número y país emisor van juntos y no se repiten entre usuarios. | BD | `chk_documento_conjunto` + `uq_usuario_documento` |
 | **RN-M1-04** | El formato del número depende del tipo (DNI: 8 dígitos; CE y pasaporte según su norma). | Backend | Validador del DTO de registro |
 | **RN-M1-05** | Una identidad externa (Google) se vincula solo tras acreditar titularidad, nunca por coincidencia de correo; una cuenta de Google pertenece a un solo usuario. | BD + Backend | `uq_usuario_identidad_oidc` + flujo OAuth verificado |
-| **RN-M1-06** | Una identidad LOCAL exige contraseña cifrada; una GOOGLE exige issuer y subject y no guarda contraseña. | BD | `chk_identidad_modalidad`; el backend cifra con BCrypt |
+| **RN-M1-06** | Una identidad LOCAL exige contraseña cifrada; una GOOGLE exige issuer y subject y no guarda contraseña. | BD | `chk_identidad_modalidad`; el backend cifra contraseñas locales con Argon2 |
 | **RN-M1-07** | Al registrarse, todo usuario recibe el rol CLIENTE. | Backend | Servicio de registro, misma transacción |
 | **RN-M1-08** | Al crear su primera tienda, el usuario recibe el rol DUENO_TIENDA en la misma transacción. | Backend | Servicio de creación de tienda |
 | **RN-M1-09** | El rol ADMIN_GENERAL solo lo asigna otro ADMIN_GENERAL o la carga inicial del sistema. | Backend | Spring Security: `hasRole('ADMIN_GENERAL')` |

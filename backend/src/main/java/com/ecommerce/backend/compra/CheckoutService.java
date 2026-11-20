@@ -47,6 +47,8 @@ public class CheckoutService {
             INSERT INTO checkout_idempotencia(id_usuario,id_tienda,clave,id_direccion,total_esperado,id_pedido)
             SELECT ?,id_tienda,?,?,?,? FROM pedido WHERE id_pedido=?
             """, usuario,clave,idDireccion,totalEsperado,resultado.idPedido(),resultado.idPedido());
+        jdbc.update("INSERT INTO intento_order_mercadopago(id_intento,id_pedido,clave_proveedor) VALUES (?,?,?)",
+                UUID.randomUUID(),resultado.idPedido(),UUID.randomUUID());
         return resultado;
     }
 

@@ -1,79 +1,11 @@
-# Tienda de Nubea
+# Vitrina de Nubea
 
-El código propio usa nombres y comentarios en español, en consonancia con el backend. Se mantienen los nombres exigidos por React, las bibliotecas y los contratos HTTP; los hooks conservan el prefijo `use` que requiere React. Esta aplicación mantiene sus propios tipos y dependencias, de forma independiente del CMS.
+Aplicación React y Vite para consultar tiendas y productos públicos, gestionar un carrito y direcciones con una cuenta de Nubea y consultar pedidos existentes. Se publica bajo `/tienda/<slug>`; las tiendas y productos deben estar activos y publicados para aparecer.
 
-# React + TypeScript + Vite
+El carrito muestra precios actuales, disponibilidad y direcciones guardadas. La elección de dirección es temporal y no reserva stock. **El checkout y los cobros todavía no están disponibles**; Google Places tampoco está integrado. Consulta el [estado del módulo 4](../../docs/technical/modulo-4.md).
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## Desarrollo
 
-Currently, two official plugins are available:
+En este directorio ejecuta `pnpm install --frozen-lockfile` y `pnpm dev` con pnpm 10. Para una API distinta de `http://localhost:8080`, configura `VITE_API_URL` con el origen, sin `/api` ni barra final, y reinicia Vite. El backend debe permitir el origen exacto del frontend por CORS y configurar las cookies para el entorno; las solicitudes autenticadas usan sesión y CSRF. Ejecuta `pnpm build` y `pnpm lint` para verificar la aplicación.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
-```
-
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
-```
+Para compilar CMS y vitrina juntos desde la raíz del repositorio y publicarlos en un único dominio, sigue la [guía de despliegue](../../docs/despliegue/dominio-unico.md).

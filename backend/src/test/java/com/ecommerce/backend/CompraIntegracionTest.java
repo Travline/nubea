@@ -110,14 +110,18 @@ class CompraIntegracionTest {
                 () -> checkout.reservarIdempotente(cliente,slug,direccion,"checkout_cambio_12345",new java.math.BigDecimal("20.00")));
         assertEquals(3,jdbc.queryForObject("SELECT stock_actual FROM inventario WHERE id_presentacion=?",Integer.class,presentacion));
         assertEquals(0,jdbc.queryForObject("SELECT count(*) FROM pedido WHERE id_carrito=?",Integer.class,carrito));
+        assertEquals(0,jdbc.queryForObject("SELECT count(*) FROM checkout_idempotencia WHERE id_usuario=?",Integer.class,cliente));
         var resultado=checkout.reservarIdempotente(cliente,slug,direccion,"checkout_prueba_12345",new java.math.BigDecimal("23.60"));
         assertEquals(0,resultado.total().compareTo(new java.math.BigDecimal("23.60")));
         assertEquals(1,jdbc.queryForObject("SELECT stock_actual FROM inventario WHERE id_presentacion=?",Integer.class,presentacion));
         assertEquals("CERRADO",jdbc.queryForObject("SELECT estado FROM carrito WHERE id_carrito=?",String.class,carrito));
         assertEquals(0,jdbc.queryForObject("SELECT subtotal FROM pedido WHERE id_pedido=?",java.math.BigDecimal.class,resultado.idPedido()).compareTo(new java.math.BigDecimal("20.00")));
+        UUID claveProveedor=jdbc.queryForObject("SELECT clave_proveedor FROM intento_order_mercadopago WHERE id_pedido=?",UUID.class,resultado.idPedido());
         var repetido=checkout.reservarIdempotente(cliente,slug,direccion,"checkout_prueba_12345",new java.math.BigDecimal("23.60"));
         assertEquals(resultado.idPedido(),repetido.idPedido());
+        assertEquals(claveProveedor,jdbc.queryForObject("SELECT clave_proveedor FROM intento_order_mercadopago WHERE id_pedido=?",UUID.class,resultado.idPedido()));
         assertEquals(1,jdbc.queryForObject("SELECT count(*) FROM pedido WHERE id_carrito=?",Integer.class,carrito));
+        assertEquals(1,jdbc.queryForObject("SELECT count(*) FROM intento_order_mercadopago WHERE id_pedido=?",Integer.class,resultado.idPedido()));
         assertEquals(1,jdbc.queryForObject("SELECT stock_actual FROM inventario WHERE id_presentacion=?",Integer.class,presentacion));
         assertThrows(com.ecommerce.backend.shared.exception.ReglaNegocioException.class,
                 () -> checkout.reservarIdempotente(cliente,slug,direccion,"checkout_prueba_12345",new java.math.BigDecimal("24.00")));
