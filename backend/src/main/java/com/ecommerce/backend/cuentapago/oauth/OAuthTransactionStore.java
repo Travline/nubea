@@ -63,9 +63,15 @@ public class OAuthTransactionStore {
         int vigente = em.createNativeQuery("UPDATE oauth_mercado_pago_intento SET estado='INVALIDADO', verifier_cifrado='' WHERE id_intento=:id AND estado='CONSUMIDO'")
                 .setParameter("id", intento.id()).executeUpdate();
         if (vigente != 1) throw new OAuthConflictoException("El intento ya no está vigente");
+        Number ajenos = (Number) em.createNativeQuery("""
+                SELECT count(*) FROM intento_order_mercadopago i JOIN pedido p ON p.id_pedido=i.id_pedido
+                WHERE p.id_tienda=:tienda AND i.cuenta_receptora IS NOT NULL AND i.cuenta_receptora<>:cuenta
+                  AND (p.estado='PENDIENTE_PAGO' OR i.estado='REEMBOLSO_PENDIENTE')
+                """).setParameter("tienda",intento.tienda()).setParameter("cuenta",cuenta).getSingleResult();
+        if (ajenos.longValue()>0) throw new OAuthConflictoException("Reconecta la cuenta original para resolver los pagos pendientes");
         int actualizadas = em.createNativeQuery("""
                 UPDATE cuenta_pago_tienda SET id_cuenta_externa=:cuenta, referencia_credencial=:credencial,
-                    estado='ACTIVA', fecha_vinculacion=now(), fecha_actualizacion=now()
+                    estado='ACTIVA', ambiente_pago=NULL, renovacion_dueno=NULL, renovacion_hasta=NULL, fecha_vinculacion=now(), fecha_actualizacion=now()
                 WHERE id_tienda=:tienda AND estado <> 'ACTIVA'
                 """).setParameter("cuenta", cuenta).setParameter("credencial", cifrado).setParameter("tienda", intento.tienda()).executeUpdate();
         if (actualizadas != 1) throw new OAuthCuentaActivaException();

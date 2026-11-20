@@ -38,6 +38,13 @@ class MercadoPagoOAuthAdapterTest {
             assertEquals("access", credentials.accessToken());
             assertTrue(recibido.get().contains("\"grant_type\":\"authorization_code\""));
             assertTrue(recibido.get().contains("\"code_verifier\":\"verifier\""));
+            var renovadas = adapter.renovar("refresh-anterior");
+            assertEquals("refresh", renovadas.refreshToken());
+            assertTrue(recibido.get().contains("\"grant_type\":\"refresh_token\""));
+            assertTrue(recibido.get().contains("\"refresh_token\":\"refresh-anterior\""));
+            respuesta.set("{\"error\":\"invalid_grant\"}"); estado.set(400);
+            assertThrows(MercadoPagoOAuthPort.AutorizacionRevocada.class, () -> adapter.renovar("viejo"));
+            estado.set(200);
             respuesta.set("{\"user_id\":123,\"access_token\":\"access\"}");
             assertThrows(OAuthProveedorException.class, () -> adapter.canjear("code", "verifier"));
             respuesta.set("{\"error\":\"secret-provider-error\"}");

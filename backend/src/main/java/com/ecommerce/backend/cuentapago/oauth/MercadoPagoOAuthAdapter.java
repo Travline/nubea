@@ -27,16 +27,28 @@ public class MercadoPagoOAuthAdapter implements MercadoPagoOAuthPort {
                 .encode().buildAndExpand(config.callbackUrl()).toUriString();
     }
     public Credenciales canjear(String code, String verifier) {
+        return solicitar(Map.of("client_id", config.clientId(), "client_secret", config.clientSecret(),
+                "grant_type", "authorization_code", "code", code, "redirect_uri", config.callbackUrl(), "code_verifier", verifier));
+    }
+    public Credenciales renovar(String refreshToken) {
+        return solicitar(Map.of("client_id",config.clientId(),"client_secret",config.clientSecret(),
+                "grant_type","refresh_token","refresh_token",refreshToken));
+    }
+    private Credenciales solicitar(Map<String,String> cuerpo) {
         try {
             @SuppressWarnings("rawtypes")
-            Map response = client.post().uri(config.tokenUrl()).body(Map.of("client_id", config.clientId(), "client_secret", config.clientSecret(),
-                    "grant_type", "authorization_code", "code", code, "redirect_uri", config.callbackUrl(), "code_verifier", verifier))
+            Map response = client.post().uri(config.tokenUrl()).body(cuerpo)
                     .retrieve().body(Map.class);
             if (response == null || response.get("user_id") == null || !(response.get("access_token") instanceof String access) || access.isBlank()
                     || !(response.get("refresh_token") instanceof String refresh) || refresh.isBlank()
                     || !response.get("user_id").toString().matches("[0-9]{1,100}")) throw new IllegalStateException();
             Object expires = response.get("expires_in");
             return new Credenciales(response.get("user_id").toString(), access, refresh, expires instanceof Number n ? n.longValue() : null);
+        } catch (org.springframework.web.client.HttpClientErrorException ex) {
+            // Solo invalid_grant demuestra revocación; 401 por configuración no invalida al vendedor.
+            if (ex.getStatusCode().value()==400 && ex.getResponseBodyAsString().contains("invalid_grant"))
+                throw new AutorizacionRevocada();
+            throw new OAuthProveedorException();
         } catch (RuntimeException ex) { throw new OAuthProveedorException(); }
     }
 }

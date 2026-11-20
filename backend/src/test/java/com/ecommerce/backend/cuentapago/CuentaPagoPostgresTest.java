@@ -18,7 +18,8 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
-@SpringBootTest
+// Estas pruebas sombrean tablas con tipos distintos: no compartir planes preparados con otros contextos.
+@SpringBootTest(properties="spring.datasource.hikari.data-source-properties.prepareThreshold=0")
 @AutoConfigureMockMvc
 @Transactional
 @EnabledIfEnvironmentVariable(named = "CUENTA_PAGO_PG_TEST", matches = "true")

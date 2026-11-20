@@ -2,27 +2,9 @@
 
 La vitrina permite agregar presentaciones al carrito, iniciar sesión, ajustar cantidades, gestionar direcciones y consultar pedidos existentes. El panel del vendedor permite consultar pedidos existentes y el administrador puede programar una nueva vigencia de IGV. Los precios del carrito son actuales y agregar productos no reserva inventario.
 
-El carrito muestra las direcciones guardadas y permite elegir una para preparar la compra. La selección es temporal: todavía no crea una reserva ni un pedido y debe elegirse nuevamente al recargar.
+El checkout está conectado a la reserva idempotente, al token OAuth del vendedor y a Checkout Pro vía Orders. Incluye cola de notificaciones, conciliación, renovación OAuth, vencimientos y reembolsos completos desde el panel, con reposición opcional de stock. Las operaciones inciertas conservan sus claves y no liberan inventario sin resolución.
 
-**Pendiente:** el checkout y la creación de pedidos no están disponibles mediante la API ni la vitrina. Existe un núcleo interno de reserva transaccional probado de forma inicial, que aún no está conectado al pago ni listo para exponerse. Los cobros con Mercado Pago, la renovación OAuth, los webhooks, la conciliación, el vencimiento y los reembolsos todavía no están implementados. No se debe habilitar un flujo de cobro hasta completarlos y probarlos. La cuenta de pago no se puede desconectar mientras haya pedidos o pagos sin resolver.
-
-La reserva interna admite una clave de idempotencia por comprador y tienda y comprueba el total esperado antes de descontar stock. Su registro se crea en la misma transacción que el pedido. Esta capacidad todavía no constituye una API de checkout ni gestiona el vencimiento de las reservas.
-
-Se han añadido componentes internos para verificar la firma de webhooks y enviar solicitudes de creación a Orders API, probados con un servidor simulado. La reserva idempotente registra un intento durable y una clave estable del proveedor en la misma transacción. Estos componentes no están conectados a una ruta pública ni procesan pagos; no se deben registrar webhooks ni habilitar cobros basándose en ellos. Queda por validar con Mercado Pago la compatibilidad de OAuth de vendedores con Orders en Perú, el vencimiento de 30 minutos y la exclusión completa de medios offline.
-
-## Decisiones y trabajo restante de pagos
-
-El comprador usa una cuenta de Nubea. Cada pedido corresponde a una tienda y se pretende cobrar con el token OAuth del vendedor de esa tienda; la aplicación de Nubea tiene sus propias credenciales OAuth. No se prevén comisión adicional de Nubea, pagos offline, cobro de envío ni compras como invitado. Mercado Pago puede cobrar sus propias tarifas al vendedor. El retorno del navegador deberá mostrar el estado consultado al backend y no confirmar el pago por sí solo.
-
-La aplicación de Mercado Pago se configuró para Checkout Pro con Orders API. El cliente interno `MercadoPagoOrders` propone `PT30M`, excluye el tipo `ticket` y genera el retorno suministrado por el llamador, pero todavía no se ha comprobado con el proveedor que esos valores cubran el flujo deseado. El código de webhook comprueba la firma: no existe un endpoint público, cola durable, consulta de Orders, ni procesamiento de eventos. El estado ACTIVA de una cuenta indica la vinculación local, no que el pago esté disponible ni que la autorización siga vigente en el proveedor.
-
-Antes de ofrecer checkout hay que completar y probar: operación autenticada y resumen; persistencia y recuperación de llamadas inciertas usando la misma clave; consulta de Orders con validación de vendedor, referencia, moneda e importe; webhook autenticado, durable e idempotente; conciliación y reintentos; expiración segura de reservas, cancelación y reembolso de aprobaciones tardías; renovación coordinada y revocación OAuth; aislamiento entre entornos de prueba y producción; y observabilidad sin secretos. No liberar stock mientras un pago pueda completarse o su estado sea incierto. Las llamadas al proveedor deben realizarse fuera de las transacciones de reserva.
-
-Después de las pruebas simuladas se necesitan cuentas de prueba de vendedor y comprador, y validar el flujo OAuth de terceros y Orders en Perú. Configurar el webhook de prueba y su firma solo cuando exista el endpoint; la validación real y la activación de cobros son pasos posteriores. No cargar secretos ni identificadores de pago en la documentación.
-
-## Verificación realizada
-
-Se ejecutaron `CompraIntegracionTest`, `FirmaWebhookMercadoPagoTest` y `MercadoPagoOrdersTest` con Java 21 en Docker, PostgreSQL 18 temporal y proveedor simulado. La migración V7 se aplicó a una base vacía; se comprobó el doble envío y la conservación de la clave del proveedor. Esto no prueba llamadas a Mercado Pago, recuperación de pagos, concurrencia completa ni el despliegue actual. Los artefactos y cambios locales solo llegan a Render o Vercel después de publicarse en la rama desplegada.
+Los cobros permanecen deshabilitados por defecto. La validación con Mercado Pago y la activación publicada son pasos separados de la implementación local. Seguir [pagos: activación y operación](pagos-operacion.md) para configurar las tiendas autorizadas y realizar primero pruebas y después una compra real pequeña. Se conservan los precios con IGV, comprador registrado, una tienda por pedido, sin comisión Nubea ni cobro de envío.
 
 ## Google Places y direcciones
 

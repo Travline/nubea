@@ -10,7 +10,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 
-@SpringBootTest
+// Estas pruebas sombrean tablas con tipos distintos: no compartir planes preparados con otros contextos.
+@SpringBootTest(properties="spring.datasource.hikari.data-source-properties.prepareThreshold=0")
 @Transactional
 @EnabledIfEnvironmentVariable(named = "INVENTARIO_PG_TEST", matches = "true")
 class InventarioPostgresTest {

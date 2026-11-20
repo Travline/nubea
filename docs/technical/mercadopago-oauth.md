@@ -2,7 +2,7 @@
 
 El flujo está deshabilitado por defecto. Flyway aplica las migraciones versionadas desde `backend/src/main/resources/db/migration` al iniciar el backend sobre una base vacía. No ejecutar los scripts manuales antiguos sobre una base administrada por Flyway.
 
-La aplicación de Nubea posee `client_id` y `client_secret`; cada vendedor autoriza a esa aplicación y el backend guarda su propio token cifrado asociado a la tienda. Las credenciales de Nubea no son el token de cobro de todos los vendedores. La vinculación no habilita checkout ni cobros, que siguen pendientes según [módulo 4](modulo-4.md).
+La aplicación de Nubea posee `client_id` y `client_secret`; cada vendedor autoriza a esa aplicación y el backend guarda su propio token cifrado asociado a la tienda. Las credenciales de Nubea no son el token de cobro de todos los vendedores. La vinculación no habilita cobros por sí sola. El checkout y los procesadores se activan por separado según [pagos: operación](pagos-operacion.md).
 
 En el entorno observado, el frontend está en `https://nubea.vercel.app` y el backend en `https://nubea.onrender.com`. Se vio una vinculación que regresó con `resultado=exito` y mostró estado `ACTIVA` en el panel. Esta comprobación no demuestra el entorno del token ni valida Orders, notificaciones, renovación o pagos. La implementación actual del canje no envía `test_token=true` ni registra explícitamente el entorno del token; no asumir que una cuenta conectada corresponde a pruebas. Separar y validar los entornos antes de realizar pagos.
 

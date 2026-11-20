@@ -2,7 +2,7 @@
 
 ## Estado y alcance
 
-**El backend todavía no está listo para cobros en producción.** En el entorno observado, `https://nubea.onrender.com/health` respondió 200 y se mostró una cuenta de Mercado Pago ACTIVA tras el retorno OAuth. Son comprobaciones puntuales, no validan el checkout, Orders, la renovación OAuth, las notificaciones ni todas las operaciones de almacenamiento.
+**La activación de cobros requiere completar la prueba publicada descrita en [pagos: operación](../technical/pagos-operacion.md).** En el entorno observado, `https://nubea.onrender.com/health` respondió 200 y se mostró una cuenta de Mercado Pago ACTIVA tras el retorno OAuth. Son comprobaciones puntuales, no validan el checkout, Orders, la renovación OAuth, las notificaciones ni todas las operaciones de almacenamiento.
 
 El repositorio incluye `backend/Dockerfile`, el plugin de empaquetado ejecutable y un endpoint `/health`. Render despliega la revisión presente en la rama remota, no los cambios locales. La etapa de imágenes se probó localmente con PostgreSQL y RustFS; la compatibilidad con el almacenamiento configurado en Render requiere comprobación independiente. Google OAuth no forma parte de esta etapa.
 
@@ -11,7 +11,7 @@ Bloqueos y riesgos antes de producción:
 - Completar y probar el acceso con cookies, CSRF y CORS desde el frontend y sus dominios reales. La sesión actual vive en memoria: se pierde al reiniciar y no se comparte entre instancias. Para varias instancias, implementar sesiones compartidas; con una sola, asumir la interrupción de sesiones durante los despliegues y reinicios.
 - Asegurar el aprovisionamiento del primer administrador. Actualmente el registro es público, no verifica la titularidad del correo y la variable `APP_BOOTSTRAP_ADMIN_EMAIL` otorga el rol a la cuenta activa con ese correo cuando no existe otro administrador. **No confiar en este mecanismo en una aplicación abierta al público**: implementar una inicialización fuera de banda o impedir el acceso público hasta comprobar la identidad. Retirar la variable tras utilizarla.
 - Provisionar almacenamiento S3 compatible y CDN, y verificar subida, lectura y limpieza desde Render. Las URLs son públicas incluso para imágenes de borradores. La validación actual comprueba tamaño y cabeceras, pero no decodifica el archivo completo.
-- Se observó una vinculación OAuth exitosa, pero su entorno de token no quedó confirmado. La renovación de credenciales, la revocación remota, el checkout y los cobros siguen pendientes. La bandera OAuth controla la vinculación; habilitarla no habilita cobros. No realizar pruebas de pago reales hasta completar [M4](../technical/modulo-4.md).
+- Se observó una vinculación OAuth exitosa, pero su entorno de token no quedó confirmado. La renovación, el checkout y el procesamiento están implementados; su validación con el proveedor sigue pendiente. La desconexión local no revoca la autorización remota. La bandera OAuth controla la vinculación; habilitarla no habilita cobros. No realizar pruebas de pago reales hasta completar [M4](../technical/modulo-4.md).
 - La limpieza de imágenes depende del proceso programado del backend mientras esté activo; conservar los datos de PostgreSQL y los archivos del proveedor elegido.
 
 ## 1. Preparar el artefacto

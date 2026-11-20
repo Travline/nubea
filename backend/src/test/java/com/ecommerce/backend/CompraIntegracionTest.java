@@ -128,4 +128,29 @@ class CompraIntegracionTest {
         jdbc.update("UPDATE producto SET nombre='Modificado',precio_base=20 WHERE id_producto=?",producto);
         assertEquals("Producto",jdbc.queryForObject("SELECT nombre_producto FROM pedido_item WHERE id_pedido=?",String.class,resultado.idPedido()));
     }
+    @Test
+    void confirmacionSoloAceptaPagoCompletoDeLaOrdenYVendedorCorrectos() {
+        UUID vendedor=UUID.randomUUID(), cliente=UUID.randomUUID(), tienda=UUID.randomUUID(), pedido=UUID.randomUUID();
+        crearUsuario(vendedor); crearUsuario(cliente);
+        jdbc.update("INSERT INTO tienda(id_tienda,id_propietario,nombre,slug,estado) VALUES (?,?,'Tienda',?,'ACTIVA')", tienda,vendedor,"t-"+tienda);
+        jdbc.update("INSERT INTO tienda_cliente(id_usuario,id_tienda) VALUES (?,?)",cliente,tienda);
+        jdbc.update("INSERT INTO cuenta_pago_tienda(id_tienda,estado,id_cuenta_externa,referencia_credencial,fecha_vinculacion) VALUES (?,'ACTIVA','123456','cifrado',now())",tienda);
+        jdbc.update("""
+          INSERT INTO pedido(id_pedido,id_usuario,id_tienda,id_impuesto,fecha_expiracion_reserva,subtotal,tasa_impuesto,monto_impuesto,total,
+          nombre_receptor,direccion_entrega,ubigeo_entrega,departamento_entrega,provincia_entrega,distrito_entrega,ambiente_pago)
+          VALUES (?,?,?,1,now()+interval '30 minutes',10,18,1.80,11.80,'Receptor','Calle','150101','Lima','Lima','Lima','PRUEBA')
+          """, pedido,cliente,tienda);
+        jdbc.update("INSERT INTO intento_order_mercadopago(id_intento,id_pedido,clave_proveedor,id_order,estado,ambiente_pago) VALUES (?,?,?,'ORD123','CREADA','PRUEBA')",UUID.randomUUID(),pedido,UUID.randomUUID());
+        var confirmacion = new com.ecommerce.backend.compra.ConfirmacionPagoService(jdbc);
+        var incorrecta = new com.ecommerce.backend.compra.MercadoPagoOrders.OrdenConsultada("ORD123",pedido.toString(),"otro","PEN",new java.math.BigDecimal("11.80"),new java.math.BigDecimal("11.80"),"processed","accredited");
+        assertThrows(com.ecommerce.backend.shared.exception.ReglaNegocioException.class, () -> confirmacion.confirmar(incorrecta));
+        var pendiente = new com.ecommerce.backend.compra.MercadoPagoOrders.OrdenConsultada("ORD123",pedido.toString(),"123456","PEN",new java.math.BigDecimal("11.80"),java.math.BigDecimal.ZERO,"processing","in_process");
+        assertFalse(confirmacion.confirmar(pendiente));
+        assertEquals(0,jdbc.queryForObject("SELECT count(*) FROM pago WHERE id_pedido=?",Integer.class,pedido));
+        var aprobada = new com.ecommerce.backend.compra.MercadoPagoOrders.OrdenConsultada("ORD123",pedido.toString(),"123456","PEN",new java.math.BigDecimal("11.80"),new java.math.BigDecimal("11.80"),"processed","accredited");
+        assertTrue(confirmacion.confirmar(aprobada));
+        assertTrue(confirmacion.confirmar(aprobada));
+        assertEquals("PAGADO",jdbc.queryForObject("SELECT estado FROM pedido WHERE id_pedido=?",String.class,pedido));
+        assertEquals(1,jdbc.queryForObject("SELECT count(*) FROM pago WHERE id_pedido=?",Integer.class,pedido));
+    }
 }
