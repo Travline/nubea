@@ -47,7 +47,7 @@ public class SecurityConfig {
                 .requestMatchers("/swagger-ui/**","/swagger-ui.html","/v3/api-docs/**").permitAll()
                 .requestMatchers("/error", "/health").permitAll()
                 .requestMatchers("/api/auth/**", "/api/integraciones/mercado-pago/oauth/callback").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/tiendas/{slug}").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/tiendas/{slug}", "/api/publico/tiendas/{slug}").permitAll()
                 .anyRequest().authenticated()
             );
            return http.build();

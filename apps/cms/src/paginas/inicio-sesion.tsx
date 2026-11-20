@@ -16,12 +16,15 @@ export function PaginaInicioSesion() {
   const navegar = useNavigate()
   const ubicacion = useLocation()
   const { actualizar } = useSesion()
+  const retorno = new URLSearchParams(ubicacion.search).get('retorno')
+  const retornoSeguro = retorno && /^\/tienda\/[a-z0-9]+(?:-[a-z0-9]+)*(?:\/carrito)?\/?$/.test(retorno) ? retorno : null
   async function enviar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault(); establecerError(''); establecerOcupado(true)
     try {
       await apiAutenticacion.iniciarSesion(correo, contrasena)
       await actualizar()
-      navegar(typeof ubicacion.state?.from === 'string' && ubicacion.state.from.startsWith('/panel') ? ubicacion.state.from : '/panel', { replace: true })
+      if (retornoSeguro) window.location.assign(retornoSeguro)
+      else navegar(typeof ubicacion.state?.from === 'string' && ubicacion.state.from.startsWith('/panel') ? ubicacion.state.from : '/panel', { replace: true })
     } catch (err) {
       establecerError(err instanceof ErrorApi && err.codigoEstado === 401 ? 'El correo o la contraseña son incorrectos.' : err instanceof Error ? err.message : 'No se pudo iniciar sesión.')
     } finally { establecerOcupado(false) }
@@ -37,7 +40,7 @@ export function PaginaInicioSesion() {
           {error && <p role="alert" className="text-destructive text-sm">{error}</p>}
           <Button type="submit" className="w-full" disabled={ocupado}>{ocupado ? 'Ingresando...' : 'Ingresar'}</Button>
         </form>
-        <p className="mt-5 text-sm text-muted-foreground">¿Aún no tienes cuenta? <Link className="text-primary underline" to="/registro">Crea una cuenta</Link></p>
+        <p className="mt-5 text-sm text-muted-foreground">¿Aún no tienes cuenta? <Link className="text-primary underline" to={`/registro${retornoSeguro ? `?retorno=${encodeURIComponent(retornoSeguro)}` : ""}`}>Crea una cuenta</Link></p>
       </CardContent>
     </Card>
   </main>

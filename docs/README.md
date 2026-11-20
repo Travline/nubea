@@ -14,3 +14,5 @@
 - [Preparación para producción](technical/modulo-3-produccion.md): configuración, migraciones, despliegue, seguridad y recuperación.
 - [Inventario](technical/inventario-consulta.md), [consulta de cuenta](technical/cuenta-pago-consulta.md) y [OAuth y desconexión](technical/mercadopago-oauth.md): contratos específicos.
 - [Visión general del backend](technical/backend-overview.md): panorama arquitectónico anterior. Contrastar sus detalles con las guías anteriores y el código actual: contiene descripciones de diseño que requieren actualización, especialmente sobre autenticación y banners.
+
+- [Módulo 4: estado actual](technical/modulo-4.md): carrito, direcciones, pedidos existentes, impuestos y trabajo pendiente de checkout y pagos.

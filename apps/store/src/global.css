@@ -1,1 +1,36 @@
 @import "tailwindcss";
+:root { font-family: system-ui, sans-serif; color: #25312d; background: #fbfbf8; }
+body { margin: 0; }
+a { color: inherit; }
+.contenedor { max-width: 1120px; margin: auto; padding: 1.5rem; }
+header { background: white; border-bottom: 1px solid #e5e9e4; }
+.cabecera { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+.cabecera a { text-decoration: none; font-weight: 750; font-size: 1.3rem; }
+.cabecera span, small { color: #63766b; }
+.introduccion { padding: 3rem 0; max-width: 700px; }
+h1 { font-size: clamp(2rem, 5vw, 3.8rem); line-height: 1.1; margin: .5rem 0 1rem; }
+h2 { font-size: 1.7rem; margin: 2rem 0 1rem; }
+.etiqueta { color: #527462; text-transform: uppercase; font-weight: 700; letter-spacing: .1em; font-size: .75rem; }
+.carrusel img { width: 100%; max-height: 400px; object-fit: cover; border-radius: 1rem; }
+.controles { display: flex; justify-content: center; align-items: center; gap: 1rem; margin: .8rem; }
+button, select { border: 1px solid #c8d2ca; background: white; border-radius: .5rem; padding: .6rem; }
+button { cursor: pointer; }
+.productos { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.2rem; }
+.tarjeta { background: white; border: 1px solid #e5e9e4; border-radius: .8rem; overflow: hidden; text-decoration: none; }
+.tarjeta > div:not(.foto) { padding: 1rem; }
+.tarjeta h3 { font-size: 1.1rem; font-weight: 700; }
+.foto { width: 100%; aspect-ratio: 1; object-fit: cover; background: #edf1ec; }
+.sin-foto { display: grid; place-items: center; color: #738478; }
+.detalle { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 2rem; margin-top: 1.5rem; }
+.detalle .foto { border-radius: 1rem; }
+.detalle label, .detalle select { display: block; margin-top: 1rem; }
+.precio { font-size: 1.5rem; font-weight: 700; }
+footer { margin-top: 4rem !important; border-top: 1px solid #e5e9e4; color: #63766b; }
+
+.linea-carrito { display: flex; justify-content: space-between; gap: 1rem; border-bottom: 1px solid #e5e9e4; padding: 1rem 0; }
+.linea-carrito input { width: 5rem; border: 1px solid #c8d2ca; padding: .5rem; margin-right: .5rem; }
+
+.formulario-direccion { max-width: 36rem; }
+.formulario-direccion form { display: grid; gap: .8rem; margin-top: 1rem; }
+.formulario-direccion label { display: grid; gap: .3rem; }
+.formulario-direccion input:not([type=checkbox]), .formulario-direccion select { border: 1px solid #c8d2ca; border-radius: .5rem; padding: .6rem; width: 100%; }

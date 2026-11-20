@@ -10,3 +10,6 @@ Para esto se cuenta con una estructura de monorepo con las apps y servicios que 
 - /services para los contenedores docker de los servicios que necesitan las apps
 
 Usando `docker compose up` levantará las instancias de los servicios necesarios para el entorno de desarrollo.
+## Dominio único
+
+Consulta [el despliegue de plataforma y vitrinas](docs/despliegue/dominio-unico.md) para compilar y servir ambas aplicaciones desde la raíz.

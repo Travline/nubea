@@ -9,3 +9,9 @@ _legacy/
 
 # Editor
 .vscode/
+
+# Compilaciones del servidor raíz
+/node_modules/
+/public/
+
+/.pnpm-store/

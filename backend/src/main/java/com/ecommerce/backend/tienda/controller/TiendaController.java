@@ -28,12 +28,6 @@ public class TiendaController {
         return ResponseEntity.ok(tiendaService.activarTienda(idTienda));
     }
 
-    // Nos ayuda a ver una tienda por su URL
-    @GetMapping("/{slug}")
-    public ResponseEntity<TiendaResponse> obtener(@PathVariable String slug) {
-        return ResponseEntity.ok(tiendaService.obtenerPorSlug(slug));
-    }
-
     // sirve para mostrar mis tiendas por usuario
     @GetMapping("/propietario/{idUsuario}")
     public ResponseEntity<List<TiendaResponse>> listarPorPropietario(@PathVariable UUID idUsuario) {

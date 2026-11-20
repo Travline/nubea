@@ -8,11 +8,12 @@ import { RutaProtegida } from "@/autenticacion/ruta-protegida";
 import { Panel, InicioPanel, EspacioTienda, ResumenTienda } from "@/paginas/panel";
 
 import { InventarioTienda } from '@/comercio/inventario'
+import { PedidosTienda } from '@/comercio/pedidos'
 import { Apariencia } from '@/comercio/apariencia'
 import { Pagos, RetornoPago } from '@/comercio/pagos'
 import { Catalogo, DetalleProducto } from '@/comercio/catalogo'
 
-import { Administracion, ResumenAdministracion, UsuariosAdministracion, TiendasAdministracion, PlantillasAdministracion } from '@/administracion/panel'
+import { Administracion, ResumenAdministracion, UsuariosAdministracion, TiendasAdministracion, PlantillasAdministracion, ImpuestosAdministracion } from '@/administracion/panel'
 export const enrutador = createBrowserRouter([
   {
     path: "/", element: <DisenoPublico />,
@@ -30,7 +31,8 @@ export const enrutador = createBrowserRouter([
         { index: true, element: <ResumenAdministracion /> },
         { path: "usuarios", element: <UsuariosAdministracion /> },
         { path: "tiendas", element: <TiendasAdministracion /> },
-        { path: "plantillas", element: <PlantillasAdministracion /> }
+        { path: "plantillas", element: <PlantillasAdministracion /> },
+        { path: "impuestos", element: <ImpuestosAdministracion /> }
       ] },
       { path: "retorno-pago", element: <RetornoPago /> },
       { path: "tiendas/:idTienda", element: <EspacioTienda />, children: [
@@ -38,6 +40,7 @@ export const enrutador = createBrowserRouter([
         { path: "catalogo", element: <Catalogo /> },
         { path: "catalogo/productos/:idProducto", element: <DetalleProducto /> },
         { path: "inventario", element: <InventarioTienda /> },
+        { path: "pedidos", element: <PedidosTienda /> },
         { path: "apariencia", element: <Apariencia /> },
         { path: "pagos", element: <Pagos /> },
       ] }
@@ -46,4 +49,4 @@ export const enrutador = createBrowserRouter([
   {
     path: "*", element: <PaginaNoEncontrada />
   }
-])
+], { basename: "/plataforma" })

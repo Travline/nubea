@@ -2,6 +2,7 @@ package com.ecommerce.backend.cuentapago.service;
 
 import com.ecommerce.backend.exception.CuentaPagoNoConfiguradaException;
 import com.ecommerce.backend.shared.security.CurrentUserProvider;
+import com.ecommerce.backend.shared.exception.ReglaNegocioException;
 import jakarta.persistence.EntityManager;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +23,12 @@ public class CuentaPagoDesconexionService {
         var estados = em.createNativeQuery("SELECT estado FROM cuenta_pago_tienda WHERE id_tienda=:id FOR UPDATE").setParameter("id", tienda).getResultList();
         if (estados.isEmpty()) throw new CuentaPagoNoConfiguradaException();
         String anterior = (String) estados.get(0);
+        Number pendientes = (Number) em.createNativeQuery("""
+                SELECT count(*) FROM pedido p WHERE p.id_tienda=:id
+                  AND (p.estado='PENDIENTE_PAGO' OR EXISTS (
+                    SELECT 1 FROM pago pa WHERE pa.id_pedido=p.id_pedido AND pa.estado IN ('PENDIENTE','REEMBOLSO_PENDIENTE')))
+                """).setParameter("id", tienda).getSingleResult();
+        if (pendientes.longValue() > 0) throw new ReglaNegocioException("No se puede desconectar la cuenta mientras haya pedidos o pagos pendientes");
         em.createNativeQuery("UPDATE oauth_mercado_pago_intento SET estado='INVALIDADO', verifier_cifrado='' WHERE id_tienda=:id AND estado IN ('PENDIENTE','CONSUMIDO')").setParameter("id", tienda).executeUpdate();
         if ("DESCONECTADA".equals(anterior)) return;
         em.createNativeQuery("UPDATE cuenta_pago_tienda SET estado='DESCONECTADA', referencia_credencial=NULL, id_cuenta_externa=NULL, fecha_actualizacion=now() WHERE id_tienda=:id").setParameter("id", tienda).executeUpdate();

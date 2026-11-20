@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -15,6 +15,9 @@ export function PaginaRegistro() {
   const [error, establecerError] = useState('')
   const [ocupado, establecerOcupado] = useState(false)
   const navegar = useNavigate()
+  const ubicacion = useLocation()
+  const retorno = new URLSearchParams(ubicacion.search).get('retorno')
+  const retornoSeguro = retorno && /^\/tienda\/[a-z0-9]+(?:-[a-z0-9]+)*(?:\/carrito)?\/?$/.test(retorno) ? retorno : null
   const { actualizar } = useSesion()
   async function enviar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault(); establecerError(''); establecerOcupado(true)
@@ -23,9 +26,10 @@ export function PaginaRegistro() {
       try {
         await apiAutenticacion.iniciarSesion(correo, contrasena)
         await actualizar()
-        navegar('/panel', { replace: true })
+        if (retornoSeguro) window.location.assign(retornoSeguro)
+        else navegar('/panel', { replace: true })
       } catch {
-        navegar('/iniciar-sesion', { replace: true, state: { registroCompletado: true } })
+        navegar(`/iniciar-sesion${retornoSeguro ? `?retorno=${encodeURIComponent(retornoSeguro)}` : ''}`, { replace: true, state: { registroCompletado: true } })
       }
     } catch (err) {
       if (err instanceof ErrorApi) establecerError(Object.values(err.campos || {}).join(' ') || err.message)
@@ -43,7 +47,7 @@ export function PaginaRegistro() {
           {error && <p role="alert" className="text-destructive text-sm">{error}</p>}
           <Button type="submit" className="w-full" disabled={ocupado}>{ocupado ? 'Creando cuenta...' : 'Crear cuenta'}</Button>
         </form>
-        <p className="mt-5 text-sm text-muted-foreground">¿Ya tienes cuenta? <Link className="text-primary underline" to="/iniciar-sesion">Inicia sesión</Link></p>
+        <p className="mt-5 text-sm text-muted-foreground">¿Ya tienes cuenta? <Link className="text-primary underline" to={`/iniciar-sesion${retornoSeguro ? `?retorno=${encodeURIComponent(retornoSeguro)}` : ""}`}>Inicia sesión</Link></p>
       </CardContent>
     </Card>
   </main>

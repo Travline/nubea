@@ -42,7 +42,7 @@ export const PortadaInicio = () => {
         </div>
       </div>
       <div className="max-w-100">
-        <img src="/assets/logo.webp" alt="Logo" className="w-full h-auto" />
+        <img src={`${import.meta.env.BASE_URL}assets/logo.webp`} alt="Logo" className="w-full h-auto" />
       </div>
     </div>
   );

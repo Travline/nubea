@@ -1,0 +1,14 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "pnpm run build",
+  "redirects": [
+    { "source": "/", "destination": "/plataforma/", "permanent": true },
+    { "source": "/panel/:ruta*", "destination": "/plataforma/panel/:ruta*", "permanent": true },
+    { "source": "/registro/:ruta*", "destination": "/plataforma/registro/:ruta*", "permanent": true },
+    { "source": "/iniciar-sesion/:ruta*", "destination": "/plataforma/iniciar-sesion/:ruta*", "permanent": true }
+  ],
+  "rewrites": [
+    { "source": "/plataforma/((?!assets(?:/|$))[^.]*)", "destination": "/plataforma/index.html" },
+    { "source": "/tienda/((?!assets(?:/|$))[^.]*)", "destination": "/tienda/index.html" }
+  ]
+}

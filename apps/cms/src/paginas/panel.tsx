@@ -14,7 +14,7 @@ export function Panel() {
   const navegar = useNavigate()
   const { error, ocupado, ejecutar } = useOperacion()
   async function salir() { await ejecutar(async () => { await apiAutenticacion.cerrarSesion(); limpiar(); navegar('/iniciar-sesion', { replace: true }) }) }
-  return <div className="min-h-screen bg-muted/30"><header className="border-b bg-background"><div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-5 py-4"><Link to="/panel" className="flex items-center gap-2 text-xl font-bold"><img className="w-10" src="/assets/logo.webp" alt="" />Nubea</Link><div className="flex items-center gap-2"><span className="text-sm">{usuario?.nombres}</span><AlternarTema /><Button variant="outline" disabled={ocupado} onClick={() => void salir()}>Cerrar sesión</Button></div></div></header><main className="mx-auto max-w-6xl space-y-6 px-5 py-8"><Aviso error={error} /><Outlet /></main></div>
+  return <div className="min-h-screen bg-muted/30"><header className="border-b bg-background"><div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-5 py-4"><Link to="/panel" className="flex items-center gap-2 text-xl font-bold"><img className="w-10" src={`${import.meta.env.BASE_URL}assets/logo.webp`} alt="" />Nubea</Link><div className="flex items-center gap-2"><span className="text-sm">{usuario?.nombres}</span><AlternarTema /><Button variant="outline" disabled={ocupado} onClick={() => void salir()}>Cerrar sesión</Button></div></div></header><main className="mx-auto max-w-6xl space-y-6 px-5 py-8"><Aviso error={error} /><Outlet /></main></div>
 }
 
 export function InicioPanel() {
@@ -40,13 +40,13 @@ export function EspacioTienda() {
   const tienda = datos.find(t => t.idTienda === idTienda)
   if (!tienda) return <p role="alert">No tienes acceso a esta tienda. <Link className="underline" to="/panel">Volver a tus tiendas</Link></p>
   const base = `/panel/tiendas/${idTienda}`
-  return <><div><Link className="text-sm text-primary underline" to="/panel">← Tus tiendas</Link><h1 className="mt-2 text-3xl font-semibold">{tienda.nombre}</h1><p className="text-sm text-muted-foreground">{tienda.slug} · {tienda.estado}</p></div><nav aria-label="Gestión de tienda" className="flex flex-wrap gap-2 border-b pb-4">{[['', 'Resumen'], ['/catalogo', 'Catálogo'], ['/inventario', 'Inventario'], ['/apariencia', 'Apariencia'], ['/pagos', 'Pagos']].map(([ruta, nombre]) => <Link className="rounded-md px-3 py-2 text-sm hover:bg-accent" key={ruta} to={base + ruta}>{nombre}</Link>)}</nav><Outlet context={{ tienda, base, apiBase: rutaTienda(idTienda), actualizarTienda: (actualizada: Tienda) => actualizarDatos(tiendas => tiendas.map(t => t.idTienda === actualizada.idTienda ? actualizada : t)) }} /></>
+  return <><div><Link className="text-sm text-primary underline" to="/panel">← Tus tiendas</Link><h1 className="mt-2 text-3xl font-semibold">{tienda.nombre}</h1><p className="text-sm text-muted-foreground">{tienda.slug} · {tienda.estado}</p></div><nav aria-label="Gestión de tienda" className="flex flex-wrap gap-2 border-b pb-4">{[['', 'Resumen'], ['/catalogo', 'Catálogo'], ['/inventario', 'Inventario'], ['/pedidos', 'Pedidos'], ['/apariencia', 'Apariencia'], ['/pagos', 'Pagos']].map(([ruta, nombre]) => <Link className="rounded-md px-3 py-2 text-sm hover:bg-accent" key={ruta} to={base + ruta}>{nombre}</Link>)}</nav><Outlet context={{ tienda, base, apiBase: rutaTienda(idTienda), actualizarTienda: (actualizada: Tienda) => actualizarDatos(tiendas => tiendas.map(t => t.idTienda === actualizada.idTienda ? actualizada : t)) }} /></>
 }
 export function ResumenTienda() {
   const { tienda, apiBase, actualizarTienda } = useOutletContext<ContextoTienda>()
   const operacion = useOperacion()
   return <Bloque titulo="Tu espacio de trabajo"><p>Administra tus productos, consulta el inventario y configura la apariencia y los pagos desde el menú.</p>
     {tienda.estado === 'BORRADOR' && <><p>Activa tu tienda cuando quieras para poder publicar productos que cumplan los requisitos del catálogo.</p><Aviso error={operacion.error} /><Button disabled={operacion.ocupado} onClick={() => void operacion.ejecutar(async () => { const actualizada = await api.crear<Tienda>(`${apiBase}/activacion`); actualizarTienda(actualizada) })}>{operacion.ocupado ? 'Activando...' : 'Activar tienda'}</Button></>}
-    <p className="text-sm text-muted-foreground">La tienda pública estará disponible en una etapa posterior.</p></Bloque>
+    <a className="text-sm text-primary underline" href={`/tienda/${encodeURIComponent(tienda.slug)}`}>Ver tienda pública</a></Bloque>
 }
 export interface ContextoTienda { tienda: Tienda; base: string; apiBase: string; actualizarTienda: (tienda: Tienda) => void }

@@ -9,7 +9,7 @@ Configurar propiedades Spring por entorno, sin guardar secretos en el repositori
 - `MERCADOPAGO_OAUTH_AUTHORIZATION_URL=https://auth.mercadopago.com.pe/authorization`
 - `MERCADOPAGO_OAUTH_TOKEN_URL=https://api.mercadopago.com/oauth/token`
 - `MERCADOPAGO_OAUTH_CALLBACK_URL`: URL pública exacta del backend terminada en `/api/integraciones/mercado-pago/oauth/callback`; registrarla en la aplicación de Mercado Pago.
-- `MERCADOPAGO_OAUTH_RETORNO_PANEL`: URL fija del panel que recibe `resultado=exito`, `resultado=error` o `resultado=conflicto` (cuenta externa ya vinculada).
+- `MERCADOPAGO_OAUTH_RETORNO_PANEL`: URL fija `https://<dominio>/plataforma/panel/retorno-pago` que recibe `resultado=exito`, `resultado=error` o `resultado=conflicto` (cuenta externa ya vinculada).
 - `MERCADOPAGO_OAUTH_EXPIRY_MINUTES=10` y `MERCADOPAGO_OAUTH_ACTIVE_KEY=k1`.
 - `MERCADOPAGO_OAUTH_KEYS_K1`: clave aleatoria de 32 bytes codificada en Base64, gestionada como secreto externo.
 
@@ -23,4 +23,4 @@ Para una comprobación manual, registrar el callback exacto en una aplicación d
 
 `POST /api/tiendas/{idTienda}/cuenta-pago/desconexion` requiere autenticación y titularidad. Devuelve 204 también si la cuenta ya estaba desconectada y 404 `CUENTA_PAGO_NO_CONFIGURADA` si no existe. Flyway crea el historial después de la tabla de intentos OAuth.
 
-La operación invalida los intentos OAuth pendientes o consumidos, elimina la referencia cifrada y libera el identificador externo; la transición queda registrada sin credenciales en `cuenta_pago_historial`. Los nuevos cobros solo deben usar cuentas `ACTIVA`. No cancela pagos existentes. La desconexión es local y no revoca automáticamente la autorización de Mercado Pago: el vendedor puede revocarla en su cuenta del proveedor. Los respaldos conservan datos según su política de retención.
+La operación se rechaza mientras haya pedidos pendientes, pagos pendientes o reembolsos pendientes. En otro caso invalida los intentos OAuth pendientes o consumidos, elimina la referencia cifrada y libera el identificador externo; la transición queda registrada sin credenciales en `cuenta_pago_historial`. Los nuevos cobros solo deben usar cuentas `ACTIVA`. No cancela pagos existentes. La desconexión es local y no revoca automáticamente la autorización de Mercado Pago: el vendedor puede revocarla en su cuenta del proveedor. Los respaldos conservan datos según su política de retención.
