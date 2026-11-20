@@ -48,6 +48,12 @@ public class AuthController {
         try {
             var authentication = authService.autenticar(req);
             if (request.getSession(false) != null) request.changeSessionId();
+            var session = request.getSession(true);
+            boolean recordar = Boolean.TRUE.equals(req.recordarme());
+            session.setMaxInactiveInterval(recordar ? 86400 : 7200);
+            session.setAttribute("recordarme", recordar);
+            if (recordar) session.setAttribute("venceAbsoluto", System.currentTimeMillis() + 86400000L);
+            else session.removeAttribute("venceAbsoluto");
             var context = SecurityContextHolder.createEmptyContext();
             context.setAuthentication(authentication);
             SecurityContextHolder.setContext(context);

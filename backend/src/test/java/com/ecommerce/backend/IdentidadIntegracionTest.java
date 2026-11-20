@@ -11,7 +11,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
-import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -249,54 +248,55 @@ class IdentidadIntegracionTest {
         var login = mvc.perform(post("/api/auth/login").with(csrf()).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"email\":\"sesion@example.test\",\"password\":\"password-seguro\"}"))
                 .andExpect(status().isNoContent()).andReturn();
-        var session = (MockHttpSession) login.getRequest().getSession(false);
-        mvc.perform(get("/api/auth/me").session(session)).andExpect(status().isOk())
+        var session = login.getResponse().getCookie("SESSION");
+        org.junit.jupiter.api.Assertions.assertNotNull(session);
+        mvc.perform(get("/api/auth/me").cookie(session)).andExpect(status().isOk())
                 .andExpect(jsonPath("$.correoElectronico").value("sesion@example.test"))
                 .andExpect(jsonPath("$.roles[0]").value("CLIENTE"));
-        mvc.perform(get("/api/usuarios/" + id).session(session)).andExpect(status().isOk());
-        mvc.perform(get("/api/usuarios/" + java.util.UUID.randomUUID()).session(session)).andExpect(status().isForbidden());
-        mvc.perform(post("/api/tiendas").session(session).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+        mvc.perform(get("/api/usuarios/" + id).cookie(session)).andExpect(status().isOk());
+        mvc.perform(get("/api/usuarios/" + java.util.UUID.randomUUID()).cookie(session)).andExpect(status().isForbidden());
+        mvc.perform(post("/api/tiendas").cookie(session).with(csrf()).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"nombre\":\"Tienda de prueba\"}")).andExpect(status().isCreated());
         entityManager.flush();
         UUID tienda = jdbc.queryForObject("SELECT id_tienda FROM tienda WHERE id_propietario = ?", UUID.class, id);
         assert jdbc.queryForObject("SELECT count(*) FROM configuracion_tienda WHERE id_tienda = ?", Integer.class, tienda) == 1;
         assert jdbc.queryForObject("SELECT count(*) FROM cuenta_pago_tienda WHERE id_tienda = ? AND estado = 'PENDIENTE'", Integer.class, tienda) == 1;
         String ruta = "/api/tiendas/" + tienda;
-        mvc.perform(post(ruta + "/categorias").session(session).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+        mvc.perform(post(ruta + "/categorias").cookie(session).with(csrf()).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"nombre\":\"Prueba\",\"slug\":\"prueba\"}")).andExpect(status().isCreated());
         entityManager.flush();
         UUID categoria = jdbc.queryForObject("SELECT id_categoria FROM categoria WHERE id_tienda = ?", UUID.class, tienda);
-        mvc.perform(post(ruta + "/productos").session(session).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+        mvc.perform(post(ruta + "/productos").cookie(session).with(csrf()).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"nombre\":\"Producto\",\"idCategoria\":\"" + categoria + "\",\"precioBase\":15.50}"))
                 .andExpect(status().isCreated());
         entityManager.flush();
         UUID producto = jdbc.queryForObject("SELECT id_producto FROM producto WHERE id_tienda = ?", UUID.class, tienda);
-        mvc.perform(post(ruta + "/productos/" + producto + "/presentaciones").session(session).with(csrf())
+        mvc.perform(post(ruta + "/productos/" + producto + "/presentaciones").cookie(session).with(csrf())
                 .contentType(MediaType.APPLICATION_JSON).content("{\"sku\":\"sku-prueba\"}"))
                 .andExpect(status().isCreated()).andExpect(jsonPath("$.precioEfectivo").value(15.5));
         UUID presentacion = jdbc.queryForObject("SELECT id_presentacion FROM presentacion_producto WHERE id_tienda = ?", UUID.class, tienda);
-        mvc.perform(put(ruta + "/inventario/" + presentacion).session(session).with(csrf())
+        mvc.perform(put(ruta + "/inventario/" + presentacion).cookie(session).with(csrf())
                 .contentType(MediaType.APPLICATION_JSON).content("{\"stockActual\":3,\"stockMinimo\":1}"))
                 .andExpect(status().isNoContent());
-        mvc.perform(get(ruta + "/inventario").session(session).param("texto", "sku-prueba").param("alertaStock", "false").param("page", "0").param("size", "1")).andExpect(status().isOk())
+        mvc.perform(get(ruta + "/inventario").cookie(session).param("texto", "sku-prueba").param("alertaStock", "false").param("page", "0").param("size", "1")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalElementos").value(1)).andExpect(jsonPath("$.contenido[0].stockActual").value(3));
-        mvc.perform(get(ruta + "/inventario").session(session).param("alertaStock", "true"))
+        mvc.perform(get(ruta + "/inventario").cookie(session).param("alertaStock", "true"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.totalElementos").value(0));
-        mvc.perform(patch(ruta + "/configuracion").session(session).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+        mvc.perform(patch(ruta + "/configuracion").cookie(session).with(csrf()).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"idPlantilla\":1,\"tituloInicio\":\"Mi tienda\",\"mostrarCarrusel\":true}"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.tituloInicio").value("Mi tienda"));
-        mvc.perform(get(ruta + "/cuenta-pago").session(session)).andExpect(status().isOk())
+        mvc.perform(get(ruta + "/cuenta-pago").cookie(session)).andExpect(status().isOk())
                 .andExpect(jsonPath("$.estado").value("PENDIENTE"));
-        mvc.perform(post(ruta + "/cuenta-pago/mercado-pago/oauth/inicios").session(session).with(csrf()))
+        mvc.perform(post(ruta + "/cuenta-pago/mercado-pago/oauth/inicios").cookie(session).with(csrf()))
                 .andExpect(status().isNotFound());
-        mvc.perform(patch(ruta + "/productos/" + producto + "/estado?estado=PUBLICADO").session(session).with(csrf()))
+        mvc.perform(patch(ruta + "/productos/" + producto + "/estado?estado=PUBLICADO").cookie(session).with(csrf()))
                 .andExpect(status().isBadRequest());
-        mvc.perform(post(ruta + "/activacion").session(session).with(csrf()))
+        mvc.perform(post(ruta + "/activacion").cookie(session).with(csrf()))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.estado").value("ACTIVA"));
         entityManager.flush();
-        mvc.perform(patch(ruta + "/productos/" + producto + "/estado?estado=PUBLICADO").session(session).with(csrf()))
+        mvc.perform(patch(ruta + "/productos/" + producto + "/estado?estado=PUBLICADO").cookie(session).with(csrf()))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.estado").value("PUBLICADO"));
-        mvc.perform(post("/logout").session(session).with(csrf())).andExpect(status().isNoContent());
+        mvc.perform(post("/logout").cookie(session).with(csrf())).andExpect(status().isNoContent());
         mvc.perform(get("/api/auth/me")).andExpect(status().isUnauthorized());
     }
 }

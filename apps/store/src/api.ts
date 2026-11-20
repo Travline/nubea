@@ -14,6 +14,7 @@ export async function solicitar<T>(ruta: string, metodo = 'GET', cuerpo?: object
   }
   const respuesta = await fetch(`${api}${ruta}`, { method: metodo, credentials: 'include', headers, body: cuerpo ? JSON.stringify(cuerpo) : undefined })
   if (!respuesta.ok) {
+    if (respuesta.status === 401 && !ruta.startsWith('/api/auth/')) window.dispatchEvent(new Event('tienda-sesion-vencida'))
     let mensaje = 'No se pudo completar la solicitud.'
     try { const datos = await respuesta.json(); mensaje = datos.mensaje || mensaje } catch { /* Respuesta sin JSON */ }
     throw new ErrorSolicitud(respuesta.status, mensaje)

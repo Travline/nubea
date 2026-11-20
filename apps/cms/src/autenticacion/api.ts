@@ -49,7 +49,7 @@ export function mensajeError(error: unknown) {
 
 export const apiAutenticacion = {
   obtenerUsuarioActual: () => solicitar<Usuario>('GET', '/api/auth/me'),
-  iniciarSesion: (correo: string, contrasena: string) => solicitar<void>('POST', '/api/auth/login', { email: correo, password: contrasena }),
+  iniciarSesion: (correo: string, contrasena: string, recordarme = false) => solicitar<void>('POST', '/api/auth/login', { email: correo, password: contrasena, recordarme }),
   registrar: (nombres: string, correoElectronico: string, contrasena: string) => solicitar<Usuario>('POST', '/api/auth/registro', { nombres, correoElectronico, password: contrasena }),
   cerrarSesion: () => solicitar<void>('POST', '/logout'),
 }

@@ -39,6 +39,16 @@ export function MarcoTienda({ slug, nombre, children }: { slug: string; nombre?:
     }).catch(() => { if (activo) { setUsuario(null); setCantidad(0) } })
     return () => { activo = false }
   }, [slug, version, ubicacion.pathname])
+  useEffect(() => {
+    if (!usuario) return
+    const vencer = () => {
+      setUsuario(null); setCantidad(0)
+      const retorno = window.location.pathname + window.location.search
+      navegar(`/${slug}/iniciar-sesion?retorno=${encodeURIComponent(retorno)}&vencida=1`, { replace: true })
+    }
+    window.addEventListener('tienda-sesion-vencida', vencer)
+    return () => window.removeEventListener('tienda-sesion-vencida', vencer)
+  }, [usuario, navegar, slug])
   async function salir() {
     try { setError(''); await solicitar('/logout', 'POST'); setMenu(false); actualizarSesion(); navegar(`/${slug}`, { replace: true }) }
     catch (e) { setError(e instanceof Error ? e.message : 'No se pudo cerrar sesión.') }

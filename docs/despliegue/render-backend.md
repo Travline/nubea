@@ -105,3 +105,9 @@ Comprobar el usuario y el resultado antes de continuar; cero filas significa que
 Comprobar `/health`, el login, la creación de tienda y una imagen desde el navegador. La limpieza automática se ejecuta mientras el backend esté activo. Conservar las credenciales fuera del repositorio y, antes de reutilizar una base con datos, comprobar que no se ejecutarán instrucciones destructivas.
 
 Render indica que las instancias gratuitas pueden detenerse por inactividad y que la base gratuita tiene limitaciones, incluida la falta de respaldos. Consultar las condiciones vigentes antes de elegir un plan. [Limitaciones de Render Free](https://render.com/docs/free).
+
+### Sesiones de usuario
+
+Las sesiones se guardan en PostgreSQL (migración Flyway `V13`), por lo que sobreviven a reinicios y pueden compartirse entre instancias. Sin «Recordarme» vencen después de dos horas de inactividad o al finalizar la sesión del navegador. Con «Recordarme» vencen como máximo 24 horas después del inicio de sesión. Al desplegar este cambio se cerrarán las sesiones existentes. Cerrar sesión invalida la sesión actual.
+
+El frontend y la API siguen usando dominios diferentes: los navegadores que bloquean cookies de terceros pueden impedir que la sesión funcione incluso con `SameSite=None; Secure`. Comprobar el acceso y cierre de sesión en el navegador publicado y revisar el almacenamiento de cookies y la configuración de CORS si no se mantiene el acceso. Para eliminar esta dependencia sería necesario servir la API desde el mismo sitio que el frontend.

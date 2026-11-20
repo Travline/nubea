@@ -37,6 +37,7 @@ public class SecurityConfig {
         var csrfRepository = CookieCsrfTokenRepository.withHttpOnlyFalse();
         csrfRepository.setCookieCustomizer(cookie -> cookie.secure(cookieSecure).sameSite(cookieSameSite));
         http
+            .addFilterBefore(new SessionConfig.ExpiracionAbsoluta(), SecurityContextHolderFilter.class)
             .addFilterAfter(new ActiveUserFilter(usuarios), SecurityContextHolderFilter.class)
             .cors(cors -> {})
             .exceptionHandling(ex -> ex.authenticationEntryPoint((request, response, exception) -> response.setStatus(401)))

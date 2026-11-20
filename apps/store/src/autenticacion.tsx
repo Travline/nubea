@@ -10,10 +10,12 @@ export function Autenticacion({ registro = false }: { registro?: boolean }) {
   const [nombre, setNombre] = useState('')
   const [correo, setCorreo] = useState('')
   const [contrasena, setContrasena] = useState('')
+  const [recordarme, setRecordarme] = useState(false)
   const [error, setError] = useState('')
   const [aviso, setAviso] = useState('')
   const [ocupado, setOcupado] = useState(false)
-  const parametro = new URLSearchParams(ubicacion.search).get('retorno') || ''
+  const parametros = new URLSearchParams(ubicacion.search)
+  const parametro = parametros.get('retorno') || ''
   const base = `/tienda/${encodeURIComponent(slug)}`
   // Solo se admite una ruta local de esta tienda; nunca una URL externa o protocolo relativo.
   let retorno = base
@@ -27,7 +29,7 @@ export function Autenticacion({ registro = false }: { registro?: boolean }) {
     try {
       if (registro) await solicitar('/api/auth/registro', 'POST', { nombres: nombre, correoElectronico: correo, password: contrasena })
       try {
-        await solicitar('/api/auth/login', 'POST', { email: correo, password: contrasena })
+        await solicitar('/api/auth/login', 'POST', { email: correo, password: contrasena, recordarme })
         actualizarSesion(); navegar(destino, { replace: true })
       } catch (err) {
         if (registro) setAviso('Tu cuenta fue creada. Inicia sesión para continuar.')
@@ -37,5 +39,5 @@ export function Autenticacion({ registro = false }: { registro?: boolean }) {
     finally { setOcupado(false) }
   }
   const alterna = `/${slug}/${registro ? 'iniciar-sesion' : 'registro'}?retorno=${encodeURIComponent(retorno)}`
-  return <MarcoTienda slug={slug}><div className="formulario-cuenta"><Volver to={`/${slug}`}>Volver a la tienda</Volver><h1>{registro ? 'Crea tu cuenta' : 'Inicia sesión'}</h1><p>Usa tu cuenta de Nubea para comprar y consultar tus pedidos.</p>{aviso ? <><p role="status">{aviso}</p><Link to={alterna}>Iniciar sesión</Link></> : <form onSubmit={e => void enviar(e)}>{registro && <label>Nombres<input autoComplete="given-name" maxLength={100} value={nombre} onChange={e => setNombre(e.target.value)} required /></label>}<label>Correo electrónico<input type="email" autoComplete="email" maxLength={100} value={correo} onChange={e => setCorreo(e.target.value)} required /></label><label>Contraseña<input type="password" autoComplete={registro ? 'new-password' : 'current-password'} minLength={registro ? 8 : undefined} maxLength={128} value={contrasena} onChange={e => setContrasena(e.target.value)} required /></label>{registro && <p>La contraseña debe tener al menos 8 caracteres.</p>}{error && <p role="alert">{error}</p>}<button className="boton boton-primario" disabled={ocupado}>{ocupado ? 'Un momento...' : registro ? 'Crear cuenta' : 'Iniciar sesión'}</button></form>}<p>{registro ? '¿Ya tienes cuenta?' : '¿Aún no tienes cuenta?'} <Link to={alterna}>{registro ? 'Inicia sesión' : 'Crea una cuenta'}</Link></p></div></MarcoTienda>
+  return <MarcoTienda slug={slug}><div className="formulario-cuenta"><Volver to={`/${slug}`}>Volver a la tienda</Volver><h1>{registro ? 'Crea tu cuenta' : 'Inicia sesión'}</h1><p>Usa tu cuenta de Nubea para comprar y consultar tus pedidos.</p>{parametros.get('vencida') === '1' && <p role="status">Tu sesión venció. Inicia sesión para continuar.</p>}{aviso ? <><p role="status">{aviso}</p><Link to={alterna}>Iniciar sesión</Link></> : <form onSubmit={e => void enviar(e)}>{registro && <label>Nombres<input autoComplete="given-name" maxLength={100} value={nombre} onChange={e => setNombre(e.target.value)} required /></label>}<label>Correo electrónico<input type="email" autoComplete="email" maxLength={100} value={correo} onChange={e => setCorreo(e.target.value)} required /></label><label>Contraseña<input type="password" autoComplete={registro ? 'new-password' : 'current-password'} minLength={registro ? 8 : undefined} maxLength={128} value={contrasena} onChange={e => setContrasena(e.target.value)} required /></label>{registro && <p>La contraseña debe tener al menos 8 caracteres.</p>}{!registro && <label><input type="checkbox" checked={recordarme} onChange={e => setRecordarme(e.target.checked)} /> Recordarme durante 24 horas</label>}{error && <p role="alert">{error}</p>}<button className="boton boton-primario" disabled={ocupado}>{ocupado ? 'Un momento...' : registro ? 'Crear cuenta' : 'Iniciar sesión'}</button></form>}<p>{registro ? '¿Ya tienes cuenta?' : '¿Aún no tienes cuenta?'} <Link to={alterna}>{registro ? 'Inicia sesión' : 'Crea una cuenta'}</Link></p></div></MarcoTienda>
 }

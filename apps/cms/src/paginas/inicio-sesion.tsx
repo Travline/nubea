@@ -11,6 +11,7 @@ import { useSesion } from '@/autenticacion/sesion'
 export function PaginaInicioSesion() {
   const [correo, establecerCorreo] = useState('')
   const [contrasena, establecerContrasena] = useState('')
+  const [recordarme, establecerRecordarme] = useState(false)
   const [error, establecerError] = useState('')
   const [ocupado, establecerOcupado] = useState(false)
   const navegar = useNavigate()
@@ -21,7 +22,7 @@ export function PaginaInicioSesion() {
   async function enviar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault(); establecerError(''); establecerOcupado(true)
     try {
-      await apiAutenticacion.iniciarSesion(correo, contrasena)
+      await apiAutenticacion.iniciarSesion(correo, contrasena, recordarme)
       await actualizar()
       if (retornoSeguro) window.location.assign(retornoSeguro)
       else navegar(typeof ubicacion.state?.from === 'string' && ubicacion.state.from.startsWith('/panel') ? ubicacion.state.from : '/panel', { replace: true })
@@ -33,10 +34,12 @@ export function PaginaInicioSesion() {
     <Card className="w-full max-w-md">
       <CardHeader><CardTitle className="text-2xl">Ingresa a tu cuenta</CardTitle><p className="text-muted-foreground text-sm">Accede a tu espacio en Nubea.</p></CardHeader>
       <CardContent>
+        {ubicacion.state?.sesionVencida && <p role="status" className="mb-4 text-sm">Inicia sesión para continuar. Si tu sesión venció, vuelve a ingresar.</p>}
         {ubicacion.state?.registroCompletado && <p role="status" className="mb-4 text-sm">Tu cuenta fue creada. Inicia sesión para continuar.</p>}
         <form onSubmit={enviar} className="space-y-5">
           <div className="grid gap-2"><Label htmlFor="email">Correo</Label><Input id="email" type="email" autoComplete="email" value={correo} onChange={e => establecerCorreo(e.target.value)} required /></div>
           <div className="grid gap-2"><Label htmlFor="password">Contraseña</Label><Input id="password" type="password" autoComplete="current-password" value={contrasena} onChange={e => establecerContrasena(e.target.value)} required /></div>
+          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={recordarme} onChange={e => establecerRecordarme(e.target.checked)} /> Recordarme durante 24 horas</label>
           {error && <p role="alert" className="text-destructive text-sm">{error}</p>}
           <Button type="submit" className="w-full" disabled={ocupado}>{ocupado ? 'Ingresando...' : 'Ingresar'}</Button>
         </form>
