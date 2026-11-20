@@ -22,8 +22,9 @@ public class DireccionesController {
     private final CurrentUserProvider usuarioActual;
     public record Ubigeo(String codigo, String departamento, String provincia, String distrito) {}
     public record Direccion(UUID id, String codigoUbigeo, String departamento, String provincia, String distrito,
-                            String alias, String direccion, String referencia, String telefono, boolean principal) {}
-    public record DatosDireccion(@NotBlank @Pattern(regexp="[0-9]{6}") String codigoUbigeo,
+                            String alias, String direccion, String referencia, String telefono, boolean principal, String placeId) {}
+    public record DatosDireccion(@Pattern(regexp="[0-9]{6}") String codigoUbigeo,
+                                 @Size(max=100) String departamento, @Size(max=100) String provincia, @Size(max=100) String distrito, @Size(max=255) String placeId,
                                  @Size(max=60) String alias, @NotBlank @Size(max=250) String direccion,
                                  @Size(max=250) String referencia, @Size(max=20) String telefono, boolean principal) {}
     private UUID usuario() { return usuarioActual.getCurrentUserId().orElseThrow(() -> new AccessDeniedException("Acceso denegado")); }
@@ -38,30 +39,30 @@ public class DireccionesController {
     @GetMapping("/direcciones")
     public List<Direccion> listar() {
         return jdbc.query("""
-            SELECT d.id_direccion,d.codigo_ubigeo,u.departamento,u.provincia,u.distrito,d.alias,d.direccion,d.referencia,d.telefono_contacto,d.es_principal
-            FROM direccion_cliente d JOIN ubigeo u ON u.codigo_ubigeo=d.codigo_ubigeo WHERE d.id_usuario=? ORDER BY d.es_principal DESC,d.fecha_creacion,d.id_direccion
-            """, (r,n) -> new Direccion(r.getObject(1,UUID.class),r.getString(2),r.getString(3),r.getString(4),r.getString(5),r.getString(6),r.getString(7),r.getString(8),r.getString(9),r.getBoolean(10)), usuario());
+            SELECT d.id_direccion,d.codigo_ubigeo,COALESCE(d.departamento,u.departamento),COALESCE(d.provincia,u.provincia),COALESCE(d.distrito,u.distrito),d.alias,d.direccion,d.referencia,d.telefono_contacto,d.es_principal,d.place_id
+            FROM direccion_cliente d LEFT JOIN ubigeo u ON u.codigo_ubigeo=d.codigo_ubigeo WHERE d.id_usuario=? ORDER BY d.es_principal DESC,d.fecha_creacion,d.id_direccion
+            """, (r,n) -> new Direccion(r.getObject(1,UUID.class),r.getString(2),r.getString(3),r.getString(4),r.getString(5),r.getString(6),r.getString(7),r.getString(8),r.getString(9),r.getBoolean(10),r.getString(11)), usuario());
     }
     @PostMapping("/direcciones")
     @Transactional
     public Direccion crear(@Valid @RequestBody DatosDireccion datos) {
         UUID usuario = usuario(), id = UUID.randomUUID();
         bloquearUsuario(usuario);
-        validarUbigeo(datos.codigoUbigeo());
+        if (datos.codigoUbigeo() != null) validarUbigeo(datos.codigoUbigeo());
         if (datos.principal()) desmarcar(usuario);
-        jdbc.update("INSERT INTO direccion_cliente(id_direccion,id_usuario,codigo_ubigeo,alias,direccion,referencia,telefono_contacto,es_principal) VALUES (?,?,?,?,?,?,?,?)",
-                id,usuario,datos.codigoUbigeo(),opcional(datos.alias()),datos.direccion().trim(),opcional(datos.referencia()),opcional(datos.telefono()),datos.principal());
+        jdbc.update("INSERT INTO direccion_cliente(id_direccion,id_usuario,codigo_ubigeo,alias,direccion,referencia,telefono_contacto,es_principal,departamento,provincia,distrito,place_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                id,usuario,datos.codigoUbigeo(),opcional(datos.alias()),datos.direccion().trim(),opcional(datos.referencia()),opcional(datos.telefono()),datos.principal(),opcional(datos.departamento()),opcional(datos.provincia()),opcional(datos.distrito()),opcional(datos.placeId()));
         return listar().stream().filter(d -> d.id().equals(id)).findFirst().orElseThrow();
     }
     @PutMapping("/direcciones/{id}")
     @Transactional
     public Direccion modificar(@PathVariable UUID id, @Valid @RequestBody DatosDireccion datos) {
-        UUID usuario = usuario(); bloquearUsuario(usuario); validarUbigeo(datos.codigoUbigeo());
+        UUID usuario = usuario(); bloquearUsuario(usuario); if (datos.codigoUbigeo() != null) validarUbigeo(datos.codigoUbigeo());
         if (jdbc.queryForObject("SELECT count(*) FROM direccion_cliente WHERE id_direccion=? AND id_usuario=?", Integer.class,id,usuario) == 0)
             throw new RecursoNoEncontradoException("Dirección no encontrada");
         if (datos.principal()) desmarcar(usuario);
-        jdbc.update("UPDATE direccion_cliente SET codigo_ubigeo=?,alias=?,direccion=?,referencia=?,telefono_contacto=?,es_principal=? WHERE id_direccion=? AND id_usuario=?",
-                datos.codigoUbigeo(),opcional(datos.alias()),datos.direccion().trim(),opcional(datos.referencia()),opcional(datos.telefono()),datos.principal(),id,usuario);
+        jdbc.update("UPDATE direccion_cliente SET codigo_ubigeo=?,alias=?,direccion=?,referencia=?,telefono_contacto=?,es_principal=?,departamento=?,provincia=?,distrito=?,place_id=? WHERE id_direccion=? AND id_usuario=?",
+                datos.codigoUbigeo(),opcional(datos.alias()),datos.direccion().trim(),opcional(datos.referencia()),opcional(datos.telefono()),datos.principal(),opcional(datos.departamento()),opcional(datos.provincia()),opcional(datos.distrito()),opcional(datos.placeId()),id,usuario);
         return listar().stream().filter(d -> d.id().equals(id)).findFirst().orElseThrow();
     }
     @DeleteMapping("/direcciones/{id}")

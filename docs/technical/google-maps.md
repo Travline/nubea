@@ -1,0 +1,5 @@
+# Ubicaciones de entrega con Google Maps
+
+En Google Cloud, habilitar facturación, Maps JavaScript API y Places API (New). Crear una clave de navegador con restricciones de referencia HTTP para los dominios de la tienda y del panel (incluidos los dominios de vista previa que se deseen usar), y restringirla a esas API. Para desarrollo añadir los orígenes locales de Vite. Configurar `VITE_GOOGLE_MAPS_API_KEY` en cada aplicación y en los proyectos de Vercel para los entornos correspondientes; Vite incorpora la clave pública durante la compilación. No usar una clave de servidor ni secretos en esta variable.
+
+El autocompletado y la recuperación de detalles generan solicitudes facturables. Revisar precios y cuotas vigentes en Google Cloud, configurar presupuestos y alertas, y limitar las cuotas según el tráfico esperado. El componente de Google muestra la atribución requerida: no ocultarla ni modificarla. Solo se guarda el identificador del lugar; las coordenadas se consultan al abrir el mapa. Si el servicio no está disponible, se puede seguir usando la dirección escrita.

@@ -21,7 +21,7 @@ public class PedidosController {
     public record Pedido(UUID id, String estado, OffsetDateTime fecha, BigDecimal subtotal, BigDecimal impuesto, BigDecimal total) {}
     public record Linea(String producto, String presentacion, int cantidad, BigDecimal precio, BigDecimal total) {}
     public record Detalle(Pedido pedido, String receptor, String telefono, String direccion, String referencia,
-                          String departamento, String provincia, String distrito, List<Linea> items) {}
+                          String departamento, String provincia, String distrito, String placeId, List<Linea> items) {}
     private UUID usuario() { return actual.getCurrentUserId().orElseThrow(() -> new AccessDeniedException("Acceso denegado")); }
     private UUID tienda(String slug) {
         var filas=jdbc.query("SELECT id_tienda FROM tienda WHERE slug=? AND estado='ACTIVA'",(r,n)->r.getObject(1,UUID.class),slug);
@@ -49,13 +49,13 @@ public class PedidosController {
     private Detalle detalle(UUID tienda,UUID usuario,UUID id) {
         var detalles=jdbc.query("""
             SELECT id_pedido,estado,fecha_creacion,subtotal,monto_impuesto,total,nombre_receptor,telefono_receptor,
-                   direccion_entrega,referencia_entrega,departamento_entrega,provincia_entrega,distrito_entrega
+                   direccion_entrega,referencia_entrega,departamento_entrega,provincia_entrega,distrito_entrega,place_id_entrega
             FROM pedido WHERE id_tienda=? AND (?::uuid IS NULL OR id_usuario=?) AND id_pedido=?
-            """,(r,n)->new Detalle(new Pedido(r.getObject(1,UUID.class),r.getString(2),r.getObject(3,OffsetDateTime.class),r.getBigDecimal(4),r.getBigDecimal(5),r.getBigDecimal(6)),r.getString(7),r.getString(8),r.getString(9),r.getString(10),r.getString(11),r.getString(12),r.getString(13),List.of()),tienda,usuario,usuario,id);
+            """,(r,n)->new Detalle(new Pedido(r.getObject(1,UUID.class),r.getString(2),r.getObject(3,OffsetDateTime.class),r.getBigDecimal(4),r.getBigDecimal(5),r.getBigDecimal(6)),r.getString(7),r.getString(8),r.getString(9),r.getString(10),r.getString(11),r.getString(12),r.getString(13),r.getString(14),List.of()),tienda,usuario,usuario,id);
         if (detalles.isEmpty()) throw new RecursoNoEncontradoException("Pedido no encontrado");
         var d=detalles.getFirst();
         var items=jdbc.query("SELECT nombre_producto,descripcion_presentacion,cantidad,precio_unitario,total_linea FROM pedido_item WHERE id_pedido=? ORDER BY id_pedido_item",
                 (r,n)->new Linea(r.getString(1),r.getString(2),r.getInt(3),r.getBigDecimal(4),r.getBigDecimal(5)),id);
-        return new Detalle(d.pedido(),d.receptor(),d.telefono(),d.direccion(),d.referencia(),d.departamento(),d.provincia(),d.distrito(),items);
+        return new Detalle(d.pedido(),d.receptor(),d.telefono(),d.direccion(),d.referencia(),d.departamento(),d.provincia(),d.distrito(),d.placeId(),items);
     }
 }

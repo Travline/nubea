@@ -18,7 +18,7 @@ public class CheckoutService {
     private final JdbcTemplate jdbc;
     public record Resultado(UUID idPedido, BigDecimal total) {}
     private record Direccion(String receptor, String telefono, String direccion, String referencia, String codigo,
-                             String departamento, String provincia, String distrito) {}
+                             String departamento, String provincia, String distrito, String placeId) {}
     private record Impuesto(short id, BigDecimal tasa) {}
     private record Item(UUID id, String nombre, String opciones, int cantidad, BigDecimal precio, boolean valida) {}
     private record Importe(Item item, BigDecimal subtotal, BigDecimal impuesto, BigDecimal total) {}
@@ -68,10 +68,10 @@ public class CheckoutService {
         if (carritos.isEmpty()) throw new ReglaNegocioException("El carrito está vacío");
         UUID carrito=carritos.getFirst();
         var direcciones=jdbc.query("""
-            SELECT u.nombres,d.telefono_contacto,d.direccion,d.referencia,d.codigo_ubigeo,b.departamento,b.provincia,b.distrito
-            FROM direccion_cliente d JOIN usuario_plataforma u ON u.id_usuario=d.id_usuario JOIN ubigeo b ON b.codigo_ubigeo=d.codigo_ubigeo
+            SELECT u.nombres,d.telefono_contacto,d.direccion,d.referencia,d.codigo_ubigeo,COALESCE(d.departamento,b.departamento),COALESCE(d.provincia,b.provincia),COALESCE(d.distrito,b.distrito),d.place_id
+            FROM direccion_cliente d JOIN usuario_plataforma u ON u.id_usuario=d.id_usuario LEFT JOIN ubigeo b ON b.codigo_ubigeo=d.codigo_ubigeo
             WHERE d.id_direccion=? AND d.id_usuario=?
-            """,(r,n)->new Direccion(r.getString(1),r.getString(2),r.getString(3),r.getString(4),r.getString(5),r.getString(6),r.getString(7),r.getString(8)),idDireccion,usuario);
+            """,(r,n)->new Direccion(r.getString(1),r.getString(2),r.getString(3),r.getString(4),r.getString(5),r.getString(6),r.getString(7),r.getString(8),r.getString(9)),idDireccion,usuario);
         if (direcciones.isEmpty()) throw new RecursoNoEncontradoException("Dirección no encontrada");
         var impuestos=jdbc.query("SELECT id_impuesto,tasa_porcentaje FROM configuracion_impuesto WHERE codigo='IGV_GENERAL' AND fecha_inicio<=CURRENT_DATE AND (fecha_fin IS NULL OR fecha_fin>CURRENT_DATE)",
                 (r,n)->new Impuesto(r.getShort(1),r.getBigDecimal(2)));
@@ -107,9 +107,9 @@ public class CheckoutService {
         UUID pedido=UUID.randomUUID(); Direccion d=direcciones.getFirst();
         jdbc.update("""
             INSERT INTO pedido(id_pedido,id_usuario,id_tienda,id_carrito,id_impuesto,fecha_expiracion_reserva,subtotal,tasa_impuesto,monto_impuesto,total,
-                nombre_receptor,telefono_receptor,direccion_entrega,referencia_entrega,ubigeo_entrega,departamento_entrega,provincia_entrega,distrito_entrega)
-            VALUES (?,?,?,?,?,now()+interval '30 minutes',?,?,?,?,?,?,?,?,?,?,?,?)
-            """,pedido,usuario,tienda,carrito,impuesto.id(),subtotal,impuesto.tasa(),montoImpuesto,total,d.receptor(),d.telefono(),d.direccion(),d.referencia(),d.codigo(),d.departamento(),d.provincia(),d.distrito());
+                nombre_receptor,telefono_receptor,direccion_entrega,referencia_entrega,ubigeo_entrega,departamento_entrega,provincia_entrega,distrito_entrega,place_id_entrega)
+            VALUES (?,?,?,?,?,now()+interval '30 minutes',?,?,?,?,?,?,?,?,?,?,?,?,?)
+            """,pedido,usuario,tienda,carrito,impuesto.id(),subtotal,impuesto.tasa(),montoImpuesto,total,d.receptor(),d.telefono(),d.direccion(),d.referencia(),d.codigo(),d.departamento(),d.provincia(),d.distrito(),d.placeId());
         for (Importe i:importes) jdbc.update("""
             INSERT INTO pedido_item(id_pedido_item,id_pedido,id_presentacion,nombre_producto,descripcion_presentacion,cantidad,precio_unitario,subtotal,monto_impuesto,total_linea)
             VALUES (?,?,?,?,?,?,?,?,?,?)

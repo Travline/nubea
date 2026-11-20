@@ -61,6 +61,16 @@ class CompraIntegracionTest {
         mvc.perform(get("/api/cliente/direcciones").with(authentication(sesion(otro)))).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
     }
     @Test
+    void direccionManualConLugarRespetaPermisosYCsrf() throws Exception {
+        UUID cliente=UUID.randomUUID(), otro=UUID.randomUUID(); crearUsuario(cliente); crearUsuario(otro);
+        String cuerpo="{\"direccion\":\"Calle Uno\",\"distrito\":\"Miraflores\",\"placeId\":\"lugar-123\",\"principal\":false}";
+        mvc.perform(post("/api/cliente/direcciones").with(authentication(sesion(cliente))).contentType(MediaType.APPLICATION_JSON).content(cuerpo)).andExpect(status().isForbidden());
+        mvc.perform(post("/api/cliente/direcciones").with(csrf()).with(authentication(sesion(cliente))).contentType(MediaType.APPLICATION_JSON).content(cuerpo))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.placeId").value("lugar-123")).andExpect(jsonPath("$.distrito").value("Miraflores"));
+        UUID id=jdbc.queryForObject("SELECT id_direccion FROM direccion_cliente WHERE id_usuario=?",UUID.class,cliente);
+        mvc.perform(put("/api/cliente/direcciones/"+id).with(csrf()).with(authentication(sesion(otro))).contentType(MediaType.APPLICATION_JSON).content(cuerpo)).andExpect(status().isNotFound());
+    }
+    @Test
     void impuestoEsSoloDeAdministradorYConservaLaTasaHistorica() throws Exception {
         UUID admin=UUID.randomUUID(), usuario=UUID.randomUUID(); crearUsuario(admin); crearUsuario(usuario);
         jdbc.update("INSERT INTO usuario_rol(id_usuario,id_rol) SELECT ?,id_rol FROM rol WHERE nombre='ADMIN_GENERAL'", admin);
@@ -105,7 +115,7 @@ class CompraIntegracionTest {
         jdbc.update("INSERT INTO carrito(id_carrito,id_usuario,id_tienda) VALUES (?,?,?)",carrito,cliente,tienda);
         jdbc.update("INSERT INTO carrito_item(id_carrito,id_presentacion,cantidad) VALUES (?,?,2)",carrito,presentacion);
         jdbc.update("INSERT INTO ubigeo(codigo_ubigeo,departamento,provincia,distrito) VALUES ('999999','Prueba','Prueba','Prueba') ON CONFLICT DO NOTHING");
-        jdbc.update("INSERT INTO direccion_cliente(id_direccion,id_usuario,codigo_ubigeo,direccion) VALUES (?,?,'999999','Calle')",direccion,cliente);
+        jdbc.update("INSERT INTO direccion_cliente(id_direccion,id_usuario,direccion,distrito,referencia,place_id) VALUES (?,?,'Calle','Distrito','Referencia','lugar-123')",direccion,cliente);
         assertThrows(com.ecommerce.backend.shared.exception.ReglaNegocioException.class,
                 () -> checkout.reservarIdempotente(cliente,slug,direccion,"checkout_cambio_12345",new java.math.BigDecimal("20.00")));
         assertEquals(3,jdbc.queryForObject("SELECT stock_actual FROM inventario WHERE id_presentacion=?",Integer.class,presentacion));
@@ -125,6 +135,11 @@ class CompraIntegracionTest {
         assertEquals(1,jdbc.queryForObject("SELECT stock_actual FROM inventario WHERE id_presentacion=?",Integer.class,presentacion));
         assertThrows(com.ecommerce.backend.shared.exception.ReglaNegocioException.class,
                 () -> checkout.reservarIdempotente(cliente,slug,direccion,"checkout_prueba_12345",new java.math.BigDecimal("24.00")));
+        jdbc.update("UPDATE direccion_cliente SET direccion='Otra',place_id=null WHERE id_direccion=?",direccion);
+        jdbc.update("DELETE FROM direccion_cliente WHERE id_direccion=?",direccion);
+        assertEquals("Calle",jdbc.queryForObject("SELECT direccion_entrega FROM pedido WHERE id_pedido=?",String.class,resultado.idPedido()));
+        assertEquals("Referencia",jdbc.queryForObject("SELECT referencia_entrega FROM pedido WHERE id_pedido=?",String.class,resultado.idPedido()));
+        assertEquals("lugar-123",jdbc.queryForObject("SELECT place_id_entrega FROM pedido WHERE id_pedido=?",String.class,resultado.idPedido()));
         jdbc.update("UPDATE producto SET nombre='Modificado',precio_base=20 WHERE id_producto=?",producto);
         assertEquals("Producto",jdbc.queryForObject("SELECT nombre_producto FROM pedido_item WHERE id_pedido=?",String.class,resultado.idPedido()));
     }
