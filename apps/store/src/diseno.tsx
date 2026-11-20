@@ -1,11 +1,20 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { Link } from 'react-router-dom'
-import { ArrowLeft, Package, ShoppingBag, Store } from 'lucide-react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { ArrowLeft, ShoppingBag, Store, UserRound } from 'lucide-react'
+import { actualizarSesion, enlaceSesion, solicitar } from './api'
 
 const api = import.meta.env.VITE_API_URL?.trim() || (import.meta.env.DEV ? 'http://localhost:8080' : '')
-
+type Usuario = { nombres: string }
+type Carrito = { items: { cantidad: number }[] }
 export function MarcoTienda({ slug, nombre, children }: { slug: string; nombre?: string; children: ReactNode }) {
   const [nombreCargado, setNombreCargado] = useState('')
+  const [usuario, setUsuario] = useState<Usuario | null>(null)
+  const [cantidad, setCantidad] = useState(0)
+  const [menu, setMenu] = useState(false)
+  const [version, setVersion] = useState(0)
+  const [error, setError] = useState('')
+  const ubicacion = useLocation()
+  const navegar = useNavigate()
   useEffect(() => {
     if (nombre) return
     const controller = new AbortController()
@@ -15,7 +24,26 @@ export function MarcoTienda({ slug, nombre, children }: { slug: string; nombre?:
       .catch(() => {})
     return () => controller.abort()
   }, [slug, nombre])
+  useEffect(() => {
+    const actualizar = () => setVersion(v => v + 1)
+    window.addEventListener('tienda-sesion', actualizar); window.addEventListener('tienda-carrito', actualizar)
+    return () => { window.removeEventListener('tienda-sesion', actualizar); window.removeEventListener('tienda-carrito', actualizar) }
+  }, [])
+  useEffect(() => {
+    let activo = true
+    solicitar<Usuario>('/api/auth/me').then(async u => {
+      if (!activo) return
+      setUsuario(u)
+      try { const carrito = await solicitar<Carrito>(`/api/compra/tiendas/${encodeURIComponent(slug)}/carrito`); if (activo) setCantidad(carrito.items.reduce((total, item) => total + item.cantidad, 0)) }
+      catch { if (activo) setCantidad(0) }
+    }).catch(() => { if (activo) { setUsuario(null); setCantidad(0) } })
+    return () => { activo = false }
+  }, [slug, version, ubicacion.pathname])
+  async function salir() {
+    try { setError(''); await solicitar('/logout', 'POST'); setMenu(false); actualizarSesion(); navegar(`/${slug}`, { replace: true }) }
+    catch (e) { setError(e instanceof Error ? e.message : 'No se pudo cerrar sesión.') }
+  }
   const nombreVisible = nombre || nombreCargado || 'Tienda'
-  return <div className="sitio"><header className="cabecera-sitio"><div className="contenedor cabecera"><Link className="marca" to={`/${slug}`}><span className="marca-icono"><Store size={19} /></span><span>{nombreVisible}</span></Link><nav className="navegacion" aria-label="Navegación principal"><Link to={`/${slug}/pedidos`}><Package size={18} /><span>Mis pedidos</span></Link><Link to={`/${slug}/carrito`}><ShoppingBag size={18} /><span>Carrito</span></Link></nav></div></header><main className="contenedor contenido">{children}</main><footer className="pie"><div className="contenedor pie-contenido"><span>{nombreVisible}</span><span>Vitrina en Nubea</span></div></footer></div>
+  return <div className="sitio"><header className="cabecera-sitio"><div className="contenedor cabecera"><Link className="marca" to={`/${slug}`}><span className="marca-icono"><Store size={19} /></span><span>{nombreVisible}</span></Link><nav className="navegacion" aria-label="Navegación principal"><div className="cuenta-menu"><button className="navegacion-icono" aria-label="Cuenta" aria-expanded={menu} onClick={() => setMenu(!menu)}><UserRound size={21} /></button>{menu && <div className="menu-desplegable">{usuario ? <><p>Hola, {usuario.nombres}</p><Link to={`/${slug}/pedidos`} onClick={() => setMenu(false)}>Mis pedidos</Link><Link to={`/${slug}/direcciones`} onClick={() => setMenu(false)}>Mis direcciones</Link><button onClick={() => void salir()}>Cerrar sesión</button>{error && <p role="alert">{error}</p>}</> : <><Link to={enlaceSesion(slug)} onClick={() => setMenu(false)}>Iniciar sesión</Link><Link to={`/${slug}/registro?retorno=${encodeURIComponent(window.location.pathname + window.location.search)}`} onClick={() => setMenu(false)}>Crear cuenta</Link></>}</div>}</div><Link className="navegacion-icono" to={`/${slug}/carrito`} aria-label={cantidad ? `Carrito, ${cantidad} unidades` : 'Carrito'}><ShoppingBag size={21} />{cantidad > 0 && <span className="cantidad-carrito">{cantidad}</span>}</Link></nav></div></header><main className="contenedor contenido">{children}</main><footer className="pie"><div className="contenedor pie-contenido"><span>{nombreVisible}</span><span>Vitrina en Nubea</span></div></footer></div>
 }
 export function Volver({ to, children }: { to: string; children: ReactNode }) { return <Link className="volver" to={to}><ArrowLeft size={16} />{children}</Link> }

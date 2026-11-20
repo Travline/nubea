@@ -40,9 +40,16 @@ class VitrinaIntegracionTest {
         jdbc.update("INSERT INTO producto(id_producto,id_categoria,id_tienda,nombre,precio_base,estado) VALUES (?,?,?,'Publicado',20,'PUBLICADO'),(?,?,?,'Borrador',10,'BORRADOR'),(?,?,?,'Oculto',10,'PUBLICADO')", producto, categoria, tienda, borrador, categoria, tienda, UUID.randomUUID(), oculta, tienda);
         jdbc.update("INSERT INTO presentacion_producto(id_presentacion,id_producto,id_tienda,sku,precio_override,estado,firma_valores) VALUES (?,?,?,'ACTIVO',15,'ACTIVA','a'),(?,?,?,'INACTIVO',10,'INACTIVA','b')", presentacion, producto, tienda, inactiva, producto, tienda);
         jdbc.update("INSERT INTO inventario(id_presentacion,stock_actual) VALUES (?,0)", presentacion);
+        UUID coleccion = UUID.randomUUID(), coleccionOculta = UUID.randomUUID(), coleccionAjena = UUID.randomUUID();
+        jdbc.update("INSERT INTO coleccion(id_coleccion,id_tienda,nombre,slug,activa) VALUES (?,?,'Visible','visible',true),(?,?,'Oculta','oculta',false),(?,?,'Ajena','ajena',true)", coleccion, tienda, coleccionOculta, tienda, coleccionAjena, tercera);
+        jdbc.update("INSERT INTO coleccion_producto(id_coleccion,id_producto) VALUES (?,?),(?,?),(?,?)", coleccion, producto, coleccion, borrador, coleccionOculta, producto);
         for (String ruta : new String[]{"/api/publico/tiendas/", "/api/tiendas/"}) {
             mvc.perform(get(ruta + slug)).andExpect(status().isOk())
                 .andExpect(jsonPath("$.nombre").value("Visible"))
+                .andExpect(jsonPath("$.colecciones.length()").value(1))
+                .andExpect(jsonPath("$.colecciones[0].id").value(coleccion.toString()))
+                .andExpect(jsonPath("$.colecciones[0].productos.length()").value(1))
+                .andExpect(jsonPath("$.colecciones[0].productos[0]").value(producto.toString()))
                 .andExpect(jsonPath("$.idPropietario").doesNotExist())
                 .andExpect(jsonPath("$.productos[0].presentaciones[0].stockActual").doesNotExist())
                 .andExpect(jsonPath("$.productos[0].presentaciones[0].sku").doesNotExist());

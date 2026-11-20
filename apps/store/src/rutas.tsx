@@ -3,8 +3,11 @@ import { Vitrina } from './vitrina'
 import { CarritoTienda } from './carrito'
 import { Direcciones } from './direcciones'
 import { Pedidos } from './pedidos'
+import { Autenticacion } from './autenticacion'
 
 export const enrutador = createBrowserRouter([
+  { path: '/:slug/iniciar-sesion', element: <Autenticacion key="login" /> },
+  { path: '/:slug/registro', element: <Autenticacion key="registro" registro /> },
   { path: '/:slug/pedidos/:idPedido', element: <Pedidos /> },
   { path: '/:slug/pedidos', element: <Pedidos /> },
   { path: '/:slug/direcciones', element: <Direcciones /> },
