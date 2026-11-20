@@ -25,3 +25,5 @@ export async function solicitar<T>(ruta: string, metodo = 'GET', cuerpo?: object
 export function enlaceSesion(slug: string) { return `/plataforma/iniciar-sesion?retorno=${encodeURIComponent(`/tienda/${slug}/carrito`)}` }
 
 export async function agregarAlCarrito(slug: string, id: string) { return solicitar(`/api/compra/tiendas/${encodeURIComponent(slug)}/carrito/items/${id}`, 'POST', { cantidad: 1 }) }
+
+export const precio = (valor: number) => new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(valor)

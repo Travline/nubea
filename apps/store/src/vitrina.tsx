@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { ArrowRight, ChevronLeft, ChevronRight, ImageOff, ShoppingBag } from 'lucide-react'
 import { agregarAlCarrito, enlaceSesion, ErrorSolicitud } from './api'
+import { MarcoTienda, Volver } from './diseno'
+import { precio } from './api'
 
 type Presentacion = { id: string; precio: number; disponible: boolean; opciones: { nombre: string; valor: string }[] }
 type Producto = { id: string; categoriaId: string; nombre: string; descripcion: string | null; imagenes: string[]; presentaciones: Presentacion[] }
 type Datos = { nombre: string; plantilla: string; titulo: string | null; descripcion: string | null; mostrarCarrusel: boolean; banners: { url: string; enlace: string | null }[]; categorias: { id: string; nombre: string; slug: string }[]; productos: Producto[] }
 const api = import.meta.env.VITE_API_URL?.trim() || (import.meta.env.DEV ? 'http://localhost:8080' : '')
-const precio = (valor: number) => new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(valor)
 
 export function Vitrina() {
   const { slug = '', idProducto } = useParams()
@@ -14,33 +16,38 @@ export function Vitrina() {
   const [error, setError] = useState('')
   const [intento, setIntento] = useState(0)
   const [banner, setBanner] = useState(0)
+  const [categoria, setCategoria] = useState('')
   useEffect(() => {
     const controlador = new AbortController()
-    void Promise.resolve().then(() => { if (!controlador.signal.aborted) { setDatos(null); setError(''); setBanner(0) } })
+    void Promise.resolve().then(() => { if (!controlador.signal.aborted) { setDatos(null); setError(''); setBanner(0); setCategoria('') } })
     fetch(`${api}/api/publico/tiendas/${encodeURIComponent(slug)}`, { signal: controlador.signal })
       .then(res => { if (!res.ok) throw new Error(res.status === 404 ? 'Esta tienda no existe o no está disponible.' : 'No se pudo cargar la tienda.'); return res.json() as Promise<Datos> })
       .then(setDatos).catch(e => { if (e.name !== 'AbortError') setError(e.message === 'Failed to fetch' ? 'No se pudo conectar con la tienda.' : e.message) })
     return () => controlador.abort()
   }, [slug, intento])
-  if (error) return <main className="contenedor"><h1>Tienda no disponible</h1><p role="alert">{error}</p><button onClick={() => setIntento(i => i + 1)}>Intentar nuevamente</button></main>
-  if (!datos) return <main className="contenedor" role="status">Cargando tienda...</main>
-  if (datos.plantilla !== 'minimal') return <main className="contenedor"><h1>{datos.nombre}</h1><p>La plantilla de esta tienda no está disponible.</p></main>
+  if (error) return <MarcoTienda slug={slug}><div className="estado"><h1>Tienda no disponible</h1><p role="alert">{error}</p><button className="boton boton-primario" onClick={() => setIntento(i => i + 1)}>Intentar nuevamente</button></div></MarcoTienda>
+  if (!datos) return <main className="contenedor estado" role="status">Cargando tienda...</main>
+  if (datos.plantilla !== 'minimal') return <MarcoTienda slug={slug} nombre={datos.nombre}><div className="estado"><h1>{datos.nombre}</h1><p>La plantilla de esta tienda no está disponible.</p></div></MarcoTienda>
   const producto = datos.productos.find(p => p.id === idProducto)
   const actual = datos.banners[banner]
-  return <><header><div className="contenedor cabecera"><Link to={`/${slug}`}>{datos.nombre}</Link><nav><Link to={`/${slug}/pedidos`}>Mis pedidos</Link> · <Link to={`/${slug}/carrito`}>Carrito</Link></nav></div></header><main className="contenedor">
-    {idProducto ? producto ? <Detalle key={producto.id} producto={producto} slug={slug} /> : <><h1>Producto no encontrado</h1><Link to={`/${slug}`}>Volver a la tienda</Link></> : <>
-      <section className="introduccion"><p className="etiqueta">Bienvenido a {datos.nombre}</p><h1>{datos.titulo || datos.nombre}</h1>{datos.descripcion && <p>{datos.descripcion}</p>}</section>
-      {datos.mostrarCarrusel && actual && <section className="carrusel" aria-label="Novedades"><div>{actual.enlace ? <a href={actual.enlace}><img src={actual.url} alt={`Banner ${banner + 1}`} /></a> : <img src={actual.url} alt={`Banner ${banner + 1}`} />}</div>{datos.banners.length > 1 && <div className="controles"><button onClick={() => setBanner((banner + datos.banners.length - 1) % datos.banners.length)}>Anterior</button><span>{banner + 1} / {datos.banners.length}</span><button onClick={() => setBanner((banner + 1) % datos.banners.length)}>Siguiente</button></div>}</section>}
-      <section><h2>Nuestros productos</h2>{datos.productos.length === 0 ? <p>Esta tienda aún no tiene productos publicados.</p> : <div className="productos">{datos.productos.map(p => <Link className="tarjeta" to={`/${slug}/productos/${p.id}`} key={p.id}><Foto producto={p} /><div><h3>{p.nombre}</h3><p>{p.presentaciones.length ? `Desde ${precio(Math.min(...p.presentaciones.map(v => v.precio)))}` : 'Sin presentaciones disponibles'}</p><small>{p.presentaciones.some(v => v.disponible) ? 'Disponible' : 'Agotado'}</small></div></Link>)}</div>}</section>
-    </>}
-  </main><footer className="contenedor">{datos.nombre} · Vitrina en Nubea</footer></>
+  const productos = categoria ? datos.productos.filter(p => p.categoriaId === categoria) : datos.productos
+  return <MarcoTienda slug={slug} nombre={datos.nombre}>{idProducto ? producto ? <Detalle key={producto.id} producto={producto} slug={slug} categoria={datos.categorias.find(c => c.id === producto.categoriaId)?.nombre} /> : <div className="estado"><h1>Producto no encontrado</h1><Volver to={`/${slug}`}>Volver a la tienda</Volver></div> : <>
+    <section className="introduccion"><p className="etiqueta">Bienvenido a {datos.nombre}</p><h1>{datos.titulo || datos.nombre}</h1>{datos.descripcion && <p className="introduccion-texto">{datos.descripcion}</p>}<a className="enlace-flecha" href="#productos">Explorar productos <ArrowRight size={17} /></a></section>
+    {datos.mostrarCarrusel && actual && <section className="carrusel" aria-label="Novedades"><div className="carrusel-imagen">{actual.enlace ? <a href={actual.enlace}><img src={actual.url} alt={`Banner ${banner + 1} de ${datos.banners.length}`} /></a> : <img src={actual.url} alt={`Banner ${banner + 1} de ${datos.banners.length}`} />}</div>{datos.banners.length > 1 && <div className="controles"><button className="boton-icono" aria-label="Banner anterior" onClick={() => setBanner((banner + datos.banners.length - 1) % datos.banners.length)}><ChevronLeft size={19} /></button><span aria-live="polite">{banner + 1} / {datos.banners.length}</span><button className="boton-icono" aria-label="Banner siguiente" onClick={() => setBanner((banner + 1) % datos.banners.length)}><ChevronRight size={19} /></button></div>}</section>}
+    <section id="productos" className="catalogo"><div className="seccion-cabecera"><div><p className="etiqueta">Descubre la colección</p><h2>Nuestros productos</h2></div><p>{productos.length} {productos.length === 1 ? 'producto' : 'productos'}</p></div>{datos.categorias.length > 0 && <div className="filtros" aria-label="Filtrar por categoría"><button className={!categoria ? 'activo' : ''} aria-pressed={!categoria} onClick={() => setCategoria('')}>Todos</button>{datos.categorias.map(c => <button key={c.id} className={categoria === c.id ? 'activo' : ''} aria-pressed={categoria === c.id} onClick={() => setCategoria(c.id)}>{c.nombre}</button>)}</div>}{productos.length === 0 ? <div className="estado-vacio"><ShoppingBag size={26} /><p>{datos.productos.length ? 'No hay productos en esta categoría.' : 'Esta tienda aún no tiene productos publicados.'}</p></div> : <div className="productos">{productos.map(p => {
+      const disponibles = p.presentaciones.filter(v => v.disponible)
+      const categoriaNombre = datos.categorias.find(c => c.id === p.categoriaId)?.nombre
+      return <Link className="tarjeta" to={`/${slug}/productos/${p.id}`} key={p.id}><Foto producto={p} /><div className="tarjeta-contenido">{categoriaNombre && <p className="tarjeta-categoria">{categoriaNombre}</p>}<h3>{p.nombre}</h3><div className="tarjeta-pie"><strong>{disponibles.length ? `${disponibles.length > 1 ? 'Desde ' : ''}${precio(Math.min(...disponibles.map(v => v.precio)))}` : p.presentaciones.length ? 'Agotado' : 'Sin presentaciones'}</strong><ArrowRight size={17} aria-hidden="true" /></div></div></Link>
+    })}</div>}</section>
+  </>}</MarcoTienda>
 }
-function Foto({ producto }: { producto: Producto }) { return producto.imagenes[0] ? <img className="foto" src={producto.imagenes[0]} alt={producto.nombre} /> : <div className="foto sin-foto">Sin imagen</div> }
-function Detalle({ producto, slug }: { producto: Producto; slug: string }) {
-  const [seleccion, setSeleccion] = useState(producto.presentaciones[0]?.id ?? '')
+function Foto({ producto, indice = 0 }: { producto: Producto; indice?: number }) { return producto.imagenes[indice] ? <img className="foto" src={producto.imagenes[indice]} alt={producto.nombre} /> : <div className="foto sin-foto"><ImageOff size={28} /><span>Sin imagen</span></div> }
+function Detalle({ producto, slug, categoria }: { producto: Producto; slug: string; categoria?: string }) {
+  const [seleccion, setSeleccion] = useState(producto.presentaciones.find(p => p.disponible)?.id ?? producto.presentaciones[0]?.id ?? '')
+  const [imagen, setImagen] = useState(0)
   const [mensaje, setMensaje] = useState('')
   const [ocupado, setOcupado] = useState(false)
   const [necesitaSesion, setNecesitaSesion] = useState(false)
   const presentacion = producto.presentaciones.find(p => p.id === seleccion)
-  return <section><Link to={`/${slug}`}>← Volver a la tienda</Link><div className="detalle"><Foto producto={producto} /><div><h1>{producto.nombre}</h1>{producto.descripcion && <p>{producto.descripcion}</p>}{producto.presentaciones.length > 0 ? <><label htmlFor="presentacion">Presentación</label><select id="presentacion" value={seleccion} onChange={e => setSeleccion(e.target.value)}>{producto.presentaciones.map(p => <option key={p.id} value={p.id}>{p.opciones.map(o => `${o.nombre}: ${o.valor}`).join(' · ') || 'Única'} — {precio(p.precio)}</option>)}</select><p className="precio">{presentacion && precio(presentacion.precio)}</p><p>{presentacion?.disponible ? 'Disponible' : 'Agotado'}</p><button disabled={!presentacion?.disponible || ocupado} onClick={() => { setOcupado(true); setMensaje(''); setNecesitaSesion(false); void agregarAlCarrito(slug, seleccion).then(() => setMensaje('Producto agregado al carrito.')).catch((e: unknown) => { if (e instanceof ErrorSolicitud && e.estado === 401) { setNecesitaSesion(true); setMensaje('Inicia sesión para usar el carrito.') } else setMensaje(e instanceof Error ? e.message : 'No se pudo agregar al carrito.') }).finally(() => setOcupado(false)) }}>Agregar al carrito</button>{mensaje && <p role="status">{mensaje} {necesitaSesion && <a href={enlaceSesion(slug)}>Iniciar sesión · </a>}<Link to={`/${slug}/carrito`}>Ver carrito</Link></p>}</> : <p>Sin presentaciones disponibles.</p>}</div></div></section>
+  return <section className="pagina-detalle"><Volver to={`/${slug}`}>Volver a la tienda</Volver><div className="detalle"><div><Foto producto={producto} indice={imagen} />{producto.imagenes.length > 1 && <div className="miniaturas" aria-label="Imágenes del producto">{producto.imagenes.map((url, i) => <button key={`${url}-${i}`} className={imagen === i ? 'activo' : ''} aria-label={`Ver imagen ${i + 1}`} aria-pressed={imagen === i} onClick={() => setImagen(i)}><img src={url} alt="" /></button>)}</div>}</div><div className="detalle-info">{categoria && <p className="etiqueta">{categoria}</p>}<h1>{producto.nombre}</h1>{producto.descripcion && <p className="descripcion">{producto.descripcion}</p>}{producto.presentaciones.length > 0 ? <><label htmlFor="presentacion">Presentación</label><select id="presentacion" value={seleccion} onChange={e => setSeleccion(e.target.value)}>{producto.presentaciones.map(p => <option key={p.id} value={p.id}>{p.opciones.map(o => `${o.nombre}: ${o.valor}`).join(' · ') || 'Única'} — {precio(p.precio)}{!p.disponible ? ' · Agotado' : ''}</option>)}</select><p className="precio">{presentacion && precio(presentacion.precio)}</p><p className={`disponibilidad ${presentacion?.disponible ? '' : 'agotado'}`}>{presentacion?.disponible ? 'Disponible' : 'Agotado'}</p><button className="boton boton-primario boton-compra" disabled={!presentacion?.disponible || ocupado} onClick={() => { setOcupado(true); setMensaje(''); setNecesitaSesion(false); void agregarAlCarrito(slug, seleccion).then(() => setMensaje('Producto agregado al carrito.')).catch((e: unknown) => { if (e instanceof ErrorSolicitud && e.estado === 401) { setNecesitaSesion(true); setMensaje('Inicia sesión para usar el carrito.') } else setMensaje(e instanceof Error ? e.message : 'No se pudo agregar al carrito.') }).finally(() => setOcupado(false)) }}><ShoppingBag size={18} />{ocupado ? 'Agregando...' : 'Agregar al carrito'}</button>{mensaje && <p className="aviso" role="status">{mensaje} {necesitaSesion && <a href={enlaceSesion(slug)}>Iniciar sesión</a>} <Link to={`/${slug}/carrito`}>Ver carrito</Link></p>}</> : <p>Sin presentaciones disponibles.</p>}</div></div></section>
 }
