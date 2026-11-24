@@ -1,13 +1,13 @@
 import { Link } from "react-router-dom";
+import { EnlaceSeccion } from "@/components/inicio/enlace-seccion";
 
 const base = import.meta.env.BASE_URL;
 
-// Enlaces a secciones de la página principal. Llevan la ruta base para que
-// funcionen también desde Iniciar sesión o Registro.
+// Secciones de la página principal (funcionan también desde Iniciar sesión o Registro).
 const enlaces = [
-  { etiqueta: "Funciones", destino: `${base}#funciones` },
-  { etiqueta: "Cómo funciona", destino: `${base}#como-funciona` },
-  { etiqueta: "Plantillas", destino: `${base}#plantillas` },
+  { etiqueta: "Funciones", seccion: "funciones" },
+  { etiqueta: "Cómo funciona", seccion: "como-funciona" },
+  { etiqueta: "Plantillas", seccion: "plantillas" },
 ];
 
 // Mismo encabezado para todas las páginas públicas (inicio, iniciar sesión y registro).
@@ -25,10 +25,10 @@ export const EncabezadoInicio = () => {
 
         <ul className="hidden items-center gap-10 text-[15px] text-white/70 lg:flex">
           {enlaces.map((enlace) => (
-            <li key={enlace.destino}>
-              <a href={enlace.destino} className="transition-colors hover:text-white">
+            <li key={enlace.seccion}>
+              <EnlaceSeccion seccion={enlace.seccion} className="transition-colors hover:text-white">
                 {enlace.etiqueta}
-              </a>
+              </EnlaceSeccion>
             </li>
           ))}
         </ul>

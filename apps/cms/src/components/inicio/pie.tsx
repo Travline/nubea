@@ -1,16 +1,17 @@
 import { Link } from "react-router-dom";
+import { EnlaceSeccion } from "@/components/inicio/enlace-seccion";
 
 const base = import.meta.env.BASE_URL;
 
-type Enlace = { etiqueta: string; href: string } | { etiqueta: string; to: string };
+type Enlace = { etiqueta: string; href: string } | { etiqueta: string; to: string } | { etiqueta: string; seccion: string };
 
 const columnas: { titulo: string; enlaces: Enlace[] }[] = [
   {
     titulo: "Producto",
     enlaces: [
-      { etiqueta: "Tu panel", href: `${base}#panel` },
-      { etiqueta: "Funciones", href: `${base}#funciones` },
-      { etiqueta: "Cómo funciona", href: `${base}#como-funciona` },
+      { etiqueta: "Tu panel", seccion: "panel" },
+      { etiqueta: "Funciones", seccion: "funciones" },
+      { etiqueta: "Cómo funciona", seccion: "como-funciona" },
     ],
   },
   {
@@ -62,7 +63,9 @@ export const PieInicio = () => {
               <ul className="mt-5 flex flex-col gap-3.5">
                 {columna.enlaces.map((enlace) => (
                   <li key={enlace.etiqueta}>
-                    {"to" in enlace ? (
+                    {"seccion" in enlace ? (
+                      <EnlaceSeccion seccion={enlace.seccion} className={claseEnlace}>{enlace.etiqueta}</EnlaceSeccion>
+                    ) : "to" in enlace ? (
                       <Link to={enlace.to} className={claseEnlace}>{enlace.etiqueta}</Link>
                     ) : (
                       <a href={enlace.href} className={claseEnlace}>{enlace.etiqueta}</a>

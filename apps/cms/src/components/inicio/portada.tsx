@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, Pause, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { EnlaceSeccion } from "@/components/inicio/enlace-seccion";
 
 const base = import.meta.env.BASE_URL;
 // Coloca aquí tus archivos: public/assets/portada/portada.mp4 y portada.jpg
@@ -88,12 +89,12 @@ export const PortadaInicio = () => {
               Crear mi tienda
               <ArrowRight className="size-[18px] transition-transform group-hover:translate-x-1" />
             </Link>
-            <a
-              href="#como-funciona"
+            <EnlaceSeccion
+              seccion="como-funciona"
               className="inline-flex h-[52px] items-center justify-center rounded-full border border-white/70 px-7 text-[16px] font-semibold text-white transition hover:bg-white/10"
             >
               Ver cómo funciona
-            </a>
+            </EnlaceSeccion>
           </div>
         </div>
       </div>
