@@ -8,6 +8,11 @@ import com.ecommerce.backend.catalogo.model.Categoria;
 import com.ecommerce.backend.catalogo.repository.CategoriaRepository;
 import com.ecommerce.backend.tienda.repository.TiendaRepository;
 
+import com.ecommerce.backend.shared.exception.MensajesUsuario;
+import com.ecommerce.backend.shared.exception.RecursosDuplicadosException;
+import com.ecommerce.backend.shared.exception.ValidacionCampoException;
+import com.ecommerce.backend.shared.utils.SlugUtil;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,9 +43,15 @@ public class CategoriaService {
         validarSolicitud(request);
 
         String nombre = request.getNombre().trim();
-        String slug = request.getSlug().trim();
-
-        validarSlugDisponible(idTienda, slug);
+        String slugRecibido = slugOpcional(request);
+        String slug;
+        if (slugRecibido == null) {
+            slug = generarSlugUnico(idTienda, nombre);
+        } else {
+            validarFormatoSlug(slugRecibido);
+            validarSlugDisponible(idTienda, slugRecibido);
+            slug = slugRecibido;
+        }
 
         Categoria categoria = new Categoria();
 
@@ -92,9 +103,12 @@ public class CategoriaService {
         Categoria categoria = buscarCategoria(idCategoria, idTienda);
 
         String nombre = request.getNombre().trim();
-        String slug = request.getSlug().trim();
+        // Cambiar el nombre no cambia el slug: los enlaces deben ser estables.
+        String slugRecibido = slugOpcional(request);
+        String slug = slugRecibido == null ? categoria.getSlug() : slugRecibido;
 
         if (!categoria.getSlug().equals(slug)) {
+            validarFormatoSlug(slug);
             validarSlugDisponible(idTienda, slug);
         }
 
@@ -159,8 +173,8 @@ public class CategoriaService {
             String slug) {
 
         if (categoriaRepository.existsByIdTiendaAndSlug(idTienda, slug)) {
-            throw new IllegalArgumentException(
-                    "Ya existe una categoría con ese slug en la tienda");
+            throw new RecursosDuplicadosException(
+                    "slug", MensajesUsuario.CATEGORIA_DIRECCION_DUPLICADA);
         }
     }
 
@@ -183,15 +197,32 @@ public class CategoriaService {
                     "El nombre no puede superar los 100 caracteres");
         }
 
-        if (request.getSlug() == null
-                || request.getSlug().isBlank()) {
-            throw new IllegalArgumentException(
-                    "El slug de la categoría es obligatorio");
+        if (request.getSlug() != null && request.getSlug().trim().length() > LARGO_SLUG) {
+            throw new ValidacionCampoException("slug",
+                    "La dirección web no puede superar los " + LARGO_SLUG + " caracteres");
         }
+    }
 
-        if (request.getSlug().trim().length() > 150) {
-            throw new IllegalArgumentException(
-                    "El slug no puede superar los 150 caracteres");
+    private static final int LARGO_SLUG = 120; // categoria.slug VARCHAR(120)
+
+    private static String slugOpcional(CategoriaRequest request) {
+        return request.getSlug() == null || request.getSlug().isBlank() ? null : request.getSlug().trim();
+    }
+
+    private static void validarFormatoSlug(String slug) {
+        if (!SlugUtil.esValido(slug)) {
+            throw new ValidacionCampoException("slug", MensajesUsuario.DIRECCION_FORMATO);
         }
+    }
+
+    // Igual que con la tienda: base, base-2, base-3...
+    private String generarSlugUnico(UUID idTienda, String nombre) {
+        String base = SlugUtil.generar(nombre, "categoria", LARGO_SLUG - 6);
+        String slug = base;
+        int i = 2;
+        while (categoriaRepository.existsByIdTiendaAndSlug(idTienda, slug)) {
+            slug = base + "-" + i++;
+        }
+        return slug;
     }
 }

@@ -24,6 +24,11 @@ import com.ecommerce.backend.catalogo.model.PresentacionValor;
 import com.ecommerce.backend.catalogo.model.PresentacionValorId;
 
 import org.springframework.transaction.annotation.Transactional;
+import com.ecommerce.backend.shared.exception.MensajesUsuario;
+import com.ecommerce.backend.shared.exception.RecursosDuplicadosException;
+import com.ecommerce.backend.shared.exception.ValidacionCampoException;
+import com.ecommerce.backend.shared.utils.SlugUtil;
+import java.util.Locale;
 import com.ecommerce.backend.catalogo.model.ValorVariante;
 
 @Service
@@ -77,7 +82,7 @@ private void validarConjuntoVariantes(UUID producto, UUID tienda, UUID excluir, 
         if (fila.get("id_variante") != null) conjunto.add((UUID) fila.get("id_variante"));
     }
     if (conjuntos.values().stream().anyMatch(conjunto -> !conjunto.equals(esperado)))
-        throw new IllegalArgumentException("Todas las presentaciones deben usar las mismas variantes");
+        throw new IllegalArgumentException("Todas las versiones de este producto deben usar las mismas opciones");
 }
 
 private List<ValorVariante> validarValores(
@@ -93,8 +98,8 @@ private List<ValorVariante> validarValores(
     Set<UUID> idsUnicos = new HashSet<>(idsValores);
 
     if (idsUnicos.size() != idsValores.size()) {
-        throw new IllegalArgumentException(
-                "No se pueden enviar valores duplicados"
+        throw new ValidacionCampoException("idsValores",
+                "No se puede elegir el mismo valor dos veces"
         );
     }
 
@@ -104,8 +109,8 @@ private List<ValorVariante> validarValores(
 
     // Verificar que todos los valores existan
     if (valores.size() != idsValores.size()) {
-        throw new IllegalArgumentException(
-                "Uno o más valores de variante no existen"
+        throw new ValidacionCampoException("idsValores",
+                "Una o más de las opciones elegidas no existen"
         );
     }
 
@@ -119,22 +124,22 @@ private List<ValorVariante> validarValores(
         varianteRepository.findByIdVarianteAndIdTienda(
                 idVariante,
                 idTienda
-        ).orElseThrow(() -> new IllegalArgumentException(
-                "Uno de los valores pertenece a una variante de otra tienda"
+        ).orElseThrow(() -> new ValidacionCampoException("idsValores",
+                "Una de las opciones elegidas no pertenece a tu tienda"
         ));
 
         // Evitar dos valores de una misma variante
         if (!idsVariantes.add(idVariante)) {
-            throw new IllegalArgumentException(
-                    "No se pueden seleccionar dos valores de una misma variante"
+            throw new ValidacionCampoException("idsValores",
+                    MensajesUsuario.UN_VALOR_POR_OPCION
             );
         }
     }
 
     // NUBEA permite como máximo tres tipos de variantes
     if (idsVariantes.size() > 3) {
-        throw new IllegalArgumentException(
-                "Un producto puede tener como máximo tres variantes"
+        throw new ValidacionCampoException("idsValores",
+                "Un producto puede tener como máximo tres opciones (por ejemplo, color, talla y material)"
         );
     }
 
@@ -158,46 +163,62 @@ private String construirFirmaValores(List<ValorVariante> valores) {
 
 
 
+/** SKU automático: SLUGTIENDA-SLUGPRODUCTO-NNN, en mayúsculas y como máximo 80 caracteres. */
+private String generarSku(UUID idTienda, String nombreProducto) {
+    String slugTienda = jdbcTemplate.queryForObject("SELECT slug FROM tienda WHERE id_tienda = ?", String.class, idTienda);
+    String prefijo = (slugTienda + "-" + SlugUtil.generar(nombreProducto, "producto", 80)).toUpperCase(Locale.ROOT);
+    int largoMaximoPrefijo = 80 - 4; // "-NNN"
+    if (prefijo.length() > largoMaximoPrefijo) {
+        prefijo = prefijo.substring(0, largoMaximoPrefijo).replaceAll("-+$", "");
+    }
+    for (int n = 1; ; n++) {
+        String candidato = prefijo + "-" + String.format(Locale.ROOT, "%03d", n);
+        if (candidato.length() > 80) { // a partir de 1000 el número ocupa más de 3 cifras
+            candidato = prefijo.substring(0, prefijo.length() - (candidato.length() - 80)) + "-" + n;
+        }
+        if (!presentacionProductoRepository.existsByIdTiendaAndSku(idTienda, candidato)) {
+            return candidato;
+        }
+    }
+}
+
 @Transactional
 public PresentacionProductoResponse crearPresentacion(
         UUID idProducto,
         UUID idTienda,
         PresentacionProductoRequest request
 ) {
-    // Validar la solicitud
-    if (request == null || request.getSku() == null
-            || request.getSku().isBlank()) {
-        throw new IllegalArgumentException(
-                "El SKU de la presentación es obligatorio"
-        );
+    if (request == null) {
+        throw new IllegalArgumentException("La solicitud no puede estar vacía");
     }
 
-    String sku = request.getSku().trim();
-
     // Verificar que el producto pertenezca a la tienda
-    productoRepository.findByIdProductoAndIdTienda(
+    var producto = productoRepository.findByIdProductoAndIdTienda(
             idProducto,
             idTienda
     ).orElseThrow(() -> new IllegalArgumentException(
             "El producto no existe en esta tienda"
     ));
 
-    // Verificar que el SKU no esté registrado en la tienda
-    if (presentacionProductoRepository.existsByIdTiendaAndSku(
-            idTienda,
-            sku
-    )) {
-        throw new IllegalArgumentException(
-                "Ya existe una presentación con ese SKU en esta tienda"
-        );
-    }
-
     // Validar los valores seleccionados
     List<ValorVariante> valores = validarValores(
             request.getIdsValores(),
             idTienda
     );
+    // Bloquea el producto (FOR UPDATE): las altas concurrentes del mismo producto quedan en serie,
+    // por lo que el SKU generado a continuación no se repite entre ellas.
     validarConjuntoVariantes(idProducto, idTienda, null, valores);
+
+    // SKU opcional: si no llega, se genera uno único por tienda.
+    String sku;
+    if (request.getSku() == null || request.getSku().isBlank()) {
+        sku = generarSku(idTienda, producto.getNombre());
+    } else {
+        sku = request.getSku().trim();
+        if (presentacionProductoRepository.existsByIdTiendaAndSku(idTienda, sku)) {
+            throw new RecursosDuplicadosException("sku", MensajesUsuario.CODIGO_DUPLICADO);
+        }
+    }
 
     // Construir la firma de valores
     String firmaValores = construirFirmaValores(valores);
@@ -205,9 +226,7 @@ public PresentacionProductoResponse crearPresentacion(
     // Verificar que no exista esa combinación para el producto
     if (presentacionProductoRepository
             .existsByIdProductoAndFirmaValores(idProducto, firmaValores)) {
-        throw new IllegalArgumentException(
-                "Ya existe una presentación con esa combinación de valores"
-        );
+        throw new RecursosDuplicadosException("idsValores", MensajesUsuario.COMBINACION_REPETIDA);
     }
 
     // Crear la presentación
@@ -224,7 +243,11 @@ public PresentacionProductoResponse crearPresentacion(
     PresentacionProducto guardada =
             presentacionProductoRepository.saveAndFlush(presentacion);
 
-    jdbcTemplate.update("INSERT INTO inventario (id_presentacion) VALUES (?)", guardada.getIdPresentacion());
+    // RN-M3-10: el inventario se crea junto con la presentación; stockInicial/stockMinimo son opcionales.
+    jdbcTemplate.update("INSERT INTO inventario (id_presentacion, stock_actual, stock_minimo) VALUES (?,?,?)",
+            guardada.getIdPresentacion(),
+            request.getStockInicial() == null ? 0 : request.getStockInicial(),
+            request.getStockMinimo() == null ? 0 : request.getStockMinimo());
 
     // Crear las relaciones con los valores seleccionados
     List<PresentacionValor> relaciones = valores.stream()
@@ -292,13 +315,13 @@ public PresentacionProductoResponse obtenerPresentacionPorId(
     PresentacionProducto presentacion = presentacionProductoRepository
             .findByIdPresentacionAndIdTienda(idPresentacion, idTienda)
             .orElseThrow(() -> new IllegalArgumentException(
-                    "La presentación no existe en esta tienda"
+                    "Esa versión del producto no existe en tu tienda"
             ));
 
     // Verificar que la presentación pertenezca al producto
     if (!presentacion.getIdProducto().equals(idProducto)) {
         throw new IllegalArgumentException(
-                "La presentación no pertenece a este producto"
+                "Esa versión no pertenece a este producto"
         );
     }
 
@@ -313,12 +336,10 @@ public PresentacionProductoResponse actualizarPresentacion(
         UUID idTienda,
         PresentacionProductoRequest request
 ) {
-    // Validar la solicitud
+    // Al editar, el SKU sigue siendo obligatorio
     if (request == null || request.getSku() == null
             || request.getSku().isBlank()) {
-        throw new IllegalArgumentException(
-                "El SKU de la presentación es obligatorio"
-        );
+        throw new ValidacionCampoException("sku", MensajesUsuario.CODIGO_VACIO);
     }
 
     // Verificar que el producto pertenezca a la tienda
@@ -333,13 +354,13 @@ public PresentacionProductoResponse actualizarPresentacion(
     PresentacionProducto presentacion = presentacionProductoRepository
             .findByIdPresentacionAndIdTienda(idPresentacion, idTienda)
             .orElseThrow(() -> new IllegalArgumentException(
-                    "La presentación no existe en esta tienda"
+                    "Esa versión del producto no existe en tu tienda"
             ));
 
     // Verificar que pertenezca al producto
     if (!presentacion.getIdProducto().equals(idProducto)) {
         throw new IllegalArgumentException(
-                "La presentación no pertenece a este producto"
+                "Esa versión no pertenece a este producto"
         );
     }
 
@@ -349,9 +370,7 @@ public PresentacionProductoResponse actualizarPresentacion(
     if (!presentacion.getSku().equalsIgnoreCase(nuevoSku)
             && presentacionProductoRepository.existsByIdTiendaAndSku(
                     idTienda, nuevoSku)) {
-        throw new IllegalArgumentException(
-                "Ya existe una presentación con ese SKU en esta tienda"
-        );
+        throw new RecursosDuplicadosException("sku", MensajesUsuario.CODIGO_DUPLICADO);
     }
 
     // Actualizar los datos
@@ -387,7 +406,7 @@ public PresentacionProductoResponse cambiarEstadoPresentacion(
 
     if (!estado.equals("ACTIVA") && !estado.equals("INACTIVA")) {
         throw new IllegalArgumentException(
-                "El estado de la presentación no es válido"
+                "El estado indicado no es válido"
         );
     }
 
@@ -403,13 +422,13 @@ public PresentacionProductoResponse cambiarEstadoPresentacion(
     PresentacionProducto presentacion = presentacionProductoRepository
             .findByIdPresentacionAndIdTienda(idPresentacion, idTienda)
             .orElseThrow(() -> new IllegalArgumentException(
-                    "La presentación no existe en esta tienda"
+                    "Esa versión del producto no existe en tu tienda"
             ));
 
     // Verificar que pertenezca al producto
     if (!presentacion.getIdProducto().equals(idProducto)) {
         throw new IllegalArgumentException(
-                "La presentación no pertenece a este producto"
+                "Esa versión no pertenece a este producto"
         );
     }
 
@@ -439,12 +458,12 @@ public PresentacionProductoResponse actualizarValoresPresentacion(
     PresentacionProducto presentacion = presentacionProductoRepository
             .findByIdPresentacionAndIdTienda(idPresentacion, idTienda)
             .orElseThrow(() ->
-                    new IllegalArgumentException("La presentación no existe en esta tienda")
+                    new IllegalArgumentException("Esa versión del producto no existe en tu tienda")
             );
 
     if (!presentacion.getIdProducto().equals(idProducto)) {
         throw new IllegalArgumentException(
-                "La presentación no pertenece al producto indicado"
+                "Esa versión no pertenece a este producto"
         );
     }
 
@@ -464,9 +483,7 @@ public PresentacionProductoResponse actualizarValoresPresentacion(
             );
 
     if (combinacionDuplicada) {
-        throw new IllegalArgumentException(
-                "Ya existe otra presentación con esa combinación de valores"
-        );
+        throw new RecursosDuplicadosException("idsValores", MensajesUsuario.COMBINACION_REPETIDA);
     }
 
     // 6. Eliminar las relaciones anteriores.

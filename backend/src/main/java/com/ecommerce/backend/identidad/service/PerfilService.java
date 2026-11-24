@@ -51,12 +51,12 @@ public class PerfilService {
     @Transactional
     public void cambiarContrasena(UUID idUsuario, CambiarContrasenaRequest req) {
         var identidad = identidades.findByUsuario_IdUsuarioAndProveedor(idUsuario, ProveedorIdentidad.LOCAL)
-                .orElseThrow(() -> new ReglaNegocioException("Tu cuenta no usa contraseña para ingresar."));
+                .orElseThrow(() -> new ReglaNegocioException("contrasenaActual", "Tu cuenta no usa contraseña para ingresar."));
         if (!passwordEncoder.matches(req.contrasenaActual(), identidad.getPasswordHash())) {
-            throw new ReglaNegocioException("La contraseña actual no es correcta.");
+            throw new ReglaNegocioException("contrasenaActual", "La contraseña actual no es correcta.");
         }
         if (passwordEncoder.matches(req.contrasenaNueva(), identidad.getPasswordHash())) {
-            throw new ReglaNegocioException("La nueva contraseña debe ser distinta a la actual.");
+            throw new ReglaNegocioException("contrasenaNueva", "La nueva contraseña debe ser distinta a la actual.");
         }
         identidad.setPasswordHash(passwordEncoder.encode(req.contrasenaNueva()));
     }
@@ -75,24 +75,24 @@ public class PerfilService {
             usuario.setPaisEmisorDocumento(null);
             return;
         }
-        if (codigo == null || numero == null) throw new ReglaNegocioException("El tipo y el número de documento van juntos.");
+        if (codigo == null || numero == null) throw new ReglaNegocioException("numeroDocumento", "El tipo y el número de documento van juntos.");
         TipoDocumento tipo = tiposDocumento.findByCodigo(codigo.toUpperCase(Locale.ROOT))
-                .orElseThrow(() -> new ReglaNegocioException("Tipo de documento no válido: " + codigo));
+                .orElseThrow(() -> new ReglaNegocioException("tipoDocumento", "Tipo de documento no válido: " + codigo));
 
         String pais;
         switch (tipo.getCodigo()) {
             case "DNI" -> {
-                if (!numero.matches("\\d{8}")) throw new ReglaNegocioException("El DNI debe tener 8 dígitos.");
+                if (!numero.matches("\\d{8}")) throw new ReglaNegocioException("numeroDocumento", "El DNI debe tener 8 dígitos.");
                 pais = "PE";
             }
             case "CE" -> {
-                if (!numero.matches("[A-Za-z0-9]{9,12}")) throw new ReglaNegocioException("El carné de extranjería no es válido.");
+                if (!numero.matches("[A-Za-z0-9]{9,12}")) throw new ReglaNegocioException("numeroDocumento", "El carné de extranjería no es válido.");
                 pais = "PE";
             }
             default -> {
-                if (!numero.matches("[A-Za-z0-9]{6,12}")) throw new ReglaNegocioException("El pasaporte no es válido.");
+                if (!numero.matches("[A-Za-z0-9]{6,12}")) throw new ReglaNegocioException("numeroDocumento", "El pasaporte no es válido.");
                 pais = limpiar(paisEmisor);
-                if (pais == null) throw new ReglaNegocioException("Para pasaporte indica el país emisor (por ejemplo, CO).");
+                if (pais == null) throw new ReglaNegocioException("paisEmisorDocumento", "Para pasaporte indica el país emisor (por ejemplo, CO).");
                 pais = pais.toUpperCase(Locale.ROOT);
             }
         }

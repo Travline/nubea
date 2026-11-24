@@ -8,6 +8,10 @@ import lombok.RequiredArgsConstructor;
 import com.ecommerce.backend.administracion.dto.PaginaAdministracion;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
+import java.util.UUID;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -32,6 +36,14 @@ public class AdministracionController {
             @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
         validarPagina(page, size);
         return PaginaAdministracion.desde(tiendas.listarAdministracion(texto, page, size));
+    }
+
+    /** Cuerpo de {@code PATCH /api/admin/tiendas/{id}/estado}: "SUSPENDIDA" o "ACTIVA" (reactivar → queda en BORRADOR). */
+    public record CambioEstadoTienda(String estado) {}
+
+    @PatchMapping("/tiendas/{idTienda}/estado")
+    public TiendaResponse cambiarEstadoTienda(@PathVariable UUID idTienda, @RequestBody CambioEstadoTienda cambio) {
+        return tiendas.cambiarEstadoAdministracion(idTienda, cambio == null ? null : cambio.estado());
     }
 
     private void validarPagina(int page, int size) {

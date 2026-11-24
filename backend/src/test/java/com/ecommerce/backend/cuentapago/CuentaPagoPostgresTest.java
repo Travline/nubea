@@ -36,20 +36,21 @@ class CuentaPagoPostgresTest {
     void consultaAutorizadaSinCredencialesYAislamiento() throws Exception {
         em.createNativeQuery("CREATE TEMP TABLE tienda (id_tienda uuid PRIMARY KEY, id_propietario uuid, nombre text, slug text, estado text, fecha_creacion timestamptz DEFAULT now(), fecha_cierre timestamptz) ON COMMIT DROP").executeUpdate();
         em.createNativeQuery("CREATE TEMP TABLE usuario_plataforma (id_usuario uuid PRIMARY KEY, nombres text, apellido_paterno text, apellido_materno text, email text, telefono text, id_tipo_documento smallint, numero_documento text, pais_emisor_documento char(2), estado text, fecha_creacion timestamptz, fecha_cierre timestamptz) ON COMMIT DROP").executeUpdate();
-        em.createNativeQuery("CREATE TEMP TABLE cuenta_pago_tienda (id_tienda uuid PRIMARY KEY, proveedor text, estado text, id_cuenta_externa text, referencia_credencial text, fecha_vinculacion timestamptz, fecha_actualizacion timestamptz) ON COMMIT DROP").executeUpdate();
+        em.createNativeQuery("CREATE TEMP TABLE cuenta_pago_tienda (id_tienda uuid PRIMARY KEY, proveedor text, estado text, id_cuenta_externa text, referencia_credencial text, fecha_vinculacion timestamptz, fecha_actualizacion timestamptz, ambiente_pago text) ON COMMIT DROP").executeUpdate();
         UUID propietario = UUID.randomUUID(), otro = UUID.randomUUID(), tienda = UUID.randomUUID(), tiendaSinCuenta = UUID.randomUUID(), ajena = UUID.randomUUID();
         em.createNativeQuery("INSERT INTO usuario_plataforma (id_usuario, nombres, email, estado, fecha_creacion) VALUES (:p, 'Uno', 'uno@example.test', 'ACTIVO', now()), (:o, 'Otro', 'otro@example.test', 'ACTIVO', now())")
                 .setParameter("p", propietario).setParameter("o", otro).executeUpdate();
         em.createNativeQuery("INSERT INTO tienda (id_tienda,id_propietario,nombre,slug,estado) VALUES (:t,:p,'Uno','uno','ACTIVA'),(:s,:p,'Dos','dos','ACTIVA'),(:a,:o,'Tres','tres','ACTIVA')")
                 .setParameter("t", tienda).setParameter("p", propietario).setParameter("s", tiendaSinCuenta).setParameter("a", ajena).setParameter("o", otro).executeUpdate();
-        em.createNativeQuery("INSERT INTO cuenta_pago_tienda VALUES (:t,'MERCADO_PAGO','ACTIVA','123456789','secreto',now(),now()),(:a,'MERCADO_PAGO','PENDIENTE',NULL,NULL,NULL,now())")
+        em.createNativeQuery("INSERT INTO cuenta_pago_tienda VALUES (:t,'MERCADO_PAGO','ACTIVA','123456789','secreto',now(),now(),'PRUEBA'),(:a,'MERCADO_PAGO','PENDIENTE',NULL,NULL,NULL,now(),NULL)")
                 .setParameter("t", tienda).setParameter("a", ajena).executeUpdate();
         String ruta = "/api/tiendas/" + tienda + "/cuenta-pago";
         mvc.perform(get(ruta).with(authentication(autenticacion(propietario))))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.proveedor").value("MERCADO_PAGO"))
                 .andExpect(jsonPath("$.estado").value("ACTIVA")).andExpect(jsonPath("$.idCuentaExterna").value("*****6789"))
                 .andExpect(jsonPath("$.fechaVinculacion").isNotEmpty()).andExpect(jsonPath("$.fechaActualizacion").isNotEmpty())
-                .andExpect(jsonPath("$.referenciaCredencial").doesNotExist()).andExpect(jsonPath("$.accessToken").doesNotExist());
+                .andExpect(jsonPath("$.referenciaCredencial").doesNotExist()).andExpect(jsonPath("$.accessToken").doesNotExist())
+                .andExpect(jsonPath("$.ambientePago").value("PRUEBA"));
         mvc.perform(get(ruta).with(authentication(autenticacion(otro)))).andExpect(status().isForbidden());
         mvc.perform(get(ruta)).andExpect(status().is4xxClientError());
         mvc.perform(get("/api/tiendas/" + tiendaSinCuenta + "/cuenta-pago").with(authentication(autenticacion(propietario))))

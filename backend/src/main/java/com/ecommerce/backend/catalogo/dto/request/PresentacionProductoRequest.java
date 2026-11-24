@@ -1,6 +1,7 @@
 package com.ecommerce.backend.catalogo.dto.request;
 
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
@@ -11,14 +12,21 @@ import java.util.UUID;
 
 public class PresentacionProductoRequest {
 
-    @NotBlank(message = "El SKU es obligatorio")
-    @Size(max = 80, message = "El SKU no puede superar los 80 caracteres")
+    // Opcional al crear (se genera uno único por tienda); obligatorio al editar (lo valida el servicio).
+    @Size(max = 80, message = "El código interno no puede superar los 80 caracteres")
     private String sku;
 
     @DecimalMin(value = "0.00", message = "El precio no puede ser negativo")
     private BigDecimal precioOverride;
 
     private List<UUID> idsValores = new ArrayList<>();
+
+    // Opcionales, solo al crear: valores iniciales del registro de inventario.
+    @Min(value = 0, message = "Las unidades no pueden ser negativas")
+    private Integer stockInicial;
+
+    @Min(value = 0, message = "Las unidades no pueden ser negativas")
+    private Integer stockMinimo;
 
     public PresentacionProductoRequest() {
     }
@@ -45,5 +53,21 @@ public class PresentacionProductoRequest {
 
     public void setIdsValores(List<UUID> idsValores) {
         this.idsValores = idsValores;
+    }
+
+    public Integer getStockInicial() {
+        return stockInicial;
+    }
+
+    public void setStockInicial(Integer stockInicial) {
+        this.stockInicial = stockInicial;
+    }
+
+    public Integer getStockMinimo() {
+        return stockMinimo;
+    }
+
+    public void setStockMinimo(Integer stockMinimo) {
+        this.stockMinimo = stockMinimo;
     }
 }

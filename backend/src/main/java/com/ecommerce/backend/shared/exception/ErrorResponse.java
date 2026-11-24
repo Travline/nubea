@@ -8,6 +8,9 @@ public record ErrorResponse(
      OffsetDateTime timeStap) {
     public static ErrorResponse of(int status, String error, String mensaje){
         return new ErrorResponse(status,error,mensaje,null,OffsetDateTime.now());
-        
-    }    
-} 
+    }
+
+    public static ErrorResponse of(int status, String error, String mensaje, Map<String, String> campos) {
+        return new ErrorResponse(status, error, mensaje, campos, OffsetDateTime.now());
+    }
+}

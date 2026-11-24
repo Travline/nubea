@@ -70,6 +70,9 @@ class OAuthPostgresTest {
         try (Connection c = connection(); PreparedStatement p = c.prepareStatement("INSERT INTO " + SCHEMA + ".tienda(id_tienda,id_propietario,nombre,slug,estado) VALUES (?,?,'Tienda',?,?)")) {
             p.setObject(1, tienda); p.setObject(2, usuario); p.setString(3, "t-" + tienda); p.setString(4, estado); p.executeUpdate();
         }
+        try (Connection c = connection(); PreparedStatement p = c.prepareStatement("INSERT INTO " + SCHEMA + ".usuario_rol(id_usuario,id_rol) SELECT ?, id_rol FROM " + SCHEMA + ".rol WHERE nombre='DUENO_TIENDA' ON CONFLICT DO NOTHING")) {
+            p.setObject(1, usuario); p.executeUpdate();
+        }
     }
     @AfterAll static void cleanup() throws Exception { if (servidor != null) servidor.stop(0); try (Connection c = connection(); Statement s = c.createStatement()) { s.execute("DROP SCHEMA " + SCHEMA + " CASCADE"); } }
 
@@ -103,6 +106,15 @@ class OAuthPostgresTest {
                 p.setObject(1, tienda); try (ResultSet rs = p.executeQuery()) { assertTrue(rs.next()); assertEquals(1, rs.getInt(1)); }
             }
         } finally { executor.shutdownNow(); }
+    }
+
+    @Test
+    void endpointRechazaInicioEnTiendaSuspendida() throws Exception {
+        UUID tienda = UUID.randomUUID(), propietario = UUID.randomUUID();
+        crearTienda(tienda, propietario, "SUSPENDIDA");
+        var dueno = UsernamePasswordAuthenticationToken.authenticated(propietario, null, List.of());
+        mvc.perform(post("/api/tiendas/" + tienda + "/cuenta-pago/mercado-pago/oauth/inicios").with(csrf()).with(authentication(dueno)))
+                .andExpect(status().isConflict());
     }
 
     @Test

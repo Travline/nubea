@@ -10,6 +10,11 @@ import com.ecommerce.backend.catalogo.repository.ColeccionRepository;
 import java.util.List;
 import java.util.UUID;
 
+import com.ecommerce.backend.shared.exception.MensajesUsuario;
+import com.ecommerce.backend.shared.exception.RecursosDuplicadosException;
+import com.ecommerce.backend.shared.exception.ValidacionCampoException;
+import com.ecommerce.backend.shared.utils.SlugUtil;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,9 +36,15 @@ public class ColeccionService {
         validarSolicitud(request);
 
         String nombre = request.getNombre().trim();
-        String slug = request.getSlug().trim();
-
-        validarSlugDisponible(idTienda, slug);
+        String slugRecibido = slugOpcional(request);
+        String slug;
+        if (slugRecibido == null) {
+            slug = generarSlugUnico(idTienda, nombre);
+        } else {
+            validarFormatoSlug(slugRecibido);
+            validarSlugDisponible(idTienda, slugRecibido);
+            slug = slugRecibido;
+        }
 
         Coleccion coleccion = new Coleccion();
 
@@ -91,10 +102,13 @@ public class ColeccionService {
                 idColeccion, idTienda);
 
         String nombre = request.getNombre().trim();
-        String slug = request.getSlug().trim();
+        // Cambiar el nombre no cambia el slug: los enlaces deben ser estables.
+        String slugRecibido = slugOpcional(request);
+        String slug = slugRecibido == null ? coleccion.getSlug() : slugRecibido;
 
         // Validar el slug únicamente si ha cambiado.
         if (!coleccion.getSlug().equals(slug)) {
+            validarFormatoSlug(slug);
             validarSlugDisponible(idTienda, slug);
         }
 
@@ -147,8 +161,8 @@ public class ColeccionService {
         if (coleccionRepository.existsByIdTiendaAndSlug(
                 idTienda, slug)) {
 
-            throw new IllegalArgumentException(
-                    "Ya existe una colección con ese slug en esta tienda");
+            throw new RecursosDuplicadosException(
+                    "slug", MensajesUsuario.COLECCION_DIRECCION_DUPLICADA);
         }
     }
 
@@ -171,23 +185,32 @@ public class ColeccionService {
                     "El nombre no puede superar los 150 caracteres");
         }
 
-        if (request.getSlug() == null
-                || request.getSlug().isBlank()) {
-            throw new IllegalArgumentException(
-                    "El slug de la colección es obligatorio");
+        if (request.getSlug() != null && request.getSlug().trim().length() > LARGO_SLUG) {
+            throw new ValidacionCampoException("slug",
+                    "La dirección web no puede superar los " + LARGO_SLUG + " caracteres");
         }
+    }
 
-        if (request.getSlug().trim().length() > 150) {
-            throw new IllegalArgumentException(
-                    "El slug no puede superar los 150 caracteres");
+    private static final int LARGO_SLUG = 150; // coleccion.slug VARCHAR(150)
+
+    private static String slugOpcional(ColeccionRequest request) {
+        return request.getSlug() == null || request.getSlug().isBlank() ? null : request.getSlug().trim();
+    }
+
+    private static void validarFormatoSlug(String slug) {
+        if (!SlugUtil.esValido(slug)) {
+            throw new ValidacionCampoException("slug", MensajesUsuario.DIRECCION_FORMATO);
         }
+    }
 
-        if (!request.getSlug().trim()
-                .matches("^[a-z0-9]+(-[a-z0-9]+)*$")) {
-
-            throw new IllegalArgumentException(
-                    "El slug solo puede contener letras minúsculas, "
-                            + "números y guiones entre palabras");
+    // Igual que con la tienda: base, base-2, base-3...
+    private String generarSlugUnico(UUID idTienda, String nombre) {
+        String base = SlugUtil.generar(nombre, "coleccion", LARGO_SLUG - 6);
+        String slug = base;
+        int i = 2;
+        while (coleccionRepository.existsByIdTiendaAndSlug(idTienda, slug)) {
+            slug = base + "-" + i++;
         }
+        return slug;
     }
 }

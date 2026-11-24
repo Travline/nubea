@@ -3,10 +3,12 @@
 ## Propósito y alcance
 
 Este módulo entrega el backend de administración de la apariencia de una tienda,
-sus banners, su cuenta de cobro de Mercado Pago y la consulta de inventario. No
-administra el código o los archivos de una plantilla, no modifica existencias y
-no crea pagos, pedidos ni preferencias de Mercado Pago; esas responsabilidades
-pertenecen al frontend, al módulo 2 y al módulo 4, respectivamente.
+sus banners, su cuenta de cobro de Mercado Pago y la consulta y gestión manual
+del inventario (ajustes +/− y fijar por conteo; HU-M3-06, RN-M3-14). No
+administra el código o los archivos de una plantilla, no crea el registro de
+inventario, no reserva ni descuenta stock por ventas y no crea pagos, pedidos ni
+preferencias de Mercado Pago; esas responsabilidades pertenecen al frontend, al
+módulo 2 y al módulo 4, respectivamente.
 
 En el modelo de datos el rol del vendedor se llama `DUENO_TIENDA`. En este
 documento, **vendedor** significa un usuario con ese rol que además es
@@ -41,7 +43,7 @@ integraciones cuando los otros módulos estén listos.
 | Plantilla | `ADMIN_GENERAL` y vendedor autenticado | Solo `ADMIN_GENERAL` crea, edita, activa o desactiva. |
 | Configuración y banners de una tienda | Su propietario; la lectura pública queda fuera del alcance | Solo su propietario. |
 | Cuenta de pago de una tienda | Solo su propietario, sin credencial | Solo su propietario mediante OAuth/desconexión. |
-| Inventario de una tienda | Solo su propietario | Nadie: es estrictamente de consulta en M3. |
+| Inventario de una tienda | Su propietario y `ADMIN_GENERAL` | Solo su propietario: ajustes +/− y fijar por conteo (HU-M3-06, RN-M3-14). |
 
 ## Historias de usuario
 
@@ -178,32 +180,53 @@ el carrusel o las promociones visibles en ella.
 - `PUT /api/tiendas/{idTienda}/banners/orden`
 - `DELETE /api/tiendas/{idTienda}/banners/{idBanner}`
 
-### HU-M3-06 — Consultar el stock del catálogo de mi tienda
+### HU-M3-06 — Consultar y gestionar el stock de mi tienda
 
-**Como** vendedor propietario, **quiero** consultar el stock de las
-presentaciones de mis productos, **para** conocer su disponibilidad sin
-modificar inventario desde este módulo.
+> **Decisión del equipo (Bloque 2):** M3 incluye la gestión manual de stock
+> (ajustes +/− y fijar por conteo) con las reglas de RN-M3-14. El código vive en
+> el paquete `inventario` y no se mueve a M2. La creación del registro de
+> inventario sigue en M2 (RN-M3-10) y las reservas y descuentos del checkout en M4.
+
+**Como** vendedor propietario, **quiero** consultar el stock de las versiones de
+mis productos y corregirlo, **para** conocer su disponibilidad y mantenerla al
+día cuando entra o sale mercadería o cuando hago un conteo.
 
 **Criterios de aceptación**
 
-1. Solo el propietario de la tienda puede consultar sus existencias; no basta
-   con tener el rol `DUENO_TIENDA`.
+1. Solo el propietario de la tienda puede modificar sus existencias, con el rol
+   `DUENO_TIENDA` y la tienda `ACTIVA` o en `BORRADOR` (`puedeEditar`). El
+   `ADMIN_GENERAL` puede consultarlas, pero no modificarlas.
 2. La consulta une presentaciones, productos e inventario y se filtra por
    `presentacion_producto.id_tienda = {idTienda}`. Nunca acepta una lista de
    identificadores de presentación sin validar que pertenece a la tienda.
 3. Cada fila expone los identificadores y datos de presentación necesarios para
-   el panel, `stockActual`, `stockMinimo` y `fechaActualizacion`.
+   el panel, `stockActual` (unidades disponibles), `stockMinimo`,
+   `fechaActualizacion` y `stockReservado` (unidades apartadas en pedidos
+   pendientes de pago).
 4. Permite filtros seguros y paginación: texto de producto/SKU, estado de
    producto o presentación y alerta de stock (`stockActual <= stockMinimo`).
-5. No existe en M3 ningún endpoint, método de servicio ni repositorio público
-   para crear, actualizar, reservar o descontar inventario. Las mutaciones
-   quedan para catálogo/checkout (RN-M3-10 a RN-M3-13).
+5. Gestión de stock según RN-M3-14:
+   - **Ajuste relativo** del día a día (`+n` entran, `−n` salen). Bloquea la
+     fila de inventario, nunca deja el stock en negativo (409 con el número de
+     unidades que quedan) y responde el stock resultante.
+   - **Fijar stock tras un conteo:** el vendedor indica las unidades en mano y
+     se guardan como disponibles `unidades en mano − apartadas`. Las apartadas
+     son solo las de pedidos pendientes de pago: mientras no exista el módulo
+     de envíos, un pedido PAGADO se considera entregado. Si el conteo es menor
+     que las apartadas, se rechaza. Acepta `stockEsperado` opcional: si no
+     coincide con el stock actual, responde 409 (alguien compró o ajustó
+     mientras tanto).
+   - Ninguna operación de M3 reserva ni descuenta stock por ventas: eso sigue
+     en el checkout (M4, RN-M3-12/13).
 6. Una presentación sin inventario indica una inconsistencia de la integración
    con M2; se puede reportar como `sinRegistroInventario` para diagnóstico,
    pero el endpoint no crea ni repara registros de forma implícita.
 
-**Contrato orientativo:**
-`GET /api/tiendas/{idTienda}/inventario?texto=&alertaStock=&page=&size=`.
+**Contratos:**
+
+- `GET /api/tiendas/{idTienda}/inventario?texto=&alertaStock=&page=&size=`
+- `POST /api/tiendas/{idTienda}/inventario/{idPresentacion}/ajustes` con `{"cantidad": 5}` o `{"cantidad": -3}`
+- `PUT /api/tiendas/{idTienda}/inventario/{idPresentacion}` con `{"stockActual": 10, "stockMinimo": 2, "stockEsperado": 8}` (`stockEsperado` opcional)
 
 ### HU-M3-07 — Consultar el estado de facturación de mi tienda
 
@@ -335,9 +358,9 @@ Pago, **para** impedir nuevos cobros con esa autorización.
 * Módulo 1 crea `configuracion_tienda` con una plantilla por defecto y
   `cuenta_pago_tienda` en estado `PENDIENTE` al crear la tienda. Debe existir al
   menos una plantilla activa inicial antes de habilitar la creación de tiendas.
-* Módulo 2 crea el registro `inventario` junto con cada presentación y es dueño
-  de toda modificación manual de stock. Módulo 4 realiza reservas y descuentos
-  transaccionales.
+* Módulo 2 crea el registro `inventario` junto con cada presentación. Módulo 3
+  es dueño de la modificación manual de stock (HU-M3-06, RN-M3-14). Módulo 4
+  realiza reservas y descuentos transaccionales.
 * Las plantillas se referencian por `codigo`; eliminar físicamente una plantilla
   no es un caso de uso porque la FK podría afectar configuraciones históricas.
   Se desactiva.
@@ -353,4 +376,4 @@ Pago, **para** impedir nuevos cobros con esa autorización.
 | RN-M3-03 y RN-M3-04 | HU-M3-01 a HU-M3-04. |
 | RN-M3-05 y RN-M3-06 | HU-M3-05. |
 | RN-M3-07 a RN-M3-09 | HU-M3-07 a HU-M3-10. |
-| RN-M3-10 a RN-M3-13 | HU-M3-06 delimita consulta; creación y mutaciones se delegan a M2/M4. |
+| RN-M3-10 a RN-M3-14 | HU-M3-06: consulta y gestión manual (ajustes y conteo). La creación del registro es de M2 y las reservas y descuentos por ventas, de M4. |

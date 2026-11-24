@@ -38,4 +38,22 @@ class CuentaPagoConsultaServiceTest {
         when(repository.consultar(tienda)).thenReturn(Optional.empty());
         assertThrows(CuentaPagoNoConfiguradaException.class, () -> service.consultar(tienda));
     }
+
+    @Test
+    void ambientePagoSaleDeLaConfiguracionYSiNoDelUltimoCobro() {
+        OffsetDateTime fecha = OffsetDateTime.now();
+        when(repository.consultar(tienda)).thenReturn(Optional.of(
+                new DatosCuentaPago("MERCADO_PAGO", "ACTIVA", "123456789", fecha, fecha, "PRUEBA")));
+        // Sin configuración de cobros: último ambiente usado.
+        assertEquals("PRUEBA", service.consultar(tienda).ambientePago());
+        // Con la tienda habilitada en la configuración: manda la configuración.
+        var habilitada = new com.ecommerce.backend.compra.PagosConfiguracion(true, "https://nubea.test", tienda + ":PRODUCCION");
+        assertEquals("PRODUCCION", new CuentaPagoConsultaService(repository, habilitada).consultar(tienda).ambientePago());
+        // Cobros deshabilitados: vuelve al último ambiente usado.
+        var deshabilitada = new com.ecommerce.backend.compra.PagosConfiguracion(false, "https://nubea.test", tienda + ":PRODUCCION");
+        assertEquals("PRUEBA", new CuentaPagoConsultaService(repository, deshabilitada).consultar(tienda).ambientePago());
+        // Nunca cobró y no está habilitada: null.
+        when(repository.consultar(tienda)).thenReturn(Optional.of(new DatosCuentaPago("MERCADO_PAGO", "PENDIENTE", null, null, fecha)));
+        assertNull(service.consultar(tienda).ambientePago());
+    }
 }

@@ -289,8 +289,10 @@ class IdentidadIntegracionTest {
                 .andExpect(jsonPath("$.estado").value("PENDIENTE"));
         mvc.perform(post(ruta + "/cuenta-pago/mercado-pago/oauth/inicios").cookie(session).with(csrf()))
                 .andExpect(status().isNotFound());
+        // RN-M2-13 (Bloque 2): 422 con el requisito incumplido en lenguaje de usuario
         mvc.perform(patch(ruta + "/productos/" + producto + "/estado?estado=PUBLICADO").cookie(session).with(csrf()))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().is(422))
+                .andExpect(jsonPath("$.campos.estado").value(com.ecommerce.backend.shared.exception.MensajesUsuario.PUBLICAR_TIENDA_INACTIVA));
         mvc.perform(post(ruta + "/activacion").cookie(session).with(csrf()))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.estado").value("ACTIVA"));
         entityManager.flush();

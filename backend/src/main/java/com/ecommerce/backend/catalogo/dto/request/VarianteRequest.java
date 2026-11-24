@@ -6,7 +6,7 @@ import jakarta.validation.constraints.Size;
 
 public class VarianteRequest {
 
-    @NotBlank(message = "El nombre de la variante es obligatorio")
+    @NotBlank(message = "El nombre de la opción es obligatorio")
     @Size(max = 80, message = "El nombre no puede superar los 80 caracteres")
     private String nombre;
 

@@ -28,10 +28,13 @@ import com.ecommerce.backend.shared.exception.RecursosDuplicadosException;
 import com.ecommerce.backend.shared.exception.ReglaNegocioException;
 
 import lombok.RequiredArgsConstructor;
+import com.ecommerce.backend.identidad.google.DatosGoogle;
+import com.ecommerce.backend.shared.exception.MensajesUsuario;
 
 @Service 
 @RequiredArgsConstructor 
 public class AuthService {
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(AuthService.class);
     private final UsuarioPlataformaRepository usuarioRepository;
     private final UsuarioIdentidadRepository identidadRepository;
     private final RolRepository rolRepository;
@@ -52,9 +55,81 @@ public class AuthService {
         if (usuario.getEstado() != EstadoUsuario.ACTIVO || !passwordEncoder.matches(req.password(), identidad.getPasswordHash())) {
             throw new BadCredentialsException("Credenciales inválidas");
         }
+        return autenticacion(usuario);
+    }
+
+    private Authentication autenticacion(UsuarioPlataforma usuario) {
         var roles = usuario.getRoles().stream()
                 .map(rol -> new SimpleGrantedAuthority("ROLE_" + rol.getNombre().name())).toList();
         return UsernamePasswordAuthenticationToken.authenticated(usuario.getIdUsuario(), null, roles);
+    }
+
+    /** Resultado del inicio de sesión con Google: {@code creado} solo si se creó una cuenta nueva. */
+    public record ResultadoGoogle(Authentication autenticacion, UsuarioResponse creado) {}
+
+    /**
+     * Inicio de sesión con Google (RN-M1-05). La identidad se busca por (issuer, subject), nunca por correo.
+     * Si el correo ya tiene cuenta y la identidad no existe, NO se vincula: 409 y el usuario debe vincular desde su cuenta.
+     */
+    @Transactional
+    public ResultadoGoogle autenticarConGoogle(DatosGoogle google) {
+        var existente = identidadRepository.findByIssuerAndSubject(google.issuer(), google.subject());
+        if (existente.isPresent()) {
+            var usuario = existente.get().getUsuario();
+            if (usuario.getEstado() != EstadoUsuario.ACTIVO) throw new BadCredentialsException("Credenciales inválidas");
+            return new ResultadoGoogle(autenticacion(usuario), null);
+        }
+        if (usuarioRepository.existsByEmail(google.email())) {
+            throw new RecursosDuplicadosException("correoElectronico", MensajesUsuario.GOOGLE_CORREO_YA_REGISTRADO);
+        }
+        UsuarioPlataforma usuario = UsuarioPlataforma.builder()
+                .nombres(recortar(nombres(google), 100))
+                .apellidoPaterno(recortar(limpiar(google.apellido()), 80))
+                .email(google.email())
+                .build();
+        Rol cliente = rolRepository.findByNombre(NombreRol.CLIENTE)
+                .orElseThrow(() -> new IllegalStateException("Falta el rol CLIENTE en la base de datos"));
+        usuario.getRoles().add(cliente);
+        usuarioRepository.save(usuario);
+        identidadRepository.saveAndFlush(UsuarioIdentidad.builder()
+                .usuario(usuario)
+                .proveedor(ProveedorIdentidad.GOOGLE)
+                .issuer(google.issuer())
+                .subject(google.subject())
+                .build());
+        log.info("Cuenta creada con Google (sub={})", google.subject());
+        return new ResultadoGoogle(autenticacion(usuario), toResponse(usuario));
+    }
+
+    /** Vincula Google a la cuenta con sesión iniciada, si ese subject no pertenece a otro usuario. */
+    @Transactional
+    public void vincularGoogle(UUID idUsuario, DatosGoogle google) {
+        var existente = identidadRepository.findByIssuerAndSubject(google.issuer(), google.subject());
+        if (existente.isPresent()) {
+            if (existente.get().getUsuario().getIdUsuario().equals(idUsuario)) return; // ya vinculada: sin cambios
+            throw new RecursosDuplicadosException("idToken", MensajesUsuario.GOOGLE_DE_OTRO_USUARIO);
+        }
+        if (identidadRepository.existsByUsuario_IdUsuarioAndProveedor(idUsuario, ProveedorIdentidad.GOOGLE)) {
+            throw new RecursosDuplicadosException("idToken", MensajesUsuario.GOOGLE_YA_VINCULADO_OTRA);
+        }
+        var usuario = usuarioRepository.findById(idUsuario).orElseThrow();
+        identidadRepository.saveAndFlush(UsuarioIdentidad.builder()
+                .usuario(usuario)
+                .proveedor(ProveedorIdentidad.GOOGLE)
+                .issuer(google.issuer())
+                .subject(google.subject())
+                .build());
+        log.info("Google vinculado a una cuenta existente (sub={})", google.subject());
+    }
+
+    private String nombres(DatosGoogle google) {
+        String nombres = limpiar(google.nombres());
+        if (nombres != null) return nombres;
+        return google.email().substring(0, Math.max(1, google.email().indexOf('@')));
+    }
+
+    private static String recortar(String texto, int maximo) {
+        return texto == null || texto.length() <= maximo ? texto : texto.substring(0, maximo).trim();
     }
 
     @Transactional

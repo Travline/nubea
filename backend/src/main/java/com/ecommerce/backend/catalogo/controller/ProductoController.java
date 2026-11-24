@@ -25,7 +25,7 @@ public class ProductoController {
     }
 
     // Crear producto.
-    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
+    @org.springframework.security.access.prepost.PreAuthorize("@tiendaAuthorizationService.puedeEditar(#idTienda, authentication)")
     @PostMapping
     public ResponseEntity<ProductoResponse> crearProducto(
             @PathVariable UUID idTienda,
@@ -38,7 +38,7 @@ public class ProductoController {
     }
 
     // Listar productos de una tienda.
-    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.puedeVer(#idTienda, authentication)")
     @GetMapping
     public ResponseEntity<List<ProductoResponse>> listarProductos(
             @PathVariable UUID idTienda) {
@@ -50,7 +50,7 @@ public class ProductoController {
     }
 
     // Obtener producto por ID.
-    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.puedeVer(#idTienda, authentication)")
     @GetMapping("/{idProducto}")
     public ResponseEntity<ProductoResponse> obtenerProductoPorId(
             @PathVariable UUID idTienda,
@@ -63,8 +63,17 @@ public class ProductoController {
         return ResponseEntity.ok(response);
     }
 
+    // Requisitos para publicar (RN-M2-13), para mostrar el checklist sin intentar publicar.
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.puedeVer(#idTienda, authentication)")
+    @GetMapping("/{idProducto}/requisitos")
+    public ResponseEntity<com.ecommerce.backend.catalogo.dto.response.RequisitosPublicacionResponse> requisitosPublicacion(
+            @PathVariable UUID idTienda,
+            @PathVariable UUID idProducto) {
+        return ResponseEntity.ok(productoService.requisitosPublicacion(idProducto, idTienda));
+    }
+
     // Actualizar producto.
-    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
+    @org.springframework.security.access.prepost.PreAuthorize("@tiendaAuthorizationService.puedeEditar(#idTienda, authentication)")
     @PutMapping("/{idProducto}")
     public ResponseEntity<ProductoResponse> actualizarProducto(
             @PathVariable UUID idTienda,
@@ -79,7 +88,7 @@ public class ProductoController {
     }
 
     // Cambiar estado del producto.
-    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
+    @org.springframework.security.access.prepost.PreAuthorize("@tiendaAuthorizationService.puedeEditar(#idTienda, authentication)")
     @PatchMapping("/{idProducto}/estado")
     public ResponseEntity<ProductoResponse> cambiarEstadoProducto(
             @PathVariable UUID idTienda,
