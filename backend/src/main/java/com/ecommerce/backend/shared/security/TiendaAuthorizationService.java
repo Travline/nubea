@@ -1,6 +1,7 @@
 package com.ecommerce.backend.shared.security;
 
 import com.ecommerce.backend.exception.TiendaNoModificableException;
+import com.ecommerce.backend.shared.exception.MensajesUsuario;
 import com.ecommerce.backend.shared.tienda.policy.TiendaStatePolicy;
 import com.ecommerce.backend.tienda.repository.TiendaRepository;
 import lombok.RequiredArgsConstructor;
@@ -65,8 +66,7 @@ public class TiendaAuthorizationService {
         }
         String estado = filas.get(0).estado();
         if (!tiendaStatePolicy.esModificable(estado)) {
-            throw new TiendaNoModificableException(
-                    "La tienda se encuentra en estado '" + estado + "' y no permite modificaciones");
+            throw new TiendaNoModificableException(MensajesUsuario.tiendaNoModificable(estado));
         }
         return true;
     }

@@ -2,8 +2,8 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { ArrowRight, Lock, Mail, User } from 'lucide-react'
-import { BotonGoogle } from '@/autenticacion/boton-google'
-import { BotonVerContrasena, CampoAutenticacion, MarcoAutenticacion, SeparadorAlterno, claseBotonGoogle, claseBotonPrincipal, claseEntrada } from '@/autenticacion/marco-autenticacion'
+import { AccesoConGoogle, SiGoogle } from '@/autenticacion/boton-google'
+import { BotonVerContrasena, CampoAutenticacion, MarcoAutenticacion, SeparadorAlterno, claseBotonPrincipal, claseEntrada } from '@/autenticacion/marco-autenticacion'
 import { useSesion } from '@/autenticacion/sesion'
 import { ErrorApi, apiAutenticacion } from '@/autenticacion/api'
 
@@ -15,11 +15,18 @@ export function PaginaRegistro() {
   const [error, establecerError] = useState('')
   const [campos, establecerCampos] = useState<Record<string, string>>({})
   const [ocupado, establecerOcupado] = useState(false)
+  const [bienvenida, establecerBienvenida] = useState(false)
   const navegar = useNavigate()
   const ubicacion = useLocation()
   const retorno = new URLSearchParams(ubicacion.search).get('retorno')
   const retornoSeguro = retorno && /^\/tienda\/[a-z0-9]+(?:-[a-z0-9]+)*(?:\/carrito)?\/?$/.test(retorno) ? retorno : null
   const { actualizar } = useSesion()
+  async function entrarConGoogle(cuentaNueva: boolean) {
+    await actualizar()
+    if (cuentaNueva) { establecerBienvenida(true); await new Promise(r => setTimeout(r, 1500)) }
+    if (retornoSeguro) window.location.assign(retornoSeguro)
+    else navegar('/panel', { replace: true })
+  }
   async function enviar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault(); establecerError(''); establecerCampos({}); establecerOcupado(true)
     try {
@@ -46,6 +53,7 @@ export function PaginaRegistro() {
   >
     <h1 className="text-[28px] leading-[1.15] font-bold tracking-tight text-white">Crea tu cuenta</h1>
     <p className="mt-[8px] mb-[24px] text-[15px] text-white/65">Empieza a formar parte de Nubea.</p>
+{bienvenida && <p role="status" className="mb-[18px] rounded-[12px] border border-nubea-petroleo-claro/30 bg-nubea-petroleo-claro/10 px-[14px] py-[10px] text-[13px] text-white/90">¡Bienvenido/a a Nubea! Creamos tu cuenta con Google.</p>}
     <form onSubmit={enviar} className="space-y-[14px]">
       <CampoAutenticacion id="nombres" etiqueta="Nombres" icono={<User />}>
         <input id="nombres" autoComplete="given-name" maxLength={100} placeholder="Tu nombre" className={claseEntrada} value={nombres} onChange={e => setNombres(e.target.value)} required />
@@ -66,8 +74,8 @@ export function PaginaRegistro() {
         </button>
       </div>
     </form>
-    <SeparadorAlterno texto="o regístrate con" />
-    <BotonGoogle texto="Registrarte con Google" className={claseBotonGoogle} />
+    <SiGoogle><SeparadorAlterno texto="o regístrate con" /></SiGoogle>
+    <AccesoConGoogle registro retorno={retornoSeguro} alEntrar={entrarConGoogle} />
     <p className="mt-[20px] text-center text-[14px] text-white/70">¿Ya tienes cuenta? <Link className="font-semibold text-[#5b8cff] hover:underline" to={`/iniciar-sesion${retornoSeguro ? `?retorno=${encodeURIComponent(retornoSeguro)}` : ""}`}>Inicia sesión</Link></p>
   </MarcoAutenticacion>
 }

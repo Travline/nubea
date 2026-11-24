@@ -1,6 +1,7 @@
 package com.ecommerce.backend.shared.tienda.policy;
 
 import com.ecommerce.backend.exception.TiendaNoModificableException;
+import com.ecommerce.backend.shared.exception.MensajesUsuario;
 import org.springframework.stereotype.Component;
 
 import java.util.Set;
@@ -16,9 +17,7 @@ public class TiendaStatePolicy {
 
     public void validarModificable(String estado) {
         if (!esModificable(estado)) {
-            throw new TiendaNoModificableException(
-                "La tienda se encuentra en estado '" + estado + "' y no permite modificaciones de apariencia"
-            );
+            throw new TiendaNoModificableException(MensajesUsuario.tiendaNoModificable(estado));
         }
     }
 }

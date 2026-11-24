@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import type { ContextoTienda } from '@/paginas/panel'
 import { api } from './datos'
 import type { Categoria, Coleccion, Producto, Variante, Valor, Presentacion, Imagen, Inventario, PaginaInventario, RequisitosPublicacion } from './datos'
-import { Aviso, ErrorCampo, EstadoCarga, ZonaEdicion, conError, useCarga, useOperacion } from './comunes'
+import { Aviso, ErrorCampo, EstadoCarga, ZonaEdicion, conError, useCarga, useOperacion, useSoloLectura } from './comunes'
 import { claseTono, etiquetaProducto, etiquetaVersion } from './estados'
 import { ControlStock } from './inventario'
 
@@ -18,12 +18,12 @@ function EstadoProducto({ estado, className = '' }: { estado: string; className?
 }
 const claseEntrada = 'h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm outline-none transition focus:border-primary focus:ring-3 focus:ring-primary/20'
 
-const pestanasCatalogo = [['productos', 'Productos', Package], ['categorias', 'Categorías', Tags], ['colecciones', 'Colecciones', Layers], ['variantes', 'Variantes', SlidersHorizontal]] as const
+const pestanasCatalogo = [['productos', 'Productos', Package], ['categorias', 'Categorías', Tags], ['colecciones', 'Colecciones', Layers], ['variantes', 'Opciones', SlidersHorizontal]] as const
 export function Catalogo() {
  const { apiBase, base } = useOutletContext<ContextoTienda>(); const [seccion, setSeccion] = useState('productos')
  return <div className="space-y-6">
   <div className="flex flex-wrap items-center justify-between gap-3">
-   <div><h2 className="text-xl font-semibold tracking-tight">Catálogo</h2><p className="text-sm text-muted-foreground">Organiza tus productos, categorías, colecciones y variantes.</p></div>
+   <div><h2 className="text-xl font-semibold tracking-tight">Catálogo</h2><p className="text-sm text-muted-foreground">Organiza tus productos, categorías, colecciones y opciones.</p></div>
    <div className="flex flex-wrap rounded-xl border bg-card p-1" role="tablist" aria-label="Secciones del catálogo">
     {pestanasCatalogo.map(([valor, nombre, Icono]) => <button key={valor} type="button" role="tab" aria-selected={seccion === valor} onClick={() => setSeccion(valor)} className={`inline-flex h-9 cursor-pointer items-center gap-2 rounded-lg px-3.5 text-sm font-medium transition ${seccion === valor ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}><Icono className="size-4" />{nombre}</button>)}
    </div>
@@ -43,14 +43,14 @@ function ImagenProducto({ ruta, nombre }: { ruta: string; nombre: string }) {
 
 function Productos({ apiBase, base, irA }: { apiBase: string; base: string; irA: (seccion: string) => void }) {
  const navegar = useNavigate(); const op = useOperacion(['nombre', 'descripcion', 'precioBase', 'idCategoria', 'sku', 'stockInicial', 'stockMinimo']); const [nombre, setNombre] = useState(''); const [descripcion, setDescripcion] = useState(''); const [precio, setPrecio] = useState(''); const [categoria, setCategoria] = useState(''); const [sku, setSku] = useState(''); const [stock, setStock] = useState(''); const [stockMinimo, setStockMinimo] = useState('')
- const [mostrarCrear, setMostrarCrear] = useState(false); const [busqueda, setBusqueda] = useState(''); const [filtroEstado, setFiltroEstado] = useState(''); const [filtroCategoria, setFiltroCategoria] = useState('')
+ const soloLectura = useSoloLectura(); const [mostrarCrear, setMostrarCrear] = useState(false); const [busqueda, setBusqueda] = useState(''); const [filtroEstado, setFiltroEstado] = useState(''); const [filtroCategoria, setFiltroCategoria] = useState('')
  const { datos, error, recargar } = useCarga(async () => { const [productos, categorias] = await Promise.all([api.leer<Producto[]>(`${apiBase}/productos`), api.leer<Categoria[]>(`${apiBase}/categorias`)]); return { productos, categorias } }, [apiBase])
  if (error || !datos) return <EstadoCarga error={error} recargar={recargar} />
  const hayCategorias = datos.categorias.some(c => c.activa)
  const nombreCategoria = (id: string) => datos.categorias.find(c => c.idCategoria === id)?.nombre
  const filtrados = datos.productos.filter(p => (!filtroEstado || p.estado === filtroEstado) && (!filtroCategoria || p.idCategoria === filtroCategoria) && p.nombre.toLowerCase().includes(busqueda.trim().toLowerCase()))
  const cuenta = (estado: string) => datos.productos.filter(p => p.estado === estado).length
- const formularioVisible = mostrarCrear || datos.productos.length === 0
+ const formularioVisible = !soloLectura && (mostrarCrear || datos.productos.length === 0)
 
  return <div className="space-y-6">
   {/* Resumen */}
@@ -91,7 +91,7 @@ function Productos({ apiBase, base, irA }: { apiBase: string; base: string; irA:
   </div>}
 
   {/* Productos */}
-  {datos.productos.length === 0 ? null : filtrados.length === 0 ? <p className="rounded-2xl border bg-card px-6 py-10 text-center text-sm text-muted-foreground">Ningún producto coincide con los filtros.</p>
+  {datos.productos.length === 0 ? (soloLectura ? <p className="rounded-2xl border bg-card px-6 py-10 text-center text-sm text-muted-foreground">Esta tienda aún no tiene productos.</p> : null) : filtrados.length === 0 ? <p className="rounded-2xl border bg-card px-6 py-10 text-center text-sm text-muted-foreground">Ningún producto coincide con los filtros.</p>
   : <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">{filtrados.map(p => <Link key={p.idProducto} to={`${base}/catalogo/productos/${p.idProducto}`} className="group flex flex-col overflow-hidden rounded-2xl border bg-card transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_18px_40px_-24px_rgba(37,99,235,0.45)]">
     <div className="relative aspect-[4/3] overflow-hidden bg-muted"><ImagenProducto ruta={`${apiBase}/productos/${p.idProducto}`} nombre={p.nombre} /><EstadoProducto estado={p.estado} className="absolute top-3 left-3" /></div>
     <div className="flex flex-1 flex-col gap-1 p-4">
@@ -211,17 +211,17 @@ function Variantes({ apiBase, base }: { apiBase: string; base: string }) {
  const actual = datos.find(v => v.idVariante === seleccion) ?? datos[0]
  return <div className="space-y-6">
   <ZonaEdicion><section className="rounded-2xl border bg-card p-5">
-   <div className="mb-1 flex items-center justify-between gap-3"><h3 className="font-semibold">{edicion ? 'Editar variante' : 'Nueva variante'}</h3>{edicion && <Button type="button" variant="ghost" size="sm" onClick={() => { setEdicion(''); setNombre('') }}><X className="size-4" />Cancelar</Button>}</div>
+   <div className="mb-1 flex items-center justify-between gap-3"><h3 className="font-semibold">{edicion ? 'Editar opción' : 'Nueva opción'}</h3>{edicion && <Button type="button" variant="ghost" size="sm" onClick={() => { setEdicion(''); setNombre('') }}><X className="size-4" />Cancelar</Button>}</div>
    <p className="mb-4 text-sm text-muted-foreground">Opciones reutilizables como <strong className="font-medium text-foreground">Talla</strong> o <strong className="font-medium text-foreground">Color</strong>. Luego agrega sus valores (S, M, L…).</p>
    <form className="flex flex-wrap gap-3" onSubmit={e => { e.preventDefault(); void op.ejecutar(async () => { if (edicion) await api.actualizar(`${apiBase}/variantes/${edicion}`, { nombre }); else await api.crear(`${apiBase}/variantes`, { nombre }); setNombre(''); setEdicion(''); recargar() }) }}>
-    <label className="grid min-w-56 flex-1 gap-1"><input className={claseEntrada + conError(op.errorDe('nombre'))} aria-label="Nombre de variante" placeholder="Ej. Talla" required value={nombre} onChange={e => setNombre(e.target.value)} /><ErrorCampo mensaje={op.errorDe('nombre')} /></label>
-    <Button type="submit" className="h-11 rounded-xl px-5" disabled={op.ocupado}>{edicion ? 'Guardar cambios' : <><Plus className="size-4" />Crear variante</>}</Button>
+    <label className="grid min-w-56 flex-1 gap-1"><input className={claseEntrada + conError(op.errorDe('nombre'))} aria-label="Nombre de la opción" placeholder="Ej. Talla" required value={nombre} onChange={e => setNombre(e.target.value)} /><ErrorCampo mensaje={op.errorDe('nombre')} /></label>
+    <Button type="submit" className="h-11 rounded-xl px-5" disabled={op.ocupado}>{edicion ? 'Guardar cambios' : <><Plus className="size-4" />Crear opción</>}</Button>
    </form>
    <div className="mt-3"><Aviso error={op.error} /></div>
   </section></ZonaEdicion>
-  {datos.length === 0 ? <Vacio icono={<SlidersHorizontal className="size-6" />} titulo="Aún no tienes variantes" texto="Crea una variante como Talla o Color para usarla en las versiones de tus productos." />
+  {datos.length === 0 ? <Vacio icono={<SlidersHorizontal className="size-6" />} titulo="Aún no tienes opciones" texto="Crea una opción como Talla o Color para usarla en las versiones de tus productos." />
   : <div className="grid gap-5 lg:grid-cols-[300px_1fr]">
-   <ListaLateral elementos={visibles} seleccionado={actual.idVariante} alElegir={setSeleccion} clave={v => v.idVariante} busqueda={busqueda} alBuscar={setBusqueda} placeholder="Buscar variante..." render={v => <><SlidersHorizontal className="size-4 shrink-0 opacity-60" /><span className="truncate text-sm font-medium">{v.nombre}</span></>} />
+   <ListaLateral elementos={visibles} seleccionado={actual.idVariante} alElegir={setSeleccion} clave={v => v.idVariante} busqueda={busqueda} alBuscar={setBusqueda} placeholder="Buscar opción..." render={v => <><SlidersHorizontal className="size-4 shrink-0 opacity-60" /><span className="truncate text-sm font-medium">{v.nombre}</span></>} />
    <section className="rounded-2xl border bg-card">
     <div className="flex flex-wrap items-start justify-between gap-4 border-b p-5">
      <div><h3 className="text-xl font-semibold tracking-tight">{actual.nombre}</h3><p className="mt-1 text-sm text-muted-foreground">Haz clic en un valor para editarlo.</p></div>
@@ -246,7 +246,7 @@ function ProductosConVariante({ apiBase, base, variante }: { apiBase: string; ba
  return <div>
   <h4 className="mb-3 text-sm font-semibold">Productos que usan {variante.nombre.toLowerCase()} {datos && <span className="font-normal text-muted-foreground">({datos.length})</span>}</h4>
   {error ? <EstadoCarga error={error} recargar={recargar} /> : !datos ? <div className="space-y-2">{[0, 1].map(i => <div key={i} className="h-[76px] animate-pulse rounded-xl bg-muted" />)}</div>
-  : datos.length === 0 ? <p className="rounded-xl border border-dashed px-5 py-8 text-center text-sm text-muted-foreground">Ningún producto usa esta variante todavía. Se asigna al crear las versiones de un producto.</p>
+  : datos.length === 0 ? <p className="rounded-xl border border-dashed px-5 py-8 text-center text-sm text-muted-foreground">Ningún producto usa esta opción todavía. Se asigna al crear las versiones de un producto.</p>
   : <div className="grid gap-2.5 xl:grid-cols-2">{datos.map(({ producto, valores }) => <TarjetaMini key={producto.idProducto} producto={producto} apiBase={apiBase} base={base} detalle={<span className="mt-1 flex flex-wrap gap-1">{valores.map(v => <span key={v} className="rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-medium">{v}</span>)}</span>} />)}</div>}
  </div>
 }
@@ -390,7 +390,7 @@ function Presentaciones({ ruta, apiBase, presentaciones, valores, imagenes, stoc
      <CampoCodigoInterno valor={sku} cambiar={setSku} error={op.errorDe('sku')} />
      <label className="grid gap-1.5 text-sm font-medium"><span>Precio especial <span className="font-normal text-muted-foreground">(opcional)</span></span><span className="relative"><span className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-sm text-muted-foreground">S/</span><input className={`${claseEntrada} pl-9${conError(op.errorDe('precioOverride'))}`} type="number" min="0" step="0.01" value={precio} onChange={e => setPrecio(e.target.value)} placeholder="Usa el precio base" /></span><ErrorCampo mensaje={op.errorDe('precioOverride')} /></label>
     </div>
-    {valores.length > 0 ? <SelectorValores variantes={valores} seleccion={seleccion} cambiar={setSeleccion} /> : <p className="text-xs text-muted-foreground">Sin variantes: esta será la versión única del producto.</p>}
+    {valores.length > 0 ? <SelectorValores variantes={valores} seleccion={seleccion} cambiar={setSeleccion} /> : <p className="text-xs text-muted-foreground">Sin opciones: esta será la versión única del producto.</p>}
     <ErrorCampo mensaje={op.errorDe('idsValores')} />
     <div className="grid gap-3 sm:grid-cols-2">
      <label className="grid gap-1.5 text-sm font-medium"><span>Unidades iniciales <span className="font-normal text-muted-foreground">(opcional)</span></span><input className={claseEntrada + conError(op.errorDe('stockInicial'))} type="number" min="0" step="1" value={stockInicial} onChange={e => setStockInicial(e.target.value)} placeholder="Ej. 20" /><ErrorCampo mensaje={op.errorDe('stockInicial')} /></label>
@@ -431,7 +431,7 @@ function PresentacionFila({ presentacion, ruta, apiBase, variantes, imagenes, in
     <label className="grid gap-1.5 text-sm font-medium">Precio especial<span className="relative"><span className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-sm text-muted-foreground">S/</span><input className={`${claseEntrada} pl-9${conError(op.errorDe('precioOverride'))}`} type="number" min="0" step="0.01" value={precio} onChange={e => setPrecio(e.target.value)} placeholder="Precio base" /></span><ErrorCampo mensaje={op.errorDe('precioOverride')} /></label>
     <Button type="submit" className="h-11 rounded-xl sm:mt-[26px]" disabled={op.ocupado}>Guardar</Button>
    </form>
-   {variantes.length > 0 && <div className="space-y-3"><p className="text-sm font-semibold">Combinación de variantes</p><SelectorValores variantes={variantes} seleccion={seleccion} cambiar={setSeleccion} /><ErrorCampo mensaje={op.errorDe('idsValores')} /><Button variant="outline" size="sm" disabled={op.ocupado} onClick={() => void op.ejecutar(async () => { await api.actualizar(`${ruta}/valores`, Object.values(seleccion).filter(Boolean)); recargar() })}>Guardar combinación</Button></div>}
+   {variantes.length > 0 && <div className="space-y-3"><p className="text-sm font-semibold">Combinación de opciones</p><SelectorValores variantes={variantes} seleccion={seleccion} cambiar={setSeleccion} /><ErrorCampo mensaje={op.errorDe('idsValores')} /><Button variant="outline" size="sm" disabled={op.ocupado} onClick={() => void op.ejecutar(async () => { await api.actualizar(`${ruta}/valores`, Object.values(seleccion).filter(Boolean)); recargar() })}>Guardar combinación</Button></div>}
    {imagenes.length > 0 && <div className="space-y-3"><p className="text-sm font-semibold">Fotos de esta versión <span className="font-normal text-muted-foreground">(toca para asignar o quitar)</span></p>
     {asignadas.error || !asignadas.datos ? <EstadoCarga error={asignadas.error} recargar={asignadas.recargar} /> : <div className="flex flex-wrap gap-2">{imagenes.map(imagen => { const vinculada = asignadas.datos!.some(a => a.idImagen === imagen.idImagen); return <button type="button" key={imagen.idImagen} aria-pressed={vinculada} disabled={op.ocupado} onClick={() => void op.ejecutar(async () => { const r = `${apiBase}/presentaciones/${presentacion.idPresentacion}/imagenes/${imagen.idImagen}`; if (vinculada) await api.eliminar(r); else await api.crear(r); asignadas.recargar() })} className={`relative size-16 cursor-pointer overflow-hidden rounded-lg border-2 transition ${vinculada ? 'border-primary' : 'border-transparent opacity-60 hover:opacity-100'}`}><img src={imagen.url} alt={`Imagen ${imagen.orden}`} className="size-full object-cover" />{vinculada && <span className="absolute top-1 right-1 grid size-5 place-items-center rounded-full bg-primary text-primary-foreground"><Check className="size-3" strokeWidth={3} /></span>}</button> })}</div>}
    </div>}

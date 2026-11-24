@@ -13,6 +13,7 @@ import com.ecommerce.backend.shared.exception.MensajesUsuario;
 import com.ecommerce.backend.shared.exception.ValidacionCampoException;
 import com.ecommerce.backend.shared.utils.SlugUtil;
 import com.ecommerce.backend.tienda.dto.CrearTiendaRequest;
+import com.ecommerce.backend.tienda.dto.TiendaAdministracionResponse;
 import com.ecommerce.backend.tienda.dto.TiendaResponse;
 import com.ecommerce.backend.tienda.model.ConfiguracionTienda;
 import com.ecommerce.backend.tienda.model.EstadoTienda;
@@ -144,7 +145,7 @@ public class TiendaService {
      * Bloquea primero al dueño y luego la tienda, el mismo orden que activarTienda y retirarDueno.
      */
     @Transactional
-    public TiendaResponse cambiarEstadoAdministracion(UUID idTienda, String estadoSolicitado) {
+    public TiendaAdministracionResponse cambiarEstadoAdministracion(UUID idTienda, String estadoSolicitado) {
         String destino = estadoSolicitado == null ? "" : estadoSolicitado.trim().toUpperCase(java.util.Locale.ROOT);
         if (!destino.equals("SUSPENDIDA") && !destino.equals("ACTIVA")) {
             throw new ValidacionCampoException("estado", MensajesUsuario.ESTADO_ADMIN_INVALIDO);
@@ -165,7 +166,7 @@ public class TiendaService {
 
         if (destino.equals("SUSPENDIDA")) {
             if (actual != EstadoTienda.SUSPENDIDA) tienda.setEstado(EstadoTienda.SUSPENDIDA); // idempotente
-            return toResponse(tienda);
+            return toAdministracion(tienda);
         }
 
         // Reactivar
@@ -180,7 +181,7 @@ public class TiendaService {
             throw new ConflictoCampoException("estado", MensajesUsuario.DUENO_SIN_PERMISO_VENDEDOR);
         }
         tienda.setEstado(EstadoTienda.BORRADOR);
-        return toResponse(tienda);
+        return toAdministracion(tienda);
     }
 
     // ========== CONSULTAR ==========
@@ -205,13 +206,28 @@ public class TiendaService {
     }
 
     @Transactional(readOnly = true)
-    public org.springframework.data.domain.Page<TiendaResponse> listarAdministracion(String texto, int page, int size) {
+    public org.springframework.data.domain.Page<TiendaAdministracionResponse> listarAdministracion(String texto, int page, int size) {
         var pagina = org.springframework.data.domain.PageRequest.of(page, size,
                 org.springframework.data.domain.Sort.by("nombre").ascending().and(org.springframework.data.domain.Sort.by("idTienda")));
-        return tiendaRepository.buscarAdministracion(texto == null ? "" : texto.trim(), pagina).map(this::toResponse);
+        return tiendaRepository.buscarAdministracion(texto == null ? "" : texto.trim(), pagina).map(this::toAdministracion);
+    }
+
+    @Transactional(readOnly = true)
+    public TiendaAdministracionResponse obtenerAdministracion(UUID idTienda) {
+        return tiendaRepository.findById(idTienda).map(this::toAdministracion)
+                .orElseThrow(() -> new RecursoNoEncontradoException("La tienda no existe"));
     }
 
     // ========== APOYO ==========
+    private TiendaAdministracionResponse toAdministracion(Tienda t) {
+        TiendaResponse r = toResponse(t);
+        var dueno = t.getPropietario();
+        String nombre = java.util.stream.Stream.of(dueno.getNombres(), dueno.getApellidoPaterno())
+                .filter(x -> x != null && !x.isBlank()).collect(java.util.stream.Collectors.joining(" "));
+        return new TiendaAdministracionResponse(r.idTienda(), r.nombre(), r.slug(), r.estado(), r.plantilla(), r.fechaCreacion(),
+                dueno.getIdUsuario(), nombre, dueno.getEmail());
+    }
+
     private TiendaResponse toResponse(Tienda t) {
         String plantilla = configuracionRepository.findById(t.getIdTienda())
                 .map(c -> c.getPlantilla().getNombre())

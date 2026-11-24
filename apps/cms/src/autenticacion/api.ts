@@ -9,8 +9,8 @@ export interface Usuario {
 
 /**
  * Error de la API con el formato del backend: {status, error, mensaje, campos?}.
- * {@code codigo} es el campo {@code error} (DATOS_INVALIDOS, CONFLICTO, DUPLICADO, REGLA_NEGOCIO…), o uno propio
- * del cliente: SIN_PERMISO (403) y TIENDA_NO_MODIFICABLE (409 por tienda suspendida o cerrada).
+ * {@code codigo} es el campo {@code error} (DATOS_INVALIDOS, CONFLICTO, DUPLICADO, REGLA_NEGOCIO…), o SIN_PERMISO (403),
+ * que el backend envía sin cuerpo.
  */
 export class ErrorApi extends Error {
   codigoEstado: number
@@ -25,9 +25,7 @@ export class ErrorApi extends Error {
 }
 
 export const SIN_PERMISO = 'SIN_PERMISO'
-export const TIENDA_NO_MODIFICABLE = 'TIENDA_NO_MODIFICABLE'
 const MENSAJE_SIN_PERMISO = 'Ya no tienes permiso de vendedor para hacer esto. Si crees que es un error, escribe a soporte de Nubea.'
-const MENSAJE_TIENDA_NO_MODIFICABLE = 'Tu tienda está suspendida o cerrada: por ahora no puedes hacer cambios.'
 
 const urlApi = import.meta.env.VITE_API_URL?.trim() || (import.meta.env.DEV ? 'http://localhost:8080' : '')
 const cliente = axios.create({ baseURL: urlApi, withCredentials: true, withXSRFToken: false })
@@ -51,11 +49,9 @@ export async function solicitar<T>(metodo: Metodo, ruta: string, cuerpo?: object
       if (estado === 401 && !esAuth) window.dispatchEvent(new Event('sesion-vencida'))
       // 403 en el panel: se perdió el rol de vendedor o la tienda no es suya. El backend no envía un texto útil.
       if (estado === 403 && !esAuth) throw new ErrorApi(403, ruta.startsWith('/api/tiendas/') ? MENSAJE_SIN_PERMISO : 'No tienes permiso para hacer esto.', undefined, SIN_PERMISO)
-      // 409 de TiendaAuthorizationService: el texto del backend incluye el estado en mayúsculas; se sustituye.
-      if (estado === 409 && !datos?.campos && /^La tienda se encuentra en estado/.test(datos?.mensaje ?? '')) {
-        window.dispatchEvent(new Event('tienda-no-modificable'))
-        throw new ErrorApi(409, MENSAJE_TIENDA_NO_MODIFICABLE, undefined, TIENDA_NO_MODIFICABLE)
-      }
+      // 409 sin campos en una tienda (p. ej. la suspendieron con el panel abierto): el panel vuelve a leer su estado
+      // para mostrar el aviso de solo lectura. El mensaje lo da el backend.
+      if (estado === 409 && !datos?.campos && ruta.startsWith('/api/tiendas/')) window.dispatchEvent(new Event('tienda-no-modificable'))
       throw new ErrorApi(estado, datos?.mensaje || (error.response ? 'No se pudo completar la solicitud.' : 'No se pudo conectar con el servidor. Inténtalo de nuevo.'), datos?.campos, datos?.error)
     }
     throw error

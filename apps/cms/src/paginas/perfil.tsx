@@ -6,6 +6,7 @@ import { useSesion } from '@/autenticacion/sesion'
 import { api } from '@/comercio/datos'
 import { ErrorCampo, EstadoCarga, useCarga, useOperacion } from '@/comercio/comunes'
 import { textoRol } from '@/comercio/estados'
+import { BotonGoogle, googleConfigurado, interpretarErrorGoogle, vincularGoogle } from '@/autenticacion/boton-google'
 
 interface Perfil {
   idUsuario: string
@@ -20,6 +21,7 @@ interface Perfil {
   roles: string[]
   fechaCreacion: string
   tieneContrasena: boolean
+  tieneGoogle: boolean
 }
 
 const claseCampo = 'h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm outline-none transition focus:border-primary focus:ring-3 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60'
@@ -69,7 +71,10 @@ export function PerfilUsuario() {
 
     <div className="grid gap-6 xl:grid-cols-[1.35fr_1fr]">
       <DatosPersonales perfil={datos} alGuardar={nuevo => actualizarDatos(() => nuevo)} />
-      <Seguridad tieneContrasena={datos.tieneContrasena} />
+      <div className="space-y-6">
+        <Seguridad tieneContrasena={datos.tieneContrasena} />
+        {googleConfigurado && <CuentaGoogle tieneGoogle={datos.tieneGoogle} alVincular={() => actualizarDatos(p => ({ ...p, tieneGoogle: true }))} />}
+      </div>
     </div>
   </>
 }
@@ -182,5 +187,32 @@ function Seguridad({ tieneContrasena }: { tieneContrasena: boolean }) {
         <Mensaje error={errorLocal || operacion.error} exito={exito} />
         <Button type="submit" disabled={operacion.ocupado} className="h-11 w-full rounded-xl">{operacion.ocupado ? 'Cambiando...' : 'Cambiar contraseña'}</Button>
       </form>}
+  </Seccion>
+}
+
+// Vincular Google (POST /api/auth/google/vinculacion). Todavía no se puede desvincular.
+function CuentaGoogle({ tieneGoogle, alVincular }: { tieneGoogle: boolean; alVincular: () => void }) {
+  const [ocupado, establecerOcupado] = useState(false)
+  const [error, establecerError] = useState<{ mensaje: string; accion?: string } | null>(null)
+  const [exito, establecerExito] = useState('')
+  async function vincular(idToken: string) {
+    establecerOcupado(true); establecerError(null); establecerExito('')
+    try { await vincularGoogle(idToken); establecerExito('Listo: ya puedes entrar con Google.'); alVincular() }
+    catch (e) {
+      const resultado = interpretarErrorGoogle(e, true)
+      establecerError(resultado)
+      if (resultado.accion === 'sesion') window.dispatchEvent(new Event('sesion-vencida'))
+    } finally { establecerOcupado(false) }
+  }
+  return <Seccion icono={<ShieldCheck className="size-5" />} titulo="Inicio de sesión con Google" descripcion="Entra a Nubea con tu cuenta de Google, además de tu contraseña.">
+    {tieneGoogle
+      ? <div className="space-y-3"><p className="flex items-start gap-3 rounded-xl bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-400"><Check className="mt-0.5 size-4 shrink-0" />Tu cuenta está vinculada con Google.</p>{exito && <p role="status" className="text-sm text-muted-foreground">{exito}</p>}</div>
+      : error?.accion === 'no-disponible' ? <Mensaje error={error.mensaje} exito="" />
+      : <div className="space-y-4">
+        <p className="text-sm text-muted-foreground">Elige la cuenta de Google que quieres usar. Puede tener un correo distinto al de tu cuenta de Nubea.</p>
+        <BotonGoogle texto="continue_with" tema="outline" alRecibirToken={t => void vincular(t)} ocupado={ocupado} />
+        {ocupado && <p role="status" className="text-sm text-muted-foreground">Vinculando tu cuenta de Google...</p>}
+        <Mensaje error={error?.mensaje ?? ''} exito="" />
+      </div>}
   </Seccion>
 }

@@ -1,57 +1,111 @@
-import { useState } from "react";
-import { cn } from "@/lib/utils";
+import { useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { ErrorApi, mensajeError, solicitar } from './api'
 
-type PropiedadesBotonGoogle = {
-  texto?: string;
-  className?: string;
-  /**
-   * Acción al hacer clic. Cuando el backend tenga el ingreso con Google
-   * (POST /api/auth/google), se conecta aquí. Mientras tanto se muestra un aviso.
-   */
-  alHacerClic?: () => void;
-};
+/*
+ * Inicio de sesión con Google Identity Services (docs/revision/google-login-frontend.md).
+ * El ID token se envía tal cual al backend y se descarta: no se decodifica ni se guarda.
+ * Sin VITE_GOOGLE_CLIENT_ID no se muestra nada.
+ */
+const clienteGoogle = import.meta.env.VITE_GOOGLE_CLIENT_ID?.trim() ?? ''
+export const googleConfigurado = clienteGoogle !== ''
 
-export function BotonGoogle({ texto = "Continuar con Google", className, alHacerClic }: PropiedadesBotonGoogle) {
-  const [mostrarAviso, establecerMostrarAviso] = useState(false);
+type RespuestaGis = { credential?: string }
+type Gis = { accounts: { id: { initialize: (opciones: object) => void; renderButton: (elemento: HTMLElement, opciones: object) => void } } }
+declare global { interface Window { google?: Gis } }
 
-  const manejarClic = () => {
-    if (alHacerClic) alHacerClic();
-    else establecerMostrarAviso(true);
-  };
-
-  return (
-    <div className="grid gap-2">
-      <button
-        type="button"
-        onClick={manejarClic}
-        className={cn(
-          "inline-flex h-11 w-full cursor-pointer items-center justify-center gap-3 rounded-md border border-border bg-background px-4 text-sm font-medium transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
-          className
-        )}
-      >
-        <svg aria-hidden="true" viewBox="0 0 48 48" className="size-5 shrink-0">
-          <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.1 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z" />
-          <path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.1 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z" />
-          <path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z" />
-          <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z" />
-        </svg>
-        {texto}
-      </button>
-      {mostrarAviso && (
-        <p role="status" className="text-center text-sm text-muted-foreground">
-          El ingreso con Google estará disponible pronto. Por ahora usa tu correo y contraseña.
-        </p>
-      )}
-    </div>
-  );
+let carga: Promise<Gis> | null = null
+function cargarGis(): Promise<Gis> {
+  if (window.google?.accounts?.id) return Promise.resolve(window.google)
+  carga ??= new Promise<Gis>((resolver, rechazar) => {
+    const script = document.createElement('script')
+    script.src = 'https://accounts.google.com/gsi/client'
+    script.async = true
+    script.onload = () => window.google?.accounts?.id ? resolver(window.google) : rechazar(new Error('Google Identity Services no cargó'))
+    script.onerror = () => { carga = null; rechazar(new Error('Google Identity Services no cargó')) }
+    document.head.appendChild(script)
+  })
+  return carga
 }
 
-export function SeparadorCorreo() {
-  return (
-    <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground uppercase">
-      <span className="h-px flex-1 bg-border" />
-      o con tu correo
-      <span className="h-px flex-1 bg-border" />
-    </div>
-  );
+type TextoBoton = 'continue_with' | 'signin_with' | 'signup_with'
+
+/** Botón oficial de Google. Llama a {@code alRecibirToken} con el ID token (response.credential). */
+export function BotonGoogle({ texto = 'continue_with', tema = 'filled_black', alRecibirToken, ocupado = false }: { texto?: TextoBoton; tema?: 'outline' | 'filled_black' | 'filled_blue'; alRecibirToken: (idToken: string) => void; ocupado?: boolean }) {
+  const contenedor = useRef<HTMLDivElement>(null)
+  const callback = useRef(alRecibirToken)
+  useEffect(() => { callback.current = alRecibirToken })
+  const [fallo, setFallo] = useState(false)
+  useEffect(() => {
+    if (!googleConfigurado) return
+    let activo = true
+    cargarGis().then(gis => {
+      const elemento = contenedor.current
+      if (!activo || !elemento) return
+      gis.accounts.id.initialize({ client_id: clienteGoogle, callback: (r: RespuestaGis) => { if (r.credential) callback.current(r.credential) }, ux_mode: 'popup', auto_select: false })
+      gis.accounts.id.renderButton(elemento, { type: 'standard', theme: tema, size: 'large', text: texto, shape: 'rectangular', locale: 'es', width: Math.min(400, Math.max(220, elemento.offsetWidth)) })
+    }, () => { if (activo) setFallo(true) })
+    return () => { activo = false }
+  }, [texto, tema])
+  if (!googleConfigurado) return null
+  if (fallo) return <p role="status" className="text-center text-sm opacity-75">No se pudo cargar el botón de Google. Usa tu correo y contraseña.</p>
+  return <div aria-busy={ocupado} className={ocupado ? 'pointer-events-none opacity-60' : ''}><div ref={contenedor} className="flex min-h-[44px] w-full justify-center" /></div>
 }
+
+/** POST /api/auth/google: 201 (cuenta nueva, con cuerpo) o 204 (cuenta existente, sin cuerpo). */
+export async function continuarConGoogle(idToken: string, recordarme = false) {
+  const datos = await solicitar<unknown>('POST', '/api/auth/google', { idToken, recordarme })
+  return { cuentaNueva: !!datos }
+}
+export const vincularGoogle = (idToken: string) => solicitar<void>('POST', '/api/auth/google/vinculacion', { idToken })
+
+export type AccionGoogle = 'contrasena' | 'registro' | 'reintentar' | 'no-disponible' | 'sesion'
+/** Mensaje y siguiente paso para cada respuesta de error de Google (tabla de la guía). */
+export function interpretarErrorGoogle(error: unknown, vinculando = false): { mensaje: string; accion?: AccionGoogle } {
+  if (!(error instanceof ErrorApi)) return { mensaje: 'No se pudo continuar con Google. Inténtalo de nuevo.' }
+  const deCampo = error.campos?.correoElectronico || error.campos?.idToken
+  switch (error.codigoEstado) {
+    case 409: return { mensaje: deCampo || error.message, accion: !vinculando && error.campos?.correoElectronico ? 'contrasena' : undefined }
+    case 422: return { mensaje: deCampo || error.message, accion: vinculando ? undefined : 'registro' }
+    case 401:
+      if (error.codigo === 'GOOGLE_TOKEN_INVALIDO') return { mensaje: error.message, accion: 'reintentar' }
+      // 401 sin cuerpo: cuenta suspendida o cerrada (login) o sesión vencida (vinculación). No se revela el motivo.
+      return vinculando ? { mensaje: 'Tu sesión venció. Vuelve a iniciar sesión.', accion: 'sesion' } : { mensaje: 'No se pudo iniciar sesión.' }
+    case 503: return { mensaje: error.message || 'El inicio de sesión con Google no está disponible en este momento', accion: 'no-disponible' }
+    default: return { mensaje: mensajeError(error) }
+  }
+}
+
+/**
+ * Bloque "Continuar con Google" de las páginas de acceso: botón, mensajes de error y siguiente paso.
+ * {@code alEntrar} se llama con la sesión ya iniciada (201 o 204).
+ */
+export function AccesoConGoogle({ registro = false, recordarme = false, retorno, alEntrar, alUsarContrasena }: { registro?: boolean; recordarme?: boolean; retorno?: string | null; alEntrar: (cuentaNueva: boolean) => Promise<void> | void; alUsarContrasena?: () => void }) {
+  const [ocupado, setOcupado] = useState(false)
+  const [error, setError] = useState<{ mensaje: string; accion?: AccionGoogle } | null>(null)
+  if (!googleConfigurado) return null
+  const consulta = retorno ? `?retorno=${encodeURIComponent(retorno)}` : ''
+  async function recibir(idToken: string) {
+    setOcupado(true); setError(null)
+    try { const { cuentaNueva } = await continuarConGoogle(idToken, recordarme); await alEntrar(cuentaNueva) }
+    catch (e) { setError(interpretarErrorGoogle(e)) }
+    finally { setOcupado(false) }
+  }
+  return <div className="grid gap-3">
+    {error?.accion !== 'no-disponible' && <BotonGoogle texto={registro ? 'signup_with' : 'continue_with'} alRecibirToken={t => void recibir(t)} ocupado={ocupado} />}
+    {ocupado && <p role="status" className="text-center text-[13px] text-white/70">Verificando tu cuenta de Google...</p>}
+    {error && <div role="alert" className="grid gap-2 rounded-[12px] border border-red-400/30 bg-red-500/10 px-[14px] py-[10px] text-[13px] text-red-200">
+      <p>{error.mensaje}</p>
+      {error.accion === 'contrasena' && (alUsarContrasena
+        ? <button type="button" onClick={alUsarContrasena} className="w-fit cursor-pointer font-semibold text-[#8fb3ff] hover:underline">Iniciar sesión con contraseña</button>
+        : <Link to={`/iniciar-sesion${consulta}`} className="w-fit font-semibold text-[#8fb3ff] hover:underline">Iniciar sesión con contraseña</Link>)}
+      {error.accion === 'registro' && !registro && <Link to={`/registro${consulta}`} className="w-fit font-semibold text-[#8fb3ff] hover:underline">Crear una cuenta con correo y contraseña</Link>}
+      {error.accion === 'registro' && registro && <p>Puedes crear tu cuenta con correo y contraseña en el formulario de arriba.</p>}
+      {error.accion === 'reintentar' && <p>Vuelve a pulsar el botón de Google para intentarlo de nuevo.</p>}
+      {error.accion === 'no-disponible' && <p>Mientras tanto, usa tu correo y contraseña.</p>}
+    </div>}
+  </div>
+}
+
+/** Separador "o …" que solo se muestra si Google está configurado. */
+export function SiGoogle({ children }: { children: React.ReactNode }) { return googleConfigurado ? <>{children}</> : null }

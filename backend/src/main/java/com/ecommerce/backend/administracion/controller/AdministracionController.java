@@ -2,7 +2,7 @@ package com.ecommerce.backend.administracion.controller;
 
 import com.ecommerce.backend.identidad.dto.UsuarioResponse;
 import com.ecommerce.backend.identidad.service.UsuarioService;
-import com.ecommerce.backend.tienda.dto.TiendaResponse;
+import com.ecommerce.backend.tienda.dto.TiendaAdministracionResponse;
 import com.ecommerce.backend.tienda.service.TiendaService;
 import lombok.RequiredArgsConstructor;
 import com.ecommerce.backend.administracion.dto.PaginaAdministracion;
@@ -32,17 +32,23 @@ public class AdministracionController {
     }
 
     @GetMapping("/tiendas")
-    public PaginaAdministracion<TiendaResponse> tiendas(@RequestParam(defaultValue = "") String texto,
+    public PaginaAdministracion<TiendaAdministracionResponse> tiendas(@RequestParam(defaultValue = "") String texto,
             @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
         validarPagina(page, size);
         return PaginaAdministracion.desde(tiendas.listarAdministracion(texto, page, size));
+    }
+
+    /** Una tienda con su dueño legible, para la vista de solo lectura del administrador. */
+    @GetMapping("/tiendas/{idTienda}")
+    public TiendaAdministracionResponse tienda(@PathVariable UUID idTienda) {
+        return tiendas.obtenerAdministracion(idTienda);
     }
 
     /** Cuerpo de {@code PATCH /api/admin/tiendas/{id}/estado}: "SUSPENDIDA" o "ACTIVA" (reactivar → queda en BORRADOR). */
     public record CambioEstadoTienda(String estado) {}
 
     @PatchMapping("/tiendas/{idTienda}/estado")
-    public TiendaResponse cambiarEstadoTienda(@PathVariable UUID idTienda, @RequestBody CambioEstadoTienda cambio) {
+    public TiendaAdministracionResponse cambiarEstadoTienda(@PathVariable UUID idTienda, @RequestBody CambioEstadoTienda cambio) {
         return tiendas.cambiarEstadoAdministracion(idTienda, cambio == null ? null : cambio.estado());
     }
 

@@ -918,3 +918,13 @@ form.formulario-direccion > button:not([type=button]):hover:not(:disabled) { bac
 .confirmacion-lista li { display: flex; justify-content: space-between; gap: 1rem; font-size: .9rem; }
 .confirmacion-direccion { font-size: .9rem; margin: 0 0 1rem; }
 .confirmacion-acciones { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .75rem; margin-top: 1rem; }
+
+/* Acceso con Google (Parte 3) */
+.acceso-google { display: grid; gap: .75rem; margin-top: 1.25rem; }
+.separador-acceso { display: flex; align-items: center; gap: .9rem; color: var(--texto-suave); font-size: .85rem; }
+.separador-acceso::before, .separador-acceso::after { content: ""; flex: 1; height: 1px; background: currentColor; opacity: .3; }
+.acceso-google-boton { display: flex; justify-content: center; min-height: 44px; width: 100%; }
+.acceso-google-boton.ocupado { opacity: .6; pointer-events: none; }
+.aviso-google { display: grid; gap: .4rem; padding: .8rem 1rem; border-radius: 12px; border: 1px solid #e3a3a3; background: #fdf0f0; color: #8a1f1f; font-size: .9rem; }
+.aviso-google a, .aviso-google .boton-enlace { width: fit-content; font-weight: 600; color: inherit; text-decoration: underline; background: none; border: 0; padding: 0; cursor: pointer; font: inherit; }
+.aviso-bienvenida { padding: .8rem 1rem; border-radius: 12px; background: #eef7ef; color: #1f5c2b; }

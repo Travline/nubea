@@ -213,7 +213,7 @@ const temasAyuda: TemaAyuda[] = [
   ] },
   { id: 'catalogo', titulo: 'Catálogo', icono: Package, preguntas: [
     ['¿Cómo agrego un producto?', 'En Catálogo completa el nombre, la descripción, el precio base y la categoría. Luego abre el producto para agregar fotos, versiones y colecciones.'],
-    ['¿Qué son las variantes y las versiones?', 'Las variantes son características como talla o color, con sus valores (S, M, L…). Una versión del producto combina esos valores, tiene sus propias unidades y puede tener un precio distinto al precio base. Su código interno se genera solo si lo dejas vacío.'],
+    ['¿Qué son las opciones y las versiones?', 'Las opciones son características como talla o color, con sus valores (S, M, L…). Una versión del producto combina esos valores, tiene sus propias unidades y puede tener un precio distinto al precio base. Su código interno se genera solo si lo dejas vacío.'],
     ['¿Por qué un producto no aparece en mi tienda?', 'Abre el producto: la lista "Listo para publicar" te dice qué falta (tienda abierta, categoría activa, una versión a la venta y unidades disponibles).'],
   ] },
   { id: 'inventario', titulo: 'Inventario', icono: Boxes, preguntas: [

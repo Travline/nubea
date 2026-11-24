@@ -10,6 +10,7 @@ public interface TiendaRepository extends JpaRepository<Tienda, UUID> {
         SELECT t FROM Tienda t
         WHERE :texto = '' OR LOWER(t.nombre) LIKE LOWER(CONCAT('%', :texto, '%'))
             OR LOWER(t.slug) LIKE LOWER(CONCAT('%', :texto, '%'))
+            OR LOWER(t.propietario.email) LIKE LOWER(CONCAT('%', :texto, '%'))
         """)
     org.springframework.data.domain.Page<Tienda> buscarAdministracion(
             @org.springframework.data.repository.query.Param("texto") String texto,

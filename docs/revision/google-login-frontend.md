@@ -1,7 +1,7 @@
 # Inicio de sesión con Google: guía para el frontend
 
 > **Para:** quien integre "Continuar con Google" y "Vincular Google" en el rediseño de `apps/cms` y `apps/store`.
-> **Backend:** Bloque 5 (RN-M1-05). Los frontends actuales todavía no usan estos endpoints.
+> **Backend:** Bloque 5 (RN-M1-05). **Frontend:** `apps/cms/src/autenticacion/boton-google.tsx` (inicio de sesión, registro y "Vincular Google" en el perfil) y `apps/store/src/boton-google.tsx` (inicio de sesión y registro de la vitrina).
 
 ## 1. Cómo funciona
 

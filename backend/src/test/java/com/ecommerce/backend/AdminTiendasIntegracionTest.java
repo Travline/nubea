@@ -139,4 +139,39 @@ class AdminTiendasIntegracionTest {
         estado(admin, "SUSPENDIDA").andExpect(status().isConflict()).andExpect(jsonPath("$.campos.estado").value(TIENDA_CERRADA_SIN_CAMBIOS));
         estado(admin, "ACTIVA").andExpect(status().isConflict()).andExpect(jsonPath("$.campos.estado").value(TIENDA_CERRADA_SIN_CAMBIOS));
     }
+
+    @Test
+    void adminVeElDuenoLegibleYBuscaPorSuCorreo() throws Exception {
+        jdbc.update("UPDATE usuario_plataforma SET nombres='Ana', apellido_paterno='Pérez' WHERE id_usuario=?", dueno);
+        String correo = dueno + "@example.test";
+        mvc.perform(get("/api/admin/tiendas").param("texto", correo).with(authentication(admin))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.contenido.length()").value(1))
+                .andExpect(jsonPath("$.contenido[0].idTienda").value(tienda.toString()))
+                .andExpect(jsonPath("$.contenido[0].nombrePropietario").value("Ana Pérez"))
+                .andExpect(jsonPath("$.contenido[0].correoPropietario").value(correo));
+        mvc.perform(get("/api/admin/tiendas/" + tienda).with(authentication(admin))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.nombre").value("Tienda")).andExpect(jsonPath("$.estado").value("ACTIVA"))
+                .andExpect(jsonPath("$.nombrePropietario").value("Ana Pérez"));
+        mvc.perform(get("/api/admin/tiendas/" + UUID.randomUUID()).with(authentication(admin))).andExpect(status().isNotFound());
+        mvc.perform(get("/api/admin/tiendas/" + tienda).with(authentication(sesionDueno))).andExpect(status().isForbidden());
+        estado(admin, "SUSPENDIDA").andExpect(status().isOk()).andExpect(jsonPath("$.correoPropietario").value(correo));
+    }
+
+    @Test
+    void tiendaNoModificableResponde409ConMensajeParaElUsuario() throws Exception {
+        estado(admin, "SUSPENDIDA").andExpect(status().isOk());
+        em.flush();
+        mvc.perform(post(base + "/categorias").with(csrf()).with(authentication(sesionDueno))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"nombre\":\"Otra\"}"))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.error").value("CONFLICTO"))
+                .andExpect(jsonPath("$.mensaje").value(TIENDA_SUSPENDIDA_SOLO_LECTURA));
+        mvc.perform(post(base + "/inventario/" + presentacion + "/ajustes").with(csrf()).with(authentication(sesionDueno))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"cantidad\":1}"))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.mensaje").value(TIENDA_SUSPENDIDA_SOLO_LECTURA));
+
+        jdbc.update("UPDATE tienda SET estado='CERRADA', fecha_cierre=now() WHERE id_tienda=?", tienda);
+        mvc.perform(patch(base + "/configuracion").with(csrf()).with(authentication(sesionDueno))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"tituloInicio\":\"X\"}"))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.mensaje").value(TIENDA_CERRADA_SOLO_LECTURA));
+    }
 }

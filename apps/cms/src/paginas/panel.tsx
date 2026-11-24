@@ -249,4 +249,4 @@ function AvisoActivacion({ tienda, apiBase, alActivar }: { tienda: Tienda; apiBa
     </div>
   </section>
 }
-export interface ContextoTienda { tienda: Tienda; base: string; apiBase: string; actualizarTienda: (tienda: Tienda) => void; soloLectura: boolean }
+export interface ContextoTienda { tienda: Tienda; base: string; apiBase: string; actualizarTienda: (tienda: Tienda) => void; soloLectura: boolean; esAdmin?: boolean }

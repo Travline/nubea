@@ -144,5 +144,3 @@ export const claseEntrada =
 export const claseBotonPrincipal =
   "group inline-flex h-[52px] w-full cursor-pointer items-center justify-center gap-[10px] rounded-[12px] bg-[#5b8cff] text-[15px] font-semibold text-[#06101f] shadow-[0_12px_34px_-10px_rgba(91,140,255,0.8)] transition hover:bg-[#6f9bff] disabled:cursor-not-allowed disabled:opacity-60";
 
-export const claseBotonGoogle =
-  "h-[52px] gap-[12px] rounded-[12px] border-white/30 bg-transparent px-[16px] text-[15px] [&_svg]:size-[20px] text-white hover:bg-white/[0.06]";

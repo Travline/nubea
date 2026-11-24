@@ -30,6 +30,15 @@ public final class MensajesUsuario {
             "El dueño de esta tienda ya no tiene permiso de vendedor. Devuélveselo antes de reactivarla";
     public static final String TIENDA_CERRADA_SIN_CAMBIOS = "Una tienda cerrada no se puede suspender ni reactivar";
     public static final String SOLO_SE_REACTIVA_SUSPENDIDA = "Solo se puede reactivar una tienda suspendida";
+    // Tienda en solo lectura (TiendaNoModificableException, 409)
+    public static final String TIENDA_SUSPENDIDA_SOLO_LECTURA = "Tu tienda está suspendida: puedes consultar tus datos, pero no modificarlos";
+    public static final String TIENDA_CERRADA_SOLO_LECTURA = "Tu tienda está cerrada: puedes consultar tus datos, pero no modificarlos";
+
+    /** Mensaje de {@code TiendaNoModificableException} según el estado de la tienda, sin el código de la BD. */
+    public static String tiendaNoModificable(String estado) {
+        return "CERRADA".equalsIgnoreCase(estado) ? TIENDA_CERRADA_SOLO_LECTURA : TIENDA_SUSPENDIDA_SOLO_LECTURA;
+    }
+
     public static final String ESTADO_ADMIN_INVALIDO = "El estado debe ser SUSPENDIDA o ACTIVA";
 
     // Vitrina

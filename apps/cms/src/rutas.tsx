@@ -1,4 +1,4 @@
-import { createBrowserRouter } from "react-router-dom";
+import { Navigate, createBrowserRouter } from "react-router-dom";
 import { Inicio } from "./paginas/inicio";
 import { PaginaNoEncontrada } from "@/paginas/no-encontrada";
 import { DisenoPublico } from "./disenos/publico";
@@ -15,6 +15,7 @@ import { Apariencia } from '@/comercio/apariencia'
 import { Pagos, RetornoPago } from '@/comercio/pagos'
 import { Catalogo, DetalleProducto } from '@/comercio/catalogo'
 
+import { TiendaAdministradaVista } from '@/administracion/tienda'
 import { Administracion, ResumenAdministracion, UsuariosAdministracion, TiendasAdministracion, PlantillasAdministracion, ImpuestosAdministracion } from '@/administracion/panel'
 export const enrutador = createBrowserRouter([
   {
@@ -38,7 +39,16 @@ export const enrutador = createBrowserRouter([
         { path: "usuarios", element: <UsuariosAdministracion /> },
         { path: "tiendas", element: <TiendasAdministracion /> },
         { path: "plantillas", element: <PlantillasAdministracion /> },
-        { path: "impuestos", element: <ImpuestosAdministracion /> }
+        { path: "impuestos", element: <ImpuestosAdministracion /> },
+        // Contenido de una tienda en solo lectura; sin pedidos ni pagos.
+        { path: "tiendas/:idTienda", element: <TiendaAdministradaVista />, children: [
+          { index: true, element: <Navigate to="catalogo" replace /> },
+          { path: "catalogo", element: <Catalogo /> },
+          { path: "catalogo/productos/:idProducto", element: <DetalleProducto /> },
+          { path: "inventario", element: <InventarioTienda /> },
+          { path: "apariencia", element: <Apariencia /> },
+          { path: "cuenta-pago", element: <Pagos /> },
+        ] }
       ] },
       { path: "retorno-pago", element: <RetornoPago /> },
       { path: "tiendas/:idTienda", element: <EspacioTienda />, children: [
