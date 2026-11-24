@@ -1,5 +1,7 @@
 # Cierre del backend antes del frontend
 
+> ⚠️ **Documento histórico.** El estado vigente del backend, tras los bloques 1, 2 y 3, está en **[estado-backend.md](estado-backend.md)**: reglas por módulo, flujo de compra, configuración de Mercado Pago, pendientes y checklist de producción. Este documento se conserva como registro del análisis previo al Bloque 3.
+
 > **Fecha:** 2026-11-24 · **Rama:** `feature/miguel-local` · **Tipo:** análisis de solo lectura. No se modificó código ni se consultó la base de Supabase.
 >
 > **Estado del código analizado**
@@ -185,7 +187,7 @@ Se basa en los puntos **[requiere backend]** de `analisis-frontend.md` y en los 
 | `VITE_MERCADOPAGO_OAUTH_ENABLED` (cms) | Debe coincidir con `MERCADOPAGO_OAUTH_ENABLED` del backend |
 | `VITE_GOOGLE_MAPS_API_KEY` (cms y store) | Debe estar restringida por dominio; sin ella el formulario de dirección funciona solo con texto |
 | `APP_BOOTSTRAP_ADMIN_EMAIL` | El registro es público y no verifica el correo: quien registre antes ese correo se convierte en administrador. La guía ya recomienda dejarla vacía y asignar el admin por SQL |
-| `SESSION_COOKIE_SAME_SITE` / `SESSION_COOKIE_SECURE` / `APP_CORS_ALLOWED_ORIGINS` | Con el dominio único (`dominio-unico.md`) basta `lax`. `none` solo hace falta si el frontend y la API quedan en dominios distintos |
+| `SESSION_COOKIE_SAME_SITE` / `SESSION_COOKIE_SECURE` / `APP_CORS_ALLOWED_ORIGINS` | **Corrección:** en producción el frontend (`nubea.vercel.app`) y la API (`nubea.onrender.com`) son sitios distintos, así que hace falta `none` con `Secure=true` (`render-backend.md` §4); `lax` haría fallar el login. `lax` solo sirve en local o con frontend y API bajo el mismo sitio. `none` solo hace falta si el frontend y la API quedan en dominios distintos |
 
 ### 4.4 Otros riesgos
 

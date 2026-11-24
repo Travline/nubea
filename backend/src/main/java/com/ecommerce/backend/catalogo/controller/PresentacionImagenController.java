@@ -1,6 +1,10 @@
 
 package com.ecommerce.backend.catalogo.controller;
 
+import com.ecommerce.backend.catalogo.dto.response.ImagenProductoResponse;
+import com.ecommerce.backend.catalogo.dto.response.PresentacionAsociadaResponse;
+import com.ecommerce.backend.catalogo.mapper.ImagenProductoMapper;
+import com.ecommerce.backend.shared.storage.AlmacenamientoImagenes;
 import com.ecommerce.backend.catalogo.model.ImagenProducto;
 import com.ecommerce.backend.catalogo.model.PresentacionProducto;
 import com.ecommerce.backend.catalogo.service.PresentacionImagenService;
@@ -18,9 +22,13 @@ public class PresentacionImagenController {
 
     private final PresentacionImagenService presentacionImagenService;
 
+    private final AlmacenamientoImagenes almacenamiento;
+
     public PresentacionImagenController(
-            PresentacionImagenService presentacionImagenService) {
+            PresentacionImagenService presentacionImagenService,
+            AlmacenamientoImagenes almacenamiento) {
         this.presentacionImagenService = presentacionImagenService;
+        this.almacenamiento = almacenamiento;
     }
 
     // Asociar una imagen a una presentación.
@@ -40,25 +48,30 @@ public class PresentacionImagenController {
     // Listar imágenes asociadas a una presentación.
     @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.puedeVer(#idTienda, authentication)")
     @GetMapping("/presentaciones/{idPresentacion}/imagenes")
-    public ResponseEntity<List<ImagenProducto>> listarImagenesPorPresentacion(
+    public ResponseEntity<List<ImagenProductoResponse>> listarImagenesPorPresentacion(
             @PathVariable UUID idTienda,
             @PathVariable UUID idPresentacion) {
 
+        // Mismo contrato que GET /productos/{id}/imagenes: sin storageKey (se expone la URL pública).
         return ResponseEntity.ok(
-                presentacionImagenService.listarImagenesPorPresentacion(
-                        idPresentacion, idTienda));
+                presentacionImagenService.listarImagenesPorPresentacion(idPresentacion, idTienda).stream()
+                        .map(imagen -> ImagenProductoMapper.toResponse(imagen, almacenamiento.url(imagen.getStorageKey())))
+                        .toList());
     }
 
     // Listar presentaciones asociadas a una imagen.
     @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.puedeVer(#idTienda, authentication)")
     @GetMapping("/imagenes/{idImagen}/presentaciones")
-    public ResponseEntity<List<PresentacionProducto>> listarPresentacionesPorImagen(
+    public ResponseEntity<List<PresentacionAsociadaResponse>> listarPresentacionesPorImagen(
             @PathVariable UUID idTienda,
             @PathVariable UUID idImagen) {
 
+        // Sin idTienda ni firmaValores.
         return ResponseEntity.ok(
-                presentacionImagenService.listarPresentacionesPorImagen(
-                        idImagen, idTienda));
+                presentacionImagenService.listarPresentacionesPorImagen(idImagen, idTienda).stream()
+                        .map(p -> new PresentacionAsociadaResponse(p.getIdPresentacion(), p.getIdProducto(), p.getSku(),
+                                p.getPrecioOverride(), p.getEstado()))
+                        .toList());
     }
 
     // Desasociar una imagen de una presentación.

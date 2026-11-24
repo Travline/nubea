@@ -26,7 +26,7 @@ Configurar las notificaciones de Orders en la aplicación de Mercado Pago con UR
 
 El endpoint acepta el evento `type=order`, verifica `x-signature` y persiste antes de responder. El `user_id` del cuerpo es únicamente una pista para recuperar órdenes cuya respuesta se perdió: la asociación exige una consulta autenticada y coincidencia de vendedor, referencia, moneda e importe.
 
-Publicar frontend y backend, verificar que Flyway llegue a V11 y que la sesión y CSRF funcionen desde Vercel. El procesador debe permanecer ejecutándose; si Render suspende la instancia, las tareas se recuperan al reiniciar, pero no hay procesamiento continuo durante la suspensión.
+Las variables completas, agrupadas, están en [`.env.render.example`](../../.env.render.example). Publicar frontend y backend, verificar que Flyway llegue a **V14** (`SELECT max(version) FROM flyway_schema_history;`) y que la sesión y CSRF funcionen desde Vercel. El procesador de pagos y el vencimiento de reservas deben permanecer ejecutándose; si Render suspende la instancia, las tareas se recuperan al reiniciar, pero no hay procesamiento continuo durante la suspensión y las reservas vencidas retienen stock hasta entonces.
 
 ## Secuencia de prueba publicada
 
@@ -45,8 +45,12 @@ Las pruebas locales con servidor simulado no certifican la habilitación de Orde
 
 - Las tareas conservan claves de creación, cancelación y devolución. No cambiar claves para resolver timeouts.
 - Cada pedido congela cuenta receptora, ambiente, retorno, importes y exclusiones. Una reconexión diferente no permite cobrar o consultar pedidos del vendedor anterior.
-- Una orden acreditada consume la reserva. Una orden cancelada o fallida libera stock una vez; las órdenes se crean sin reintentos del comprador dentro de la misma orden. Si una consulta o cancelación es incierta, la reserva se conserva.
-- Una creación incierta deja de reenviarse al vencer la reserva para no asumir retención indefinida de idempotencia. Las notificaciones pueden recuperar su ID. Si nunca llega el aviso, revisar en Mercado Pago antes de intervenir; no liberar stock ni crear otro cobro a ciegas.
+- Una orden acreditada consume la reserva. Una orden cancelada o fallida libera stock una vez; las órdenes se crean sin reintentos del comprador dentro de la misma orden. Si una consulta o cancelación de una orden **creada** es incierta, el procesador conserva la reserva y reintenta.
+- **Vencimiento de reservas (RN-M4-19, Bloque 3):** `VencimientoReservasService` corre siempre, aunque `MERCADOPAGO_PAGOS_ENABLED=false`, cada `RESERVAS_VENCIMIENTO_DELAY_MS`. Cada pedido se procesa en su propia transacción; bloquea intento → pedido (como el procesador) con `SKIP LOCKED` y salta los pedidos con un trabajo de pago en curso.
+  - Sin orden en Mercado Pago (intento `PREPARADO`): se cancela al vencer.
+  - **Creación incierta (`CREACION_INCIERTA`): ahora sí libera stock.** Ya no se reenvía después de vencer, y pasada la gracia (`RESERVAS_VENCIMIENTO_GRACIA_MINUTOS`, 40 por defecto) el pedido se cancela localmente y el stock vuelve al inventario. Es seguro porque las órdenes se crean con `expiration_time` de 30 minutos y solo antes del vencimiento: pasada la gracia ya no se pueden pagar. Si aun así llega un pago (el aviso recupera la orden), la acreditación sobre un pedido cancelado dispara la devolución automática.
+  - Orden creada: con el procesador activo la cancela y confirma él en Mercado Pago (si sigue pendiente 24 h después del vencimiento, queda una advertencia en el log); con el procesador apagado, se cancela pasada la gracia.
+  - **Las cancelaciones por vencimiento devuelven los productos al carrito** activo del comprador (sumando cantidades, máximo 999). Un pago rechazado no los devuelve.
 - Una acreditación tardía sobre un pedido cancelado solicita devolución automática. No vuelve a modificar el inventario.
 - Un reembolso completo externo se refleja por webhook o conciliación sin reponer stock. Una devolución parcial externa queda para revisión; no se ofrecen reembolsos parciales desde Nubea.
 - La renovación OAuth coordina procesos con una reserva temporal en PostgreSQL y guarda access/refresh token juntos, cifrados. `invalid_grant` marca la cuenta `ERROR`; otros fallos conservan la vinculación para reintentar. Reconectar la misma cuenta permite resolver operaciones previas.
@@ -57,8 +61,10 @@ Las pruebas locales con servidor simulado no certifican la habilitación de Orde
 
 - `GET /api/compra/tiendas/{slug}/checkout`: disponibilidad y ambiente, con sesión.
 - `POST` a la misma ruta: `{idDireccion,totalEsperado,clave}`. La clave identifica la misma compra incluso tras perderse la respuesta; cambiar dirección o total con esa clave se rechaza.
-- `GET /api/compra/tiendas/{slug}/pedidos/{id}/pago`: estado del comprador, enlace si aún está vigente, referencia y vencimiento.
-- `GET /api/tiendas/{idTienda}/pedidos/{id}/pago`: estado para el propietario.
+  - **Checkout parcial (RN-M4-05):** se compran solo las líneas disponibles; una línea con más unidades que el stock se aparta entera y las no disponibles pasan a un carrito activo nuevo. `totalEsperado` debe ser el `totalAPagar` del carrito (solo líneas disponibles). Si no hay ninguna disponible, 422 con `campos.items`.
+  - La respuesta incluye `numero` (número corto del pedido en la tienda, #1001…, V14) y `productosApartados` (solo en esta respuesta; 0 si se repite la clave).
+- `GET /api/compra/tiendas/{slug}/pedidos/{id}/pago`: estado del comprador, enlace si aún está vigente, referencia, vencimiento y `numero`.
+- `GET /api/tiendas/{idTienda}/pedidos/{id}/pago`: estado para el propietario (el `ADMIN_GENERAL` no tiene acceso: contiene datos del comprador).
 - `POST /api/tiendas/{idTienda}/pedidos/{id}/reembolsos`: `{clave,reponerStock}`, solo propietario. La clave UUID y la opción deben permanecer iguales en cada reintento.
 
 Las mutaciones de usuario requieren CSRF. Ninguna ruta acepta tokens, identidad del vendedor o confirmación de pago desde el navegador.

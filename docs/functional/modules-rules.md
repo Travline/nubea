@@ -2,7 +2,7 @@
 
 > **Referencia de diseño:** las reglas siguientes incluyen comportamiento objetivo y simulaciones del modelo; no implican que todos los flujos estén implementados o disponibles. En particular, checkout, pagos, renovación OAuth y vencimiento de reservas siguen pendientes. El [estado del módulo 4](../technical/modulo-4.md) y el código prevalecen sobre este documento.
 
-El modelo v1.2 (30 tablas, 4 módulos, PostgreSQL) está bien definido: cada regla de negocio se garantiza en la base de datos, en el backend Spring Boot, o en ambos. Este documento indica para cada regla dónde se controla y con qué elemento concreto.
+El modelo v1.2 (30 tablas, 4 módulos, PostgreSQL; hoy **39 tablas** tras las migraciones V2–V14, ver "Cambios respecto a v1.1 y trabajo futuro") está bien definido: cada regla de negocio se garantiza en la base de datos, en el backend Spring Boot, o en ambos. Este documento indica para cada regla dónde se controla y con qué elemento concreto.
 
 ## Alcance y convenciones
 
@@ -132,7 +132,14 @@ El carrito es libre y no reserva stock; el pedido congela precios, impuestos y d
 
 ## Cambios respecto a v1.1 y trabajo futuro
 
-La v1.2 no agrega tablas: convierte en garantías de la BD las reglas que en v1.1 estaban marcadas como "Pendiente" y corrige tres fallas detectadas en la simulación.
+La v1.2 no agrega tablas respecto a v1.1: convierte en garantías de la BD las reglas que en v1.1 estaban marcadas como "Pendiente" y corrige tres fallas detectadas en la simulación.
+
+> **Estado actual del esquema (V1–V14): 39 tablas** en `public`, sin contar `flyway_schema_history`:
+> - **30** del modelo v1.2 (V1);
+> - **7** añadidas para OAuth, pagos y almacenamiento: `oauth_mercado_pago_intento` (V2), `cuenta_pago_historial` (V3), `storage_tarea` (V5), `checkout_idempotencia` (V6), `intento_order_mercadopago` (V7), `notificacion_order_mercadopago` (V8) y `reembolso_order` (V9);
+> - **2** de sesión: `SPRING_SESSION` y `SPRING_SESSION_ATTRIBUTES` (V13).
+>
+> V4, V8, V9, V12 y V14 además añaden columnas a tablas del modelo (por ejemplo, `pedido.numero` y `tienda.ultimo_numero_pedido` en V14).
 
 | Cambio | Reglas afectadas | Motivo |
 | --- | --- | --- |
