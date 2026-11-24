@@ -688,3 +688,169 @@ form.formulario-direccion > button:not([type=button]):hover:not(:disabled) { bac
   .plantilla-audaz .portada-fondo { aspect-ratio: 4 / 3; }
   .plantilla-boutique .controles { position: relative; right: auto; bottom: auto; }
 }
+
+/* #####################################################################
+   PLANTILLA "GOURMET" · sitio de restaurante, neutros cálidos
+   ##################################################################### */
+.plantilla-gourmet {
+  --fondo: #f7f4ef; --fondo-alto: #ece7df; --superficie: #ffffff;
+  --tinta: #1c1a17; --texto: #2b2824; --texto-suave: #6f6960; --texto-tenue: #9a9389;
+  --borde: #e6e0d6; --borde-fuerte: #d3cbbf;
+  --acento: #1c1a17; --acento-oscuro: #000000; --claro: #faf8f4;
+  --dorado: #a88b5f;
+  --radio: 4px; --radio-grande: 6px;
+  --serif: "Cormorant Garamond", Georgia, serif;
+  background: var(--fondo); color: var(--texto);
+}
+.plantilla-gourmet.sitio:has(.catalogo) { background: var(--fondo); }
+.plantilla-gourmet h1, .plantilla-gourmet h2 { font-weight: 500; letter-spacing: 0; }
+.plantilla-gourmet .etiqueta { color: var(--dorado); letter-spacing: .3em; }
+.plantilla-gourmet .barra-anuncio { background: #12110f; color: rgb(250 248 244 / 0.6); letter-spacing: .3em; }
+.plantilla-gourmet .cabecera-sitio { background: #1c1a17; border-bottom: 1px solid rgb(168 139 95 / 0.35); }
+.plantilla-gourmet .cabecera { min-height: 84px; }
+.plantilla-gourmet .marca { font-size: clamp(1.35rem, 2.2vw, 1.75rem); font-weight: 500; letter-spacing: .2em; text-transform: uppercase; }
+.plantilla-gourmet .marca-icono { display: none; }
+.plantilla-gourmet .navegacion-secundaria a { letter-spacing: .24em; font-size: .7rem; }
+.plantilla-gourmet .navegacion-secundaria a:hover { color: var(--dorado); }
+.plantilla-gourmet .cantidad-carrito { background: var(--dorado); color: #fff; }
+/* Portada: foto a pantalla completa, texto centrado */
+.plantilla-gourmet .portada-tienda.con-imagen { justify-content: center; align-items: center; min-height: clamp(520px, 86vh, 860px); text-align: center; }
+.plantilla-gourmet .portada-tienda.con-imagen::before { background: rgb(18 17 15 / 0.55); }
+.plantilla-gourmet .portada-contenido { display: flex; flex-direction: column; align-items: center; }
+.plantilla-gourmet .portada-tienda .etiqueta { display: flex; align-items: center; gap: 1rem; }
+.plantilla-gourmet .portada-tienda .etiqueta::before, .plantilla-gourmet .portada-tienda .etiqueta::after { content: ""; width: 42px; height: 1px; background: currentColor; }
+.plantilla-gourmet .portada-tienda.con-imagen .etiqueta { color: #d9c29b; }
+.plantilla-gourmet .portada-contenido h1 { max-width: 16ch; font-size: clamp(3rem, 7vw, 6rem); line-height: 1; }
+.plantilla-gourmet .introduccion-texto { margin-inline: auto; }
+.plantilla-gourmet .portada-contenido .enlace-flecha { border-radius: 0; padding: 1rem 2.2rem; font-size: .72rem; letter-spacing: .26em; text-transform: uppercase; }
+.plantilla-gourmet .portada-tienda.con-imagen .enlace-flecha { background: transparent; color: #fff; border: 1px solid rgb(255 255 255 / 0.7); }
+.plantilla-gourmet .portada-tienda.con-imagen .enlace-flecha:hover { background: #fff; color: var(--tinta); }
+.plantilla-gourmet .portada-tienda.sin-imagen { background: #1c1a17; }
+.plantilla-gourmet .portada-tienda.sin-imagen h1 { color: var(--claro); }
+.plantilla-gourmet .portada-tienda.sin-imagen .introduccion-texto { color: rgb(250 248 244 / 0.7); }
+.plantilla-gourmet .portada-tienda.sin-imagen .enlace-flecha { background: var(--dorado); color: #fff; }
+.plantilla-gourmet .controles { right: auto; left: 50%; transform: translateX(-50%); }
+.plantilla-gourmet .controles .boton-icono { border-radius: 0; width: 40px; height: 40px; }
+/* Carta: tarjetas horizontales tipo pedido en línea */
+.plantilla-gourmet .catalogo { --cat-fondo: #f7f4ef; --cat-superficie: #ffffff; --cat-borde: #e6e0d6; --cat-texto: #1c1a17; --cat-suave: #6f6960; --cat-tenue: #9a9389; }
+.plantilla-gourmet .catalogo .etiqueta { color: var(--dorado); }
+.plantilla-gourmet .seccion-cabecera { flex-direction: column; align-items: center; text-align: center; border-bottom: 0; margin-bottom: 2.2rem; }
+.plantilla-gourmet .seccion-cabecera h2 { font-size: clamp(2.6rem, 5vw, 4rem); margin-bottom: .3rem; }
+.plantilla-gourmet .seccion-cabecera > p { margin-bottom: 0; }
+.plantilla-gourmet .herramientas-catalogo { max-width: 720px; margin: 0 auto 1.6rem; }
+.plantilla-gourmet .catalogo .herramientas-catalogo input, .plantilla-gourmet .catalogo .herramientas-catalogo select { border-radius: 0; }
+.plantilla-gourmet .filtros { justify-content: center; gap: 0; margin-bottom: 2.6rem; border-bottom: 1px solid var(--borde); }
+.plantilla-gourmet .catalogo .filtros button { border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: transparent; padding: .9rem 1.4rem; margin-bottom: -1px; font-size: .72rem; letter-spacing: .22em; text-transform: uppercase; }
+.plantilla-gourmet .catalogo .filtros button.activo { background: transparent; color: var(--cat-texto); border-bottom-color: var(--dorado); }
+.plantilla-gourmet .productos { grid-template-columns: repeat(auto-fill, minmax(min(100%, 440px), 1fr)); gap: 1.1rem; }
+.plantilla-gourmet .tarjeta { flex-direction: row-reverse; align-items: stretch; gap: 1.2rem; padding: 1rem; background: #fff; border: 1px solid var(--borde); border-radius: var(--radio-grande); transition: box-shadow .25s, border-color .25s; }
+.plantilla-gourmet .tarjeta:hover { border-color: var(--borde-fuerte); box-shadow: 0 14px 30px -20px rgb(28 26 23 / 0.35); }
+.plantilla-gourmet .tarjeta-media { width: clamp(110px, 12vw, 150px); flex: none; border-radius: var(--radio); }
+.plantilla-gourmet .tarjeta-media .foto { aspect-ratio: 1; height: 100%; }
+.plantilla-gourmet .foto-alterna, .plantilla-gourmet .tarjeta-pie svg { display: none; }
+.plantilla-gourmet .insignia { border-radius: 0; background: var(--tinta); color: #fff; }
+.plantilla-gourmet .tarjeta-contenido { padding: .2rem 0; justify-content: center; }
+.plantilla-gourmet .tarjeta-categoria { color: var(--dorado); }
+.plantilla-gourmet .tarjeta h3 { font-size: 1.55rem; font-weight: 600; margin-bottom: .6rem; }
+.plantilla-gourmet .tarjeta-pie { margin-top: 0; }
+.plantilla-gourmet .catalogo .tarjeta-pie strong { font-size: 1rem; font-weight: 600; }
+/* Piezas */
+.plantilla-gourmet .boton, .plantilla-gourmet button.boton-primario, .plantilla-gourmet .boton-primario { border-radius: 0; letter-spacing: .12em; text-transform: uppercase; font-size: .8rem; }
+.plantilla-gourmet .detalle .foto { border-radius: var(--radio); }
+.plantilla-gourmet .precio { font-family: var(--serif); font-weight: 600; }
+.plantilla-gourmet .pie { background: #1c1a17; border-top: 1px solid rgb(168 139 95 / 0.35); }
+.plantilla-gourmet .pie-contenido { flex-direction: column; align-items: center; text-align: center; padding-block: clamp(3rem, 6vw, 4.5rem); }
+.plantilla-gourmet .pie-nombre { font-size: 1.8rem; letter-spacing: .2em; text-transform: uppercase; }
+.plantilla-gourmet .pie-enlaces { justify-content: center; }
+.plantilla-gourmet .pie-enlaces a:hover { color: var(--dorado); }
+.plantilla-gourmet .pie-legal { text-align: center; }
+
+/* #####################################################################
+   PLANTILLA "NATURAL" · neutros piedra, estilo tienda de cosmética
+   ##################################################################### */
+.plantilla-natural {
+  --fondo: #f2efe9; --fondo-alto: #e6e1d8; --superficie: #faf8f4;
+  --tinta: #22211e; --texto: #2c2a26; --texto-suave: #6b665d;
+  --texto-tenue: #989287;
+  --borde: #ddd7cc; --borde-fuerte: #cdc6b9;
+  --acento: #22211e; --acento-oscuro: #000000; --claro: #faf8f4;
+  --radio: 2px; --radio-grande: 4px;
+  --serif: "DM Sans", Inter, sans-serif;
+  --sans: "DM Sans", Inter, sans-serif;
+  font-family: var(--sans);
+  background: var(--fondo); color: var(--texto);
+}
+.plantilla-natural.sitio:has(.catalogo) { background: var(--fondo); }
+.plantilla-natural h1, .plantilla-natural h2 { font-weight: 400; letter-spacing: -.03em; }
+.plantilla-natural .etiqueta { color: var(--texto-suave); letter-spacing: .18em; }
+.plantilla-natural .barra-anuncio { background: var(--fondo-alto); color: var(--texto-suave); }
+/* Cabecera clara: marca a la izquierda, menú al centro, iconos a la derecha */
+.plantilla-natural .cabecera-sitio { background: rgb(242 239 233 / 0.95); border-bottom: 1px solid var(--borde); }
+.plantilla-natural .cabecera { min-height: 70px; grid-template-columns: 1fr auto 1fr; }
+.plantilla-natural .marca { order: -1; justify-self: start; color: var(--tinta); font-size: 1.35rem; font-weight: 500; letter-spacing: -.02em; }
+.plantilla-natural .marca-icono { display: none; }
+.plantilla-natural .navegacion-secundaria a { color: var(--texto-suave); letter-spacing: .02em; text-transform: none; font-size: .9rem; }
+.plantilla-natural .navegacion-secundaria a:hover { color: var(--tinta); }
+.plantilla-natural .navegacion a, .plantilla-natural .navegacion-icono { color: var(--tinta); }
+.plantilla-natural .navegacion-icono:hover, .plantilla-natural .navegacion-icono:hover:not(:disabled) { background: var(--fondo-alto); }
+.plantilla-natural .cantidad-carrito { background: var(--tinta); color: #fff; }
+/* Portada dividida: texto en bloque piedra + foto a sangre */
+.plantilla-natural .portada-tienda.con-imagen {
+  display: grid; grid-template-columns: 1fr 1fr; min-height: clamp(480px, 78vh, 780px); padding: 0; background: var(--fondo-alto);
+}
+.plantilla-natural .portada-tienda.con-imagen::before { display: none; }
+.plantilla-natural .portada-fondo { position: relative; inset: auto; z-index: 0; grid-column: 2; grid-row: 1; }
+.plantilla-natural .portada-fondo img { position: absolute; inset: 0; }
+.plantilla-natural .portada-tienda.con-imagen .portada-contenido {
+  grid-column: 1; grid-row: 1; align-self: center; width: auto; margin: 0;
+  padding: clamp(3rem, 6vw, 6rem) clamp(1.5rem, 5vw, 5rem) clamp(5rem, 8vw, 7rem) max(clamp(1.1rem, 4vw, 2.5rem), calc((100vw - 1280px) / 2 + 2.5rem));
+}
+.plantilla-natural .portada-tienda.con-imagen h1 { color: var(--tinta); font-size: clamp(2.6rem, 5vw, 4.6rem); line-height: 1.02; }
+.plantilla-natural .portada-tienda.con-imagen .etiqueta { color: var(--texto-suave); }
+.plantilla-natural .portada-tienda.con-imagen .introduccion-texto { color: var(--texto-suave); }
+.plantilla-natural .portada-contenido .enlace-flecha, .plantilla-natural .portada-tienda.con-imagen .enlace-flecha { background: var(--tinta); color: var(--claro); border-radius: var(--radio); padding: 1rem 1.8rem; }
+.plantilla-natural .portada-tienda.con-imagen .enlace-flecha:hover { background: #000; }
+.plantilla-natural .controles { right: auto; left: max(clamp(1.1rem, 4vw, 2.5rem), calc((100vw - 1280px) / 2 + 2.5rem)); color: var(--texto-suave); }
+.plantilla-natural .controles .boton-icono { border-radius: var(--radio); background: transparent; border-color: var(--borde-fuerte); color: var(--tinta); backdrop-filter: none; }
+.plantilla-natural .controles .boton-icono:hover:not(:disabled) { background: var(--tinta); border-color: var(--tinta); color: #fff; }
+/* Catálogo en rejilla con líneas finas */
+.plantilla-natural .catalogo { --cat-fondo: #f2efe9; --cat-superficie: #e9e5dd; --cat-borde: #d6d0c5; --cat-texto: #22211e; --cat-suave: #6b665d; --cat-tenue: #989287; }
+.plantilla-natural .seccion-cabecera h2 { font-size: clamp(2.2rem, 4vw, 3.2rem); }
+.plantilla-natural .catalogo .herramientas-catalogo input, .plantilla-natural .catalogo .herramientas-catalogo select { border-radius: var(--radio); }
+.plantilla-natural .filtros { margin-bottom: 2rem; }
+.plantilla-natural .catalogo .filtros button { border-radius: var(--radio); padding: .55rem 1.1rem; font-size: .85rem; }
+.plantilla-natural .productos { grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr)); gap: 0; border-top: 1px solid var(--cat-borde); border-left: 1px solid var(--cat-borde); }
+.plantilla-natural .tarjeta { padding: 1rem 1rem 1.4rem; border-right: 1px solid var(--cat-borde); border-bottom: 1px solid var(--cat-borde); transition: background-color .25s; }
+.plantilla-natural .tarjeta:hover { background: #faf8f4; }
+.plantilla-natural .tarjeta-media { border-radius: 0; }
+.plantilla-natural .foto { aspect-ratio: 1; }
+.plantilla-natural .tarjeta-contenido { padding: 1.1rem 0 0; }
+.plantilla-natural .tarjeta-categoria { letter-spacing: .14em; }
+.plantilla-natural .tarjeta h3 { font-size: 1.05rem; font-weight: 500; letter-spacing: -.01em; margin-bottom: .3rem; }
+.plantilla-natural .catalogo .tarjeta-pie strong { font-weight: 400; color: var(--cat-suave); }
+.plantilla-natural .insignia { border-radius: var(--radio); background: var(--fondo); color: var(--tinta); }
+/* Piezas */
+.plantilla-natural .boton, .plantilla-natural .boton-primario { border-radius: var(--radio); }
+.plantilla-natural .detalle .foto { border-radius: 0; }
+.plantilla-natural .detalle-info h1 { font-weight: 400; }
+.plantilla-natural .precio { font-weight: 400; }
+.plantilla-natural .bloque, .plantilla-natural .carrito-resumen, .plantilla-natural .linea-carrito { border-radius: var(--radio-grande); }
+.plantilla-natural .pie { background: var(--fondo-alto); color: var(--texto-suave); border-top: 1px solid var(--borde); }
+.plantilla-natural .pie-nombre { color: var(--tinta); font-size: 1.6rem; font-weight: 500; letter-spacing: -.02em; }
+.plantilla-natural .pie-enlaces a { color: var(--texto-suave); letter-spacing: .02em; text-transform: none; font-size: .9rem; }
+.plantilla-natural .pie-enlaces a:hover { color: var(--tinta); }
+.plantilla-natural .pie-legal { border-top-color: var(--borde); color: var(--texto-tenue); }
+
+@media (max-width: 860px) {
+  .plantilla-natural .portada-tienda.con-imagen { grid-template-columns: 1fr; }
+  .plantilla-natural .portada-fondo { grid-column: 1; grid-row: 1; aspect-ratio: 4 / 3; }
+  .plantilla-natural .portada-tienda.con-imagen .portada-contenido { grid-row: 2; padding: 2.5rem clamp(1.1rem, 4vw, 2.5rem) 5.5rem; }
+  .plantilla-natural .cabecera { grid-template-columns: 1fr auto; }
+}
+@media (max-width: 600px) {
+  .plantilla-gourmet .productos { grid-template-columns: 1fr; }
+  .plantilla-gourmet .tarjeta-media { width: 96px; }
+  .plantilla-gourmet .tarjeta h3 { font-size: 1.3rem; }
+  .plantilla-natural .productos { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .plantilla-natural .tarjeta { padding: .6rem .6rem 1rem; }
+}

@@ -4,6 +4,7 @@ import { PortadaInicio } from "@/components/inicio/portada";
 import { PanelInicio } from "@/components/inicio/panel";
 import { FuncionesInicio } from "@/components/inicio/funciones";
 import { ComoFuncionaInicio } from "@/components/inicio/como-funciona";
+import { PlantillasInicio } from "@/components/inicio/plantillas";
 
 export const Inicio = () => {
   const { hash } = useLocation();
@@ -21,6 +22,7 @@ export const Inicio = () => {
       <PortadaInicio />
       <PanelInicio />
       <FuncionesInicio />
+      <PlantillasInicio />
       <ComoFuncionaInicio />
     </div>
   );
