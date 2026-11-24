@@ -2,8 +2,8 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { ArrowRight, Lock, Mail } from 'lucide-react'
-import { BotonGoogle } from '@/autenticacion/boton-google'
-import { BotonVerContrasena, CampoAutenticacion, MarcoAutenticacion, SeparadorAlterno, claseBotonGoogle, claseBotonPrincipal, claseEntrada } from '@/autenticacion/marco-autenticacion'
+import { BotonGoogle, googleConfigurado } from '@/autenticacion/boton-google'
+import { BotonVerContrasena, CampoAutenticacion, MarcoAutenticacion, SeparadorAlterno, claseBotonPrincipal, claseEntrada } from '@/autenticacion/marco-autenticacion'
 import { ErrorApi, apiAutenticacion } from '@/autenticacion/api'
 import { useSesion } from '@/autenticacion/sesion'
 
@@ -19,13 +19,17 @@ export function PaginaInicioSesion() {
   const { actualizar } = useSesion()
   const retorno = new URLSearchParams(ubicacion.search).get('retorno')
   const retornoSeguro = retorno && /^\/tienda\/[a-z0-9]+(?:-[a-z0-9]+)*(?:\/carrito)?\/?$/.test(retorno) ? retorno : null
+  // Tras iniciar sesión (con contraseña o con Google): cargar la sesión y volver adonde corresponda.
+  async function entrarConSesion() {
+    await actualizar()
+    if (retornoSeguro) window.location.assign(retornoSeguro)
+    else navegar(typeof ubicacion.state?.from === 'string' && ubicacion.state.from.startsWith('/panel') ? ubicacion.state.from : '/panel', { replace: true })
+  }
   async function enviar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault(); establecerError(''); establecerOcupado(true)
     try {
       await apiAutenticacion.iniciarSesion(correo, contrasena, recordarme)
-      await actualizar()
-      if (retornoSeguro) window.location.assign(retornoSeguro)
-      else navegar(typeof ubicacion.state?.from === 'string' && ubicacion.state.from.startsWith('/panel') ? ubicacion.state.from : '/panel', { replace: true })
+      await entrarConSesion()
     } catch (err) {
       establecerError(err instanceof ErrorApi && err.codigoEstado === 401 ? 'El correo o la contraseña son incorrectos.' : err instanceof Error ? err.message : 'No se pudo iniciar sesión.')
     } finally { establecerOcupado(false) }
@@ -58,8 +62,10 @@ export function PaginaInicioSesion() {
         </button>
       </div>
     </form>
-    <SeparadorAlterno texto="o ingresa con" />
-    <BotonGoogle className={claseBotonGoogle} />
+    {googleConfigurado && <>
+      <SeparadorAlterno texto="o ingresa con" />
+      <BotonGoogle modo="continuar" recordarme={recordarme} alIniciarSesion={entrarConSesion} />
+    </>}
     <p className="mt-[20px] text-center text-[14px] text-white/70">¿Aún no tienes cuenta? <Link className="font-semibold text-[#5b8cff] hover:underline" to={`/registro${retornoSeguro ? `?retorno=${encodeURIComponent(retornoSeguro)}` : ""}`}>Crea una cuenta</Link></p>
   </MarcoAutenticacion>
 }

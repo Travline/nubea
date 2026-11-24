@@ -2,8 +2,8 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { ArrowRight, Lock, Mail, User } from 'lucide-react'
-import { BotonGoogle } from '@/autenticacion/boton-google'
-import { BotonVerContrasena, CampoAutenticacion, MarcoAutenticacion, SeparadorAlterno, claseBotonGoogle, claseBotonPrincipal, claseEntrada } from '@/autenticacion/marco-autenticacion'
+import { BotonGoogle, googleConfigurado } from '@/autenticacion/boton-google'
+import { BotonVerContrasena, CampoAutenticacion, MarcoAutenticacion, SeparadorAlterno, claseBotonPrincipal, claseEntrada } from '@/autenticacion/marco-autenticacion'
 import { useSesion } from '@/autenticacion/sesion'
 import { ErrorApi, apiAutenticacion } from '@/autenticacion/api'
 
@@ -62,8 +62,10 @@ export function PaginaRegistro() {
         </button>
       </div>
     </form>
-    <SeparadorAlterno texto="o regístrate con" />
-    <BotonGoogle texto="Registrarte con Google" className={claseBotonGoogle} />
+    {googleConfigurado && <>
+      <SeparadorAlterno texto="o regístrate con" />
+      <BotonGoogle modo="registrarse" alIniciarSesion={async () => { await actualizar(); if (retornoSeguro) window.location.assign(retornoSeguro); else navegar('/panel', { replace: true }) }} />
+    </>}
     <p className="mt-[20px] text-center text-[14px] text-white/70">¿Ya tienes cuenta? <Link className="font-semibold text-[#5b8cff] hover:underline" to={`/iniciar-sesion${retornoSeguro ? `?retorno=${encodeURIComponent(retornoSeguro)}` : ""}`}>Inicia sesión</Link></p>
   </MarcoAutenticacion>
 }

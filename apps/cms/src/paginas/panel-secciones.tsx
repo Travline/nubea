@@ -6,7 +6,7 @@ import { useSesion } from '@/autenticacion/sesion'
 import { api, rutaTienda } from '@/comercio/datos'
 import type { CuentaPago, Plantilla, Producto, Tienda } from '@/comercio/datos'
 import { EstadoCarga, useCarga } from '@/comercio/comunes'
-import { MiniaturaEnVivo, ModalVistaPrevia, PLANTILLAS_VISIBLES, infoPlantillas } from '@/components/plantillas/vista-plantillas'
+import { MiniaturaEnVivo, ModalVistaPrevia, PLANTILLAS_VISIBLES, infoPlantillas, nombresPlantilla } from '@/components/plantillas/vista-plantillas'
 
 type Pedido = { id: string; estado: string; fecha: string; subtotal: number; impuesto: number; total: number }
 const soles = (valor: number) => new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(valor)
@@ -163,7 +163,11 @@ function Indicador({ icono, titulo, valor, detalle }: { icono: ReactNode; titulo
 export function PlantillasVendedor() {
   const { usuario } = useSesion()
   const { datos, error, recargar } = useCarga(async () => {
-    const [plantillas, tiendas] = await Promise.all([api.leer<Plantilla[]>('/api/plantillas'), api.leer<Tienda[]>(`/api/tiendas/propietario/${usuario!.idUsuario}`)])
+    const tiendas = await api.leer<Tienda[]>(`/api/tiendas/propietario/${usuario!.idUsuario}`)
+    // El backend solo lista plantillas al rol DUENO_TIENDA, que se asigna al crear la primera tienda.
+    // Sin tiendas, mostramos las mismas 5 plantillas del catálogo para que el vendedor pueda verlas.
+    const catalogoLocal: Plantilla[] = PLANTILLAS_VISIBLES.map((codigo, i) => ({ idPlantilla: -(i + 1), codigo, nombre: nombresPlantilla[codigo] ?? codigo, previewUrl: null }))
+    const plantillas = tiendas.length === 0 ? catalogoLocal : await api.leer<Plantilla[]>('/api/plantillas').catch(() => catalogoLocal)
     return { plantillas, tiendas }
   }, [usuario!.idUsuario])
   const [vistaPrevia, establecerVistaPrevia] = useState<{ codigo: string; nombre: string } | null>(null)
