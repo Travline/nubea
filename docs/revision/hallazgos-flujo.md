@@ -58,6 +58,10 @@ Etiquetas: **[UI]** visual · **[UX]** flujo o lenguaje · **[Backend]** API o r
 - **[UX]** Formulario de dirección: departamento, provincia y distrito son texto libre (decisión RN-M4-01, opción A). Con Google Places, el autocompletado debería llenarlos solo; sin clave de Maps, el usuario los escribe a mano.
 - **[UX]** El formulario de dirección se muestra completo y abierto dentro del carrito, y empuja el resumen y el pago hacia abajo. Mejor un paso de checkout separado, o un modal.
 
+- **[Backend/UX] Carrito con productos no disponibles:** hoy, si un solo producto del carrito no está disponible, el checkout se bloquea entero ("El carrito contiene productos no disponibles"). Decisión del equipo: el producto sin stock se muestra en gris, no cuenta en el total, y el resto se puede comprar. El producto no disponible queda en el carrito para después (no se pierde al cerrar la compra).
+- **[Backend/UX] Reserva vencida:** al hacer checkout el carrito se cierra. Si el pedido vence a los 30 minutos sin pagar, el stock vuelve, pero los productos ya no están en el carrito. Propuesta: devolver los productos del pedido vencido al carrito activo (o un botón "Volver a comprar" en el pedido cancelado).
+- **[Backend]** El vencimiento de reservas solo corre con `MERCADOPAGO_PAGOS_ENABLED=true` (`PagosProcesador`). Debe correr siempre.
+
 ## 7. Funcionalidades nuevas (backlog, no ahora)
 
 - **Reconocimiento entre tiendas (estilo Shop):** el diseño ya lo contempla (cuenta única + `tienda_cliente`, RN-M1-14/15). Falta la experiencia: al entrar a otra tienda NUBEA, reconocer la cuenta y ofrecer "Continuar como…". Si en el futuro hay dominios propios por tienda, la cookie ya no se comparte y haría falta un flujo de inicio de sesión centralizado (SSO).
