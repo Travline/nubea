@@ -16,21 +16,36 @@ public class PagosStore {
     private final JdbcTemplate jdbc;
     private final CheckoutService checkout;
     private final PagosConfiguracion config;
+    private final ReservasPedido reservas;
     public record Trabajo(UUID pedido, UUID tienda, UUID clave, String order, String cuenta, String ambiente,
                           String retorno, BigDecimal total, OffsetDateTime vence, UUID cancelacion, String estado) {}
+    /**
+     * {@code numero}: número corto del pedido en la tienda. {@code productosApartados}: solo en la respuesta del
+     * checkout, líneas no disponibles que quedaron en un carrito nuevo (null en las consultas posteriores).
+     */
     public record Estado(UUID idPedido, String estado, String estadoPago, String checkoutUrl, String ambiente,
-                         String incidencia, String referencia, OffsetDateTime vencimiento) {}
+                         String incidencia, String referencia, OffsetDateTime vencimiento, Integer numero,
+                         Integer productosApartados) {
+        public Estado conApartados(int apartados) {
+            return new Estado(idPedido, estado, estadoPago, checkoutUrl, ambiente, incidencia, referencia, vencimiento, numero, apartados);
+        }
+    }
 
     @Transactional
     public UUID preparar(UUID usuario,String slug,UUID direccion,String clave,BigDecimal total,String cuenta,String ambiente) {
         return preparar(usuario,slug,direccion,clave,total,cuenta,ambiente,List.of("ticket","bank_transfer","atm","digital_currency","account_money","prepaid_card"));
     }
+    public record Preparado(UUID pedido, int productosApartados) {}
     @Transactional
     public UUID preparar(UUID usuario,String slug,UUID direccion,String clave,BigDecimal total,String cuenta,String ambiente,List<String> tipos) {
+        return prepararCompra(usuario,slug,direccion,clave,total,cuenta,ambiente,tipos).pedido();
+    }
+    @Transactional
+    public Preparado prepararCompra(UUID usuario,String slug,UUID direccion,String clave,BigDecimal total,String cuenta,String ambiente,List<String> tipos) {
         var resultado=checkout.reservarIdempotente(usuario,slug,direccion,clave,total);
         UUID pedido=resultado.idPedido();
         Trabajo t=leer(pedido);
-        if (t.cuenta()!=null) return pedido;
+        if (t.cuenta()!=null) return new Preparado(pedido,resultado.productosApartados());
         var actuales=jdbc.query("SELECT id_cuenta_externa FROM cuenta_pago_tienda WHERE id_tienda=? AND estado='ACTIVA' FOR UPDATE",(r,n)->r.getString(1),t.tienda());
         if (actuales.size()!=1 || !cuenta.equals(actuales.getFirst()) || !ambiente.equals(config.ambiente(t.tienda())))
             throw new ReglaNegocioException("La cuenta de pago cambió; vuelve a intentar");
@@ -39,7 +54,7 @@ public class PagosStore {
         jdbc.update("UPDATE intento_order_mercadopago SET ambiente_pago=?,cuenta_receptora=?,retorno_url=? WHERE id_pedido=?",ambiente,cuenta,config.retorno(slug,pedido),pedido);
         jdbc.update("UPDATE intento_order_mercadopago SET tipos_excluidos=? WHERE id_pedido=?",String.join(",",tipos),pedido);
         jdbc.update("INSERT INTO pago(id_pedido,clave_idempotencia,monto) VALUES (?,?,?)",pedido,"pedido:"+pedido,resultado.total());
-        return pedido;
+        return new Preparado(pedido,resultado.productosApartados());
     }
     public Trabajo leer(UUID pedido) {
         return jdbc.queryForObject("""
@@ -61,10 +76,10 @@ public class PagosStore {
         return jdbc.queryForObject("""
             SELECT p.id_pedido,p.estado,pa.estado,
               CASE WHEN p.estado='PENDIENTE_PAGO' AND p.fecha_expiracion_reserva>now() THEN i.checkout_url END,
-              p.ambiente_pago,i.ultimo_error,i.id_order,p.fecha_expiracion_reserva
+              p.ambiente_pago,i.ultimo_error,i.id_order,p.fecha_expiracion_reserva,p.numero
             FROM pedido p JOIN intento_order_mercadopago i ON i.id_pedido=p.id_pedido
             LEFT JOIN pago pa ON pa.clave_idempotencia='pedido:'||p.id_pedido::text WHERE p.id_pedido=?
-            """,(r,n)->new Estado(r.getObject(1,UUID.class),r.getString(2),r.getString(3),r.getString(4),r.getString(5),r.getString(6),r.getString(7),r.getObject(8,OffsetDateTime.class)),pedido);
+            """,(r,n)->new Estado(r.getObject(1,UUID.class),r.getString(2),r.getString(3),r.getString(4),r.getString(5),r.getString(6),r.getString(7),r.getObject(8,OffsetDateTime.class),r.getInt(9),null),pedido);
     }
     public List<UUID> pendientes() {
         return jdbc.query("""
@@ -90,7 +105,7 @@ public class PagosStore {
         var t=leer(pedido);
         String estado=jdbc.queryForObject("SELECT estado FROM intento_order_mercadopago WHERE id_pedido=?",String.class,pedido);
         if ("PREPARADO".equals(estado) && t.vence().isBefore(OffsetDateTime.now())) {
-            cancelarLocal(pedido); return false;
+            cancelarLocal(pedido, true); return false;
         }
         // No reenviar creaciones antiguas fuera de la ventana de compra: la retención
         // de idempotencia del proveedor no debe asumirse indefinida.
@@ -124,11 +139,13 @@ public class PagosStore {
                 marcarReembolso(pedido);
             }
         } else if (("canceled".equals(orden.estado()) || "failed".equals(orden.estado())) && "PENDIENTE_PAGO".equals(t.estado())) {
-            cancelarLocal(pedido);
+            // "canceled" con la reserva vencida es la cancelación que pide el procesador al vencer: los productos
+            // vuelven al carrito. Un pago rechazado ("failed") no los devuelve.
+            cancelarLocal(pedido, "canceled".equals(orden.estado()) && t.vence().isBefore(OffsetDateTime.now()));
             if ("failed".equals(orden.estado())) jdbc.update("UPDATE pago SET estado='RECHAZADO' WHERE clave_idempotencia=? AND estado='CANCELADO'","pedido:"+pedido);
         } else if ("refunded".equals(orden.estado()) && "refunded".equals(orden.detalle())) {
             // Si el webhook de aprobación se perdió, cerrar la reserva sin entregar productos.
-            if ("PENDIENTE_PAGO".equals(t.estado())) cancelarLocal(pedido);
+            if ("PENDIENTE_PAGO".equals(t.estado())) cancelarLocal(pedido, false);
             jdbc.update("UPDATE pago SET estado='REEMBOLSADO',fecha_confirmacion=COALESCE(fecha_confirmacion,now()) WHERE clave_idempotencia=?","pedido:"+pedido);
             jdbc.update("INSERT INTO reembolso_order(id_pedido,clave) VALUES (?,?) ON CONFLICT DO NOTHING",pedido,UUID.randomUUID());
             var reponer=jdbc.query("SELECT reponer_stock AND NOT stock_repuesto FROM reembolso_order WHERE id_pedido=? FOR UPDATE",(r,n)->r.getBoolean(1),pedido).getFirst();
@@ -145,9 +162,8 @@ public class PagosStore {
             throw new ReglaNegocioException("REEMBOLSO_PARCIAL_EXTERNO");
         }
     }
-    private void cancelarLocal(UUID pedido) {
-        jdbc.update("UPDATE pago SET estado='CANCELADO' WHERE clave_idempotencia=? AND estado='PENDIENTE'","pedido:"+pedido);
-        jdbc.update("UPDATE pedido SET estado='CANCELADO',estado_reserva='LIBERADA' WHERE id_pedido=? AND estado='PENDIENTE_PAGO'",pedido);
+    private void cancelarLocal(UUID pedido, boolean porVencimiento) {
+        reservas.cancelar(pedido, porVencimiento);
     }
     private void marcarReembolso(UUID pedido) {
         jdbc.update("UPDATE pago SET estado='REEMBOLSO_PENDIENTE',fecha_confirmacion=COALESCE(fecha_confirmacion,now()) WHERE clave_idempotencia=? AND estado<>'REEMBOLSADO'","pedido:"+pedido);

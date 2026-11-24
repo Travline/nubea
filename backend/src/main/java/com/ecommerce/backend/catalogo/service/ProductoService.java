@@ -5,6 +5,7 @@ import com.ecommerce.backend.catalogo.repository.ProductoRepository;
 import com.ecommerce.backend.catalogo.repository.CategoriaRepository;
 import com.ecommerce.backend.catalogo.dto.request.ProductoRequest;
 import com.ecommerce.backend.catalogo.dto.response.ProductoResponse;
+import com.ecommerce.backend.catalogo.dto.response.RequisitosPublicacionResponse;
 import com.ecommerce.backend.catalogo.mapper.ProductoMapper;
 import com.ecommerce.backend.catalogo.model.Producto;
 import com.ecommerce.backend.tienda.repository.TiendaRepository;
@@ -209,9 +210,12 @@ public class ProductoService {
     /**
      * RN-M2-13: para publicar, la tienda debe estar ACTIVA, la categoría activa y al menos una versión
      * ACTIVA con unidades disponibles (stock_actual > 0) en esa misma versión. Una versión inactiva con stock no cuenta.
+     * La misma evaluación sirve para el checklist ({@link #requisitosPublicacion}) y para publicar.
      */
-    private void validarPublicable(UUID idProducto, UUID idTienda) {
-        var requisitos = jdbcTemplate.queryForMap("""
+    @Transactional(readOnly = true)
+    public RequisitosPublicacionResponse requisitosPublicacion(UUID idProducto, UUID idTienda) {
+        buscarProducto(idProducto, idTienda);
+        var r = jdbcTemplate.queryForMap("""
                 SELECT t.estado = 'ACTIVA' AS tienda_activa,
                        c.activa AS categoria_activa,
                        EXISTS (SELECT 1 FROM presentacion_producto pp
@@ -226,13 +230,22 @@ public class ProductoService {
                 JOIN categoria c ON c.id_categoria = p.id_categoria AND c.id_tienda = p.id_tienda
                 WHERE p.id_producto = ? AND p.id_tienda = ?
                 """, idProducto, idTienda);
-        if (!Boolean.TRUE.equals(requisitos.get("tienda_activa")))
-            throw new ReglaNegocioException("estado", MensajesUsuario.PUBLICAR_TIENDA_INACTIVA);
-        if (!Boolean.TRUE.equals(requisitos.get("categoria_activa")))
-            throw new ReglaNegocioException("estado", MensajesUsuario.PUBLICAR_CATEGORIA_INACTIVA);
-        if (!Boolean.TRUE.equals(requisitos.get("version_activa")))
-            throw new ReglaNegocioException("estado", MensajesUsuario.PUBLICAR_SIN_VERSION_ACTIVA);
-        if (!Boolean.TRUE.equals(requisitos.get("version_con_unidades")))
-            throw new ReglaNegocioException("estado", MensajesUsuario.PUBLICAR_SIN_UNIDADES);
+        var requisitos = java.util.List.of(
+                requisito("TIENDA_ACTIVA", r.get("tienda_activa"), MensajesUsuario.PUBLICAR_TIENDA_INACTIVA),
+                requisito("CATEGORIA_ACTIVA", r.get("categoria_activa"), MensajesUsuario.PUBLICAR_CATEGORIA_INACTIVA),
+                requisito("VERSION_ACTIVA", r.get("version_activa"), MensajesUsuario.PUBLICAR_SIN_VERSION_ACTIVA),
+                requisito("VERSION_CON_UNIDADES", r.get("version_con_unidades"), MensajesUsuario.PUBLICAR_SIN_UNIDADES));
+        return new RequisitosPublicacionResponse(requisitos.stream().allMatch(RequisitosPublicacionResponse.Requisito::cumplido), requisitos);
+    }
+
+    private static RequisitosPublicacionResponse.Requisito requisito(String codigo, Object cumplido, String mensaje) {
+        return new RequisitosPublicacionResponse.Requisito(codigo, Boolean.TRUE.equals(cumplido), mensaje);
+    }
+
+    /** Lanza el primer requisito incumplido (422 con {@code campos.estado}). */
+    private void validarPublicable(UUID idProducto, UUID idTienda) {
+        requisitosPublicacion(idProducto, idTienda).requisitos().stream()
+                .filter(req -> !req.cumplido()).findFirst()
+                .ifPresent(req -> { throw new ReglaNegocioException("estado", req.mensaje()); });
     }
 }

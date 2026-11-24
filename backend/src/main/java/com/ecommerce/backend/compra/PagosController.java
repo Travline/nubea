@@ -64,9 +64,9 @@ public class PagosController {
         var token=credenciales.obtener(tienda);
         if (!ambiente.equals(mercado.verificarCuenta(token.access(),token.cuenta())))
             throw new ReglaNegocioException("La cuenta del vendedor no corresponde al ambiente configurado");
-        UUID pedido=store.preparar(usuario,slug,compra.idDireccion(),compra.clave(),compra.totalEsperado(),token.cuenta(),ambiente,mercado.tiposExcluidos(token.access()));
-        procesador.procesar(pedido);
-        return store.estado(pedido);
+        var preparado=store.prepararCompra(usuario,slug,compra.idDireccion(),compra.clave(),compra.totalEsperado(),token.cuenta(),ambiente,mercado.tiposExcluidos(token.access()));
+        procesador.procesar(preparado.pedido());
+        return store.estado(preparado.pedido()).conApartados(preparado.productosApartados());
     }
     @GetMapping("/api/compra/tiendas/{slug}/pedidos/{pedido}/pago")
     public PagosStore.Estado consultar(@PathVariable String slug,@PathVariable UUID pedido) {

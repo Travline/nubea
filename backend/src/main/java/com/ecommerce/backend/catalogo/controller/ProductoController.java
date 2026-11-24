@@ -63,6 +63,15 @@ public class ProductoController {
         return ResponseEntity.ok(response);
     }
 
+    // Requisitos para publicar (RN-M2-13), para mostrar el checklist sin intentar publicar.
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.puedeVer(#idTienda, authentication)")
+    @GetMapping("/{idProducto}/requisitos")
+    public ResponseEntity<com.ecommerce.backend.catalogo.dto.response.RequisitosPublicacionResponse> requisitosPublicacion(
+            @PathVariable UUID idTienda,
+            @PathVariable UUID idProducto) {
+        return ResponseEntity.ok(productoService.requisitosPublicacion(idProducto, idTienda));
+    }
+
     // Actualizar producto.
     @org.springframework.security.access.prepost.PreAuthorize("@tiendaAuthorizationService.puedeEditar(#idTienda, authentication)")
     @PutMapping("/{idProducto}")

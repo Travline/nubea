@@ -31,6 +31,10 @@ public class PagosConfiguracion {
         }
         this.tiendas=Map.copyOf(mapa);
     }
+    /** Ambiente de cobro configurado para la tienda, si los cobros están habilitados para ella. */
+    public java.util.Optional<String> ambienteHabilitado(UUID tienda) {
+        return checkout ? java.util.Optional.ofNullable(tiendas.get(tienda)) : java.util.Optional.empty();
+    }
     public String ambiente(UUID tienda) {
         if (!checkout || !tiendas.containsKey(tienda)) throw new ReglaNegocioException("Los pagos aún no están habilitados en esta tienda");
         return tiendas.get(tienda);

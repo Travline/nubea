@@ -3,6 +3,7 @@ package com.ecommerce.backend;
 import static com.ecommerce.backend.shared.exception.MensajesUsuario.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -90,5 +91,49 @@ class PublicacionProductoIntegracionTest {
         jdbc.update("UPDATE categoria SET activa=true WHERE id_categoria=?", categoria);
         jdbc.update("UPDATE tienda SET estado='BORRADOR' WHERE id_tienda=?", tienda);
         rechazado(PUBLICAR_TIENDA_INACTIVA);
+    }
+
+    // ---------- Bloque 3: checklist de requisitos sin intentar publicar ----------
+
+    private ResultActions requisitos(Authentication quien) throws Exception {
+        return mvc.perform(get("/api/tiendas/" + tienda + "/productos/" + producto + "/requisitos").with(authentication(quien)));
+    }
+
+    @Test
+    void requisitosDevuelveElChecklistConCumplidoYMensaje() throws Exception {
+        requisitos(dueno).andExpect(status().isOk())
+                .andExpect(jsonPath("$.publicable").value(false))
+                .andExpect(jsonPath("$.requisitos.length()").value(4))
+                .andExpect(jsonPath("$.requisitos[0].codigo").value("TIENDA_ACTIVA"))
+                .andExpect(jsonPath("$.requisitos[0].cumplido").value(true))
+                .andExpect(jsonPath("$.requisitos[1].codigo").value("CATEGORIA_ACTIVA"))
+                .andExpect(jsonPath("$.requisitos[1].cumplido").value(true))
+                .andExpect(jsonPath("$.requisitos[2].codigo").value("VERSION_ACTIVA"))
+                .andExpect(jsonPath("$.requisitos[2].cumplido").value(false))
+                .andExpect(jsonPath("$.requisitos[2].mensaje").value(PUBLICAR_SIN_VERSION_ACTIVA))
+                .andExpect(jsonPath("$.requisitos[3].codigo").value("VERSION_CON_UNIDADES"))
+                .andExpect(jsonPath("$.requisitos[3].cumplido").value(false))
+                .andExpect(jsonPath("$.requisitos[3].mensaje").value(PUBLICAR_SIN_UNIDADES));
+
+        version("a", "ACTIVA", 0);
+        version("b", "INACTIVA", 7);
+        requisitos(dueno).andExpect(jsonPath("$.requisitos[2].cumplido").value(true))
+                .andExpect(jsonPath("$.requisitos[3].cumplido").value(false)).andExpect(jsonPath("$.publicable").value(false));
+
+        version("c", "ACTIVA", 2);
+        requisitos(dueno).andExpect(jsonPath("$.publicable").value(true));
+        // Consultar no publica
+        org.junit.jupiter.api.Assertions.assertEquals("BORRADOR",
+                jdbc.queryForObject("SELECT estado FROM producto WHERE id_producto=?", String.class, producto));
+    }
+
+    @Test
+    void requisitosEsUnaLecturaParaElAdminPeroNoParaOtros() throws Exception {
+        UUID admin = UUID.randomUUID(), otro = UUID.randomUUID();
+        for (UUID u : List.of(admin, otro))
+            jdbc.update("INSERT INTO usuario_plataforma(id_usuario,nombres,email) VALUES (?, 'U', ?)", u, u + "@example.test");
+        jdbc.update("INSERT INTO usuario_rol(id_usuario,id_rol) SELECT ?,id_rol FROM rol WHERE nombre='ADMIN_GENERAL'", admin);
+        requisitos(UsernamePasswordAuthenticationToken.authenticated(admin, null, List.of())).andExpect(status().isOk());
+        requisitos(UsernamePasswordAuthenticationToken.authenticated(otro, null, List.of())).andExpect(status().isForbidden());
     }
 }

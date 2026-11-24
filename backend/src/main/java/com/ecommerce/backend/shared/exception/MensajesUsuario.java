@@ -54,4 +54,7 @@ public final class MensajesUsuario {
         return "Hay " + apartadas + (apartadas == 1 ? " unidad apartada" : " unidades apartadas")
                 + " en pedidos pendientes de pago; el conteo no puede ser menor";
     }
+
+    // Checkout
+    public static final String NINGUN_PRODUCTO_DISPONIBLE = "Ninguno de los productos de tu carrito está disponible en este momento";
 }
