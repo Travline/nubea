@@ -23,10 +23,12 @@ public class VitrinaController {
     public record Coleccion(UUID id, String nombre, String slug, List<UUID> productos) {}
     public record Opcion(String nombre, String valor) {}
     /**
-     * {@code disponible} se mantiene por compatibilidad. {@code disponibilidad}: DISPONIBLE | ULTIMAS_UNIDADES | AGOTADO.
-     * {@code unidadesRestantes} solo aparece con ULTIMAS_UNIDADES; en los demás casos no se expone el stock.
+     * {@code precioAnterior}: precio base del producto cuando la versión tiene un precio especial menor (para mostrarlo
+     * tachado); null en otro caso. {@code disponible} se mantiene por compatibilidad.
+     * {@code disponibilidad}: DISPONIBLE | ULTIMAS_UNIDADES | AGOTADO. {@code unidadesRestantes} solo aparece con
+     * ULTIMAS_UNIDADES; en los demás casos no se expone el stock.
      */
-    public record Presentacion(UUID id, BigDecimal precio, boolean disponible, List<Opcion> opciones,
+    public record Presentacion(UUID id, BigDecimal precio, BigDecimal precioAnterior, boolean disponible, List<Opcion> opciones,
                                String disponibilidad,
                                @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
                                Integer unidadesRestantes) {}
@@ -77,14 +79,15 @@ public class VitrinaController {
     private Producto producto(UUID tienda, UUID id, UUID categoria, String nombre, String descripcion) {
         var fotos = jdbc.query("SELECT storage_key FROM imagen_producto WHERE id_producto=? ORDER BY es_principal DESC, orden", (rs, n) -> imagenes.url(rs.getString(1)), id);
         var presentaciones = jdbc.query("""
-            SELECT pr.id_presentacion, COALESCE(pr.precio_override,p.precio_base), COALESCE(i.stock_actual,0), COALESCE(i.stock_minimo,0)
+            SELECT pr.id_presentacion, COALESCE(pr.precio_override,p.precio_base), COALESCE(i.stock_actual,0), COALESCE(i.stock_minimo,0),
+                   CASE WHEN pr.precio_override IS NOT NULL AND pr.precio_override < p.precio_base THEN p.precio_base END
             FROM presentacion_producto pr JOIN producto p ON p.id_producto=pr.id_producto AND p.id_tienda=pr.id_tienda
             LEFT JOIN inventario i ON i.id_presentacion=pr.id_presentacion
             WHERE pr.id_tienda=? AND pr.id_producto=? AND pr.estado='ACTIVA' ORDER BY pr.id_presentacion
-            """, (rs, n) -> presentacion(rs.getObject(1, UUID.class), rs.getBigDecimal(2), rs.getInt(3), rs.getInt(4)), tienda, id);
+            """, (rs, n) -> presentacion(rs.getObject(1, UUID.class), rs.getBigDecimal(2), rs.getBigDecimal(5), rs.getInt(3), rs.getInt(4)), tienda, id);
         return new Producto(id, categoria, nombre, descripcion, fotos, presentaciones);
     }
-    private Presentacion presentacion(UUID id, BigDecimal precio, int stock, int stockMinimo) {
+    private Presentacion presentacion(UUID id, BigDecimal precio, BigDecimal precioAnterior, int stock, int stockMinimo) {
         var opciones = jdbc.query("""
             SELECT v.nombre, vv.valor FROM presentacion_valor pv JOIN variante v ON v.id_variante=pv.id_variante
             JOIN valor_variante vv ON vv.id_valor=pv.id_valor AND vv.id_variante=pv.id_variante
@@ -92,6 +95,6 @@ public class VitrinaController {
             """, (rs, n) -> new Opcion(rs.getString(1), rs.getString(2)), id);
         String disponibilidad = disponibilidad(stock, stockMinimo);
         Integer restantes = "ULTIMAS_UNIDADES".equals(disponibilidad) ? stock : null;
-        return new Presentacion(id, precio, stock > 0, opciones, disponibilidad, restantes);
+        return new Presentacion(id, precio, precioAnterior, stock > 0, opciones, disponibilidad, restantes);
     }
 }

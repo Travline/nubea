@@ -1,10 +1,9 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { ArrowRight, Lock, Mail } from 'lucide-react'
+import { BotonGoogle } from '@/autenticacion/boton-google'
+import { BotonVerContrasena, CampoAutenticacion, MarcoAutenticacion, SeparadorAlterno, claseBotonGoogle, claseBotonPrincipal, claseEntrada } from '@/autenticacion/marco-autenticacion'
 import { ErrorApi, apiAutenticacion } from '@/autenticacion/api'
 import { useSesion } from '@/autenticacion/sesion'
 
@@ -12,6 +11,7 @@ export function PaginaInicioSesion() {
   const [correo, establecerCorreo] = useState('')
   const [contrasena, establecerContrasena] = useState('')
   const [recordarme, establecerRecordarme] = useState(false)
+  const [verContrasena, establecerVerContrasena] = useState(false)
   const [error, establecerError] = useState('')
   const [ocupado, establecerOcupado] = useState(false)
   const navegar = useNavigate()
@@ -30,21 +30,36 @@ export function PaginaInicioSesion() {
       establecerError(err instanceof ErrorApi && err.codigoEstado === 401 ? 'El correo o la contraseña son incorrectos.' : err instanceof Error ? err.message : 'No se pudo iniciar sesión.')
     } finally { establecerOcupado(false) }
   }
-  return <main className="flex min-h-screen items-center justify-center px-4 py-32">
-    <Card className="w-full max-w-md">
-      <CardHeader><CardTitle className="text-2xl">Ingresa a tu cuenta</CardTitle><p className="text-muted-foreground text-sm">Accede a tu espacio en Nubea.</p></CardHeader>
-      <CardContent>
-        {ubicacion.state?.sesionVencida && <p role="status" className="mb-4 text-sm">Inicia sesión para continuar. Si tu sesión venció, vuelve a ingresar.</p>}
-        {ubicacion.state?.registroCompletado && <p role="status" className="mb-4 text-sm">Tu cuenta fue creada. Inicia sesión para continuar.</p>}
-        <form onSubmit={enviar} className="space-y-5">
-          <div className="grid gap-2"><Label htmlFor="email">Correo</Label><Input id="email" type="email" autoComplete="email" value={correo} onChange={e => establecerCorreo(e.target.value)} required /></div>
-          <div className="grid gap-2"><Label htmlFor="password">Contraseña</Label><Input id="password" type="password" autoComplete="current-password" value={contrasena} onChange={e => establecerContrasena(e.target.value)} required /></div>
-          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={recordarme} onChange={e => establecerRecordarme(e.target.checked)} /> Recordarme durante 24 horas</label>
-          {error && <p role="alert" className="text-destructive text-sm">{error}</p>}
-          <Button type="submit" className="w-full" disabled={ocupado}>{ocupado ? 'Ingresando...' : 'Ingresar'}</Button>
-        </form>
-        <p className="mt-5 text-sm text-muted-foreground">¿Aún no tienes cuenta? <Link className="text-primary underline" to={`/registro${retornoSeguro ? `?retorno=${encodeURIComponent(retornoSeguro)}` : ""}`}>Crea una cuenta</Link></p>
-      </CardContent>
-    </Card>
-  </main>
+  return <MarcoAutenticacion
+    etiqueta="Bienvenido de nuevo"
+    titular="Tu tienda te está"
+    destacado="esperando."
+    descripcion="Ingresa para gestionar tus productos, pedidos y clientes desde un solo lugar."
+    puntos={['Revisa tus pedidos y clientes', 'Actualiza productos, precios y stock', 'Cambia la apariencia de tu vitrina']}
+  >
+    <h1 className="text-[28px] leading-[1.15] font-bold tracking-tight text-white">Ingresa a tu cuenta</h1>
+    <p className="mt-[8px] mb-[24px] text-[15px] text-white/65">Accede a tu espacio en Nubea.</p>
+    {ubicacion.state?.sesionVencida && <p role="status" className="mb-[18px] rounded-[12px] border border-nubea-acento/30 bg-nubea-acento/10 px-[14px] py-[10px] text-[13px] text-white/90">Inicia sesión para continuar. Si tu sesión venció, vuelve a ingresar.</p>}
+    {ubicacion.state?.registroCompletado && <p role="status" className="mb-[18px] rounded-[12px] border border-nubea-petroleo-claro/30 bg-nubea-petroleo-claro/10 px-[14px] py-[10px] text-[13px] text-white/90">Tu cuenta fue creada. Inicia sesión para continuar.</p>}
+    <form onSubmit={enviar} className="space-y-[14px]">
+      <CampoAutenticacion id="email" etiqueta="Correo" icono={<Mail />}>
+        <input id="email" type="email" autoComplete="email" placeholder="tucorreo@ejemplo.com" className={claseEntrada} value={correo} onChange={e => establecerCorreo(e.target.value)} required />
+      </CampoAutenticacion>
+      <CampoAutenticacion id="password" etiqueta="Contraseña" icono={<Lock />} accion={<BotonVerContrasena visible={verContrasena} alCambiar={() => establecerVerContrasena(v => !v)} />}>
+        <input id="password" type={verContrasena ? 'text' : 'password'} autoComplete="current-password" placeholder="Tu contraseña" className={claseEntrada} value={contrasena} onChange={e => establecerContrasena(e.target.value)} required />
+      </CampoAutenticacion>
+      <label className="flex cursor-pointer items-center gap-[10px] pt-[2px] text-[14px] text-white/70 select-none">
+        <input type="checkbox" className="size-[16px] cursor-pointer accent-[#5b8cff]" checked={recordarme} onChange={e => establecerRecordarme(e.target.checked)} /> Recordarme durante 24 horas
+      </label>
+      {error && <p role="alert" className="rounded-[12px] border border-red-400/30 bg-red-500/10 px-[14px] py-[10px] text-[13px] text-red-300">{error}</p>}
+      <div className="pt-[6px]">
+        <button type="submit" className={claseBotonPrincipal} disabled={ocupado}>
+          {ocupado ? 'Ingresando...' : <>Ingresar <ArrowRight className="size-[18px] transition-transform group-hover:translate-x-[3px]" /></>}
+        </button>
+      </div>
+    </form>
+    <SeparadorAlterno texto="o ingresa con" />
+    <BotonGoogle className={claseBotonGoogle} />
+    <p className="mt-[20px] text-center text-[14px] text-white/70">¿Aún no tienes cuenta? <Link className="font-semibold text-[#5b8cff] hover:underline" to={`/registro${retornoSeguro ? `?retorno=${encodeURIComponent(retornoSeguro)}` : ""}`}>Crea una cuenta</Link></p>
+  </MarcoAutenticacion>
 }

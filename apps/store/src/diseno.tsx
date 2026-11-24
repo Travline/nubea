@@ -2,12 +2,14 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { ArrowLeft, ShoppingBag, Store, UserRound } from 'lucide-react'
 import { actualizarSesion, enlaceSesion, solicitar } from './api'
+import { plantillaDisponible } from './plantillas'
 
 const api = import.meta.env.VITE_API_URL?.trim() || (import.meta.env.DEV ? 'http://localhost:8080' : '')
 type Usuario = { nombres: string }
 type Carrito = { items: { cantidad: number }[] }
-export function MarcoTienda({ slug, nombre, children }: { slug: string; nombre?: string; children: ReactNode }) {
+export function MarcoTienda({ slug, nombre, plantilla, children }: { slug: string; nombre?: string; plantilla?: string; children: ReactNode }) {
   const [nombreCargado, setNombreCargado] = useState('')
+  const [plantillaCargada, setPlantillaCargada] = useState('')
   const [usuario, setUsuario] = useState<Usuario | null>(null)
   const [cantidad, setCantidad] = useState(0)
   const [menu, setMenu] = useState(false)
@@ -19,8 +21,8 @@ export function MarcoTienda({ slug, nombre, children }: { slug: string; nombre?:
     if (nombre) return
     const controller = new AbortController()
     fetch(`${api}/api/publico/tiendas/${encodeURIComponent(slug)}`, { signal: controller.signal })
-      .then(res => res.ok ? res.json() as Promise<{ nombre: string }> : null)
-      .then(datos => setNombreCargado(datos?.nombre || ''))
+      .then(res => res.ok ? res.json() as Promise<{ nombre: string; plantilla?: string }> : null)
+      .then(datos => { setNombreCargado(datos?.nombre || ''); setPlantillaCargada(datos?.plantilla || '') })
       .catch(() => {})
     return () => controller.abort()
   }, [slug, nombre])
@@ -54,6 +56,20 @@ export function MarcoTienda({ slug, nombre, children }: { slug: string; nombre?:
     catch (e) { setError(e instanceof Error ? e.message : 'No se pudo cerrar sesión.') }
   }
   const nombreVisible = nombre || nombreCargado || 'Tienda'
-  return <div className="sitio"><header className="cabecera-sitio"><div className="contenedor cabecera"><Link className="marca" to={`/${slug}`}><span className="marca-icono"><Store size={19} /></span><span>{nombreVisible}</span></Link><nav className="navegacion" aria-label="Navegación principal"><div className="cuenta-menu"><button className="navegacion-icono" aria-label="Cuenta" aria-expanded={menu} onClick={() => setMenu(!menu)}><UserRound size={21} /></button>{menu && <div className="menu-desplegable">{usuario ? <><p>Hola, {usuario.nombres}</p><Link to={`/${slug}/pedidos`} onClick={() => setMenu(false)}>Mis pedidos</Link><Link to={`/${slug}/direcciones`} onClick={() => setMenu(false)}>Mis direcciones</Link><button onClick={() => void salir()}>Cerrar sesión</button>{error && <p role="alert">{error}</p>}</> : <><Link to={enlaceSesion(slug)} onClick={() => setMenu(false)}>Iniciar sesión</Link><Link to={`/${slug}/registro?retorno=${encodeURIComponent(window.location.pathname + window.location.search)}`} onClick={() => setMenu(false)}>Crear cuenta</Link></>}</div>}</div><Link className="navegacion-icono" to={`/${slug}/carrito`} aria-label={cantidad ? `Carrito, ${cantidad} unidades` : 'Carrito'}><ShoppingBag size={21} />{cantidad > 0 && <span className="cantidad-carrito">{cantidad}</span>}</Link></nav></div></header><main className="contenedor contenido">{children}</main><footer className="pie"><div className="contenedor pie-contenido"><span>{nombreVisible}</span><span>Vitrina en Nubea</span></div></footer></div>
+  const codigoPlantilla = plantilla || plantillaCargada
+  const clasePlantilla = plantillaDisponible(codigoPlantilla) ? codigoPlantilla : 'minimal'
+  return <div className={`sitio plantilla-${clasePlantilla}`}>
+    <div className="barra-anuncio"><span>{nombreVisible}</span><span aria-hidden="true">·</span><span>Tienda en línea</span></div>
+    <header className="cabecera-sitio"><div className="contenedor cabecera">
+      <nav className="navegacion-secundaria" aria-label="Secciones de la tienda"><Link to={`/${slug}`}>Inicio</Link><a href={`${import.meta.env.BASE_URL}${slug}#productos`}>Productos</a></nav>
+      <Link className="marca" to={`/${slug}`}><span className="marca-icono"><Store size={18} /></span><span>{nombreVisible}</span></Link>
+      <nav className="navegacion" aria-label="Navegación principal"><div className="cuenta-menu"><button className="navegacion-icono" aria-label="Cuenta" aria-expanded={menu} onClick={() => setMenu(!menu)}><UserRound size={21} /></button>{menu && <div className="menu-desplegable">{usuario ? <><p>Hola, {usuario.nombres}</p><Link to={`/${slug}/pedidos`} onClick={() => setMenu(false)}>Mis pedidos</Link><Link to={`/${slug}/direcciones`} onClick={() => setMenu(false)}>Mis direcciones</Link><button onClick={() => void salir()}>Cerrar sesión</button>{error && <p role="alert">{error}</p>}</> : <><Link to={enlaceSesion(slug)} onClick={() => setMenu(false)}>Iniciar sesión</Link><Link to={`/${slug}/registro?retorno=${encodeURIComponent(window.location.pathname + window.location.search)}`} onClick={() => setMenu(false)}>Crear cuenta</Link></>}</div>}</div><Link className="navegacion-icono" to={`/${slug}/carrito`} aria-label={cantidad ? `Carrito, ${cantidad} unidades` : 'Carrito'}><ShoppingBag size={21} />{cantidad > 0 && <span className="cantidad-carrito">{cantidad}</span>}</Link></nav>
+    </div></header>
+    <main className="contenedor contenido">{children}</main>
+    <footer className="pie"><div className="contenedor pie-contenido">
+      <div className="pie-marca"><span className="pie-nombre">{nombreVisible}</span><p>Tienda en línea · Vitrina en Nubea</p></div>
+      <nav className="pie-enlaces" aria-label="Enlaces de la tienda"><Link to={`/${slug}`}>Productos</Link><Link to={`/${slug}/carrito`}>Carrito</Link><Link to={`/${slug}/pedidos`}>Mis pedidos</Link><Link to={`/${slug}/direcciones`}>Mis direcciones</Link></nav>
+    </div><div className="contenedor pie-legal"><span>© {new Date().getFullYear()} {nombreVisible}</span></div></footer>
+  </div>
 }
 export function Volver({ to, children }: { to: string; children: ReactNode }) { return <Link className="volver" to={to}><ArrowLeft size={16} />{children}</Link> }
