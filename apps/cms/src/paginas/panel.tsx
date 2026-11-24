@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom'
-import { ArrowRight, Boxes, House, LayoutTemplate, LifeBuoy, UserRound, CreditCard, ExternalLink, LayoutDashboard, LayoutGrid, List, LogOut, Package, Palette, Plus, Search, ShoppingCart, Store, X } from 'lucide-react'
+import { ArrowRight, Ban, Boxes, House, LayoutTemplate, LifeBuoy, UserRound, CreditCard, ExternalLink, LayoutDashboard, LayoutGrid, List, LogOut, Package, Palette, Plus, Search, ShoppingCart, Store, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { AlternarTema } from '@/components/alternar-tema'
 import { apiAutenticacion } from '@/autenticacion/api'
@@ -10,6 +10,7 @@ import { api, rutaTienda } from '@/comercio/datos'
 import type { Tienda } from '@/comercio/datos'
 import { Aviso, EstadoCarga, useCarga, useOperacion } from '@/comercio/comunes'
 import { InicioVendedor } from '@/paginas/panel-secciones'
+import { avisoTiendaNoEditable, claseTono, etiquetaTienda, opcionesTienda, tiendaEditable } from '@/comercio/estados'
 import { nombresPlantilla } from '@/components/plantillas/vista-plantillas'
 
 const seccionesTienda = [
@@ -22,14 +23,9 @@ const seccionesTienda = [
 
 const nombrePlantilla = (codigo: string | null | undefined) => (codigo && nombresPlantilla[codigo]) || codigo || 'Sin plantilla'
 
-const estilosEstado: Record<string, { texto: string; clase: string; punto: string }> = {
-  ACTIVA: { texto: 'Activa', clase: 'bg-emerald-500/12 text-emerald-600 dark:text-emerald-400', punto: 'bg-emerald-500' },
-  BORRADOR: { texto: 'Borrador', clase: 'bg-amber-500/12 text-amber-600 dark:text-amber-400', punto: 'bg-amber-500' },
-  INACTIVA: { texto: 'Inactiva', clase: 'bg-zinc-500/15 text-zinc-600 dark:text-zinc-400', punto: 'bg-zinc-400' },
-}
 function EstadoTienda({ estado }: { estado: string }) {
-  const e = estilosEstado[estado] ?? { texto: estado, clase: 'bg-muted text-muted-foreground', punto: 'bg-muted-foreground' }
-  return <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${e.clase}`}><span className={`size-1.5 rounded-full ${e.punto}`} />{e.texto}</span>
+  const e = etiquetaTienda(estado); const t = claseTono[e.tono]
+  return <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${t.clase}`}><span className={`size-1.5 rounded-full ${t.punto}`} />{e.texto}</span>
 }
 
 const claseEnlaceMenu = ({ isActive }: { isActive: boolean }) =>
@@ -154,9 +150,9 @@ export function MisTiendas() {
     {error || !datos ? <EstadoCarga error={error} recargar={recargar} /> : <>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Indicador titulo="Total de tiendas" valor={lista.length} icono={<Store className="size-5" />} clase="bg-primary/10 text-primary dark:bg-[#4d7cff]/15 dark:text-[#8fb3ff]" />
-        <Indicador titulo="Activas" valor={lista.filter(t => t.estado === 'ACTIVA').length} icono={<span className="size-2.5 rounded-full bg-emerald-500 ring-4 ring-emerald-500/25" />} clase="bg-emerald-500/12" />
-        <Indicador titulo="En borrador" valor={lista.filter(t => t.estado === 'BORRADOR').length} icono={<span className="size-2.5 rounded-full bg-amber-500 ring-4 ring-amber-500/25" />} clase="bg-amber-500/12" />
-        <Indicador titulo="Inactivas" valor={lista.filter(t => t.estado !== 'ACTIVA' && t.estado !== 'BORRADOR').length} icono={<span className="size-2.5 rounded-full bg-zinc-400 ring-4 ring-zinc-400/25" />} clase="bg-zinc-500/12" />
+        <Indicador titulo="Abiertas" valor={lista.filter(t => t.estado === 'ACTIVA').length} icono={<span className="size-2.5 rounded-full bg-emerald-500 ring-4 ring-emerald-500/25" />} clase="bg-emerald-500/12" />
+        <Indicador titulo="En preparación" valor={lista.filter(t => t.estado === 'BORRADOR').length} icono={<span className="size-2.5 rounded-full bg-amber-500 ring-4 ring-amber-500/25" />} clase="bg-amber-500/12" />
+        <Indicador titulo="Suspendidas o cerradas" valor={lista.filter(t => t.estado !== 'ACTIVA' && t.estado !== 'BORRADOR').length} icono={<span className="size-2.5 rounded-full bg-zinc-400 ring-4 ring-zinc-400/25" />} clase="bg-zinc-500/12" />
       </div>
 
       {lista.length > 0 && <div className="flex flex-wrap items-center gap-3">
@@ -166,7 +162,7 @@ export function MisTiendas() {
         </label>
         <label className="flex h-11 items-center gap-2 rounded-xl border border-input bg-card pr-2 pl-4 text-sm"><span className="text-muted-foreground">Estado:</span>
           <select className="h-full cursor-pointer bg-transparent pr-1 font-medium outline-none" value={filtroEstado} onChange={e => establecerFiltroEstado(e.target.value)}>
-            <option value="TODAS">Todas</option><option value="ACTIVA">Activas</option><option value="BORRADOR">En borrador</option><option value="INACTIVA">Inactivas</option>
+            <option value="TODAS">Todas</option>{opcionesTienda.map(o => <option key={o.valor} value={o.valor}>{o.texto}</option>)}
           </select>
         </label>
         <div className="flex rounded-xl border border-input bg-card p-1">
@@ -217,16 +213,28 @@ export function EspacioTienda() {
   const { idTienda = '' } = useParams()
   const { usuario } = useSesion()
   const { datos, error, recargar, actualizarDatos } = useCarga(() => api.leer<Tienda[]>(`/api/tiendas/propietario/${usuario!.idUsuario}`), [usuario!.idUsuario])
+  // Un 409 por tienda no modificable (la suspendieron mientras el panel estaba abierto): se vuelve a leer su estado.
+  useEffect(() => { window.addEventListener('tienda-no-modificable', recargar); return () => window.removeEventListener('tienda-no-modificable', recargar) }, [recargar])
   if (error || !datos) return <EstadoCarga error={error} recargar={recargar} />
   const tienda = datos.find(t => t.idTienda === idTienda)
   if (!tienda) return <p role="alert">No tienes acceso a esta tienda. <Link className="underline" to="/panel/tiendas">Volver a tus tiendas</Link></p>
   const base = `/panel/tiendas/${idTienda}`
   const actualizarTienda = (actualizada: Tienda) => actualizarDatos(tiendas => tiendas.map(t => t.idTienda === actualizada.idTienda ? actualizada : t))
-  return <><div className="flex flex-wrap items-end justify-between gap-4"><div><Link className="text-sm text-muted-foreground hover:text-primary" to="/panel/tiendas">← Mis tiendas</Link><div className="mt-2 flex flex-wrap items-center gap-3"><h1 className="text-3xl font-semibold tracking-tight">{tienda.nombre}</h1><EstadoTienda estado={tienda.estado} /></div><p className="mt-1 text-sm text-muted-foreground">/tienda/{tienda.slug} · Plantilla {nombrePlantilla(tienda.plantilla)}</p></div><a href={`/tienda/${encodeURIComponent(tienda.slug)}`} target="_blank" rel="noreferrer" className="inline-flex h-10 items-center gap-2 rounded-xl border bg-card px-4 text-sm font-medium hover:border-primary/40"><ExternalLink className="size-4" />Ver tienda</a></div><AvisoActivacion tienda={tienda} apiBase={rutaTienda(idTienda)} alActivar={actualizarTienda} /><Outlet context={{ tienda, base, apiBase: rutaTienda(idTienda), actualizarTienda }} /></>
+  return <><div className="flex flex-wrap items-end justify-between gap-4"><div><Link className="text-sm text-muted-foreground hover:text-primary" to="/panel/tiendas">← Mis tiendas</Link><div className="mt-2 flex flex-wrap items-center gap-3"><h1 className="text-3xl font-semibold tracking-tight">{tienda.nombre}</h1><EstadoTienda estado={tienda.estado} /></div><p className="mt-1 text-sm text-muted-foreground">/tienda/{tienda.slug} · Plantilla {nombrePlantilla(tienda.plantilla)}</p></div><a href={`/tienda/${encodeURIComponent(tienda.slug)}`} target="_blank" rel="noreferrer" className="inline-flex h-10 items-center gap-2 rounded-xl border bg-card px-4 text-sm font-medium hover:border-primary/40"><ExternalLink className="size-4" />Ver tienda</a></div><AvisoSoloLectura estado={tienda.estado} /><AvisoActivacion tienda={tienda} apiBase={rutaTienda(idTienda)} alActivar={actualizarTienda} /><Outlet context={{ tienda, base, apiBase: rutaTienda(idTienda), actualizarTienda, soloLectura: !tiendaEditable(tienda.estado) } satisfies ContextoTienda} /></>
 }
 // La ruta base de la tienda ya no tiene resumen: lleva directo al catálogo.
 export function ResumenTienda() {
   return <Navigate to="catalogo" replace />
+}
+
+// Aviso fijo de tienda suspendida o cerrada: todo el espacio de la tienda pasa a solo lectura.
+function AvisoSoloLectura({ estado }: { estado: string }) {
+  if (tiendaEditable(estado)) return null
+  const aviso = avisoTiendaNoEditable(estado)
+  return <section role="status" className="sticky top-[128px] z-10 flex items-start gap-3 rounded-2xl border border-red-500/30 bg-red-50 px-5 py-4 text-red-900 shadow-sm dark:bg-[#2a1215] dark:text-red-200 lg:top-[80px]">
+    <Ban className="mt-0.5 size-5 shrink-0" />
+    <div><p className="font-semibold">{aviso.titulo}</p><p className="text-sm opacity-90">{aviso.texto}</p></div>
+  </section>
 }
 
 // Aviso para activar una tienda en borrador (antes estaba en el resumen).
@@ -234,11 +242,11 @@ function AvisoActivacion({ tienda, apiBase, alActivar }: { tienda: Tienda; apiBa
   const operacion = useOperacion()
   if (tienda.estado !== 'BORRADOR') return null
   return <section className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-5 py-4">
-    <div><p className="font-semibold">Tu tienda está en borrador</p><p className="text-sm text-muted-foreground">Actívala cuando quieras para poder publicar productos que cumplan los requisitos del catálogo.</p></div>
+    <div><p className="font-semibold">Tu tienda está en preparación</p><p className="text-sm text-muted-foreground">Ábrela cuando quieras: así podrás publicar los productos que estén listos y tus clientes podrán comprar.</p></div>
     <div className="flex flex-col items-end gap-2">
-      <Button disabled={operacion.ocupado} onClick={() => void operacion.ejecutar(async () => { const actualizada = await api.crear<Tienda>(`${apiBase}/activacion`); alActivar(actualizada) })}>{operacion.ocupado ? 'Activando...' : 'Activar tienda'}</Button>
+      <Button disabled={operacion.ocupado} onClick={() => void operacion.ejecutar(async () => { const actualizada = await api.crear<Tienda>(`${apiBase}/activacion`); alActivar(actualizada) })}>{operacion.ocupado ? 'Abriendo...' : 'Abrir tienda'}</Button>
       <Aviso error={operacion.error} />
     </div>
   </section>
 }
-export interface ContextoTienda { tienda: Tienda; base: string; apiBase: string; actualizarTienda: (tienda: Tienda) => void }
+export interface ContextoTienda { tienda: Tienda; base: string; apiBase: string; actualizarTienda: (tienda: Tienda) => void; soloLectura: boolean }

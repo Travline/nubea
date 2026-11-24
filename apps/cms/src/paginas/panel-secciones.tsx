@@ -6,11 +6,11 @@ import { useSesion } from '@/autenticacion/sesion'
 import { api, rutaTienda } from '@/comercio/datos'
 import type { CuentaPago, Plantilla, Producto, Tienda } from '@/comercio/datos'
 import { EstadoCarga, useCarga } from '@/comercio/comunes'
+import { claseTono, etiquetaPedido, etiquetaTienda } from '@/comercio/estados'
 import { MiniaturaEnVivo, ModalVistaPrevia, PLANTILLAS_VISIBLES, infoPlantillas } from '@/components/plantillas/vista-plantillas'
 
-type Pedido = { id: string; estado: string; fecha: string; subtotal: number; impuesto: number; total: number }
+type Pedido = { id: string; numero?: number | null; estado: string; fecha: string; subtotal: number; impuesto: number; total: number }
 const soles = (valor: number) => new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(valor)
-const capitalizar = (texto: string) => texto.charAt(0) + texto.slice(1).toLowerCase().replace(/_/g, ' ')
 const tarjeta = 'rounded-2xl border bg-card'
 const iconoAzul = 'bg-primary/10 text-primary dark:bg-[#4d7cff]/15 dark:text-[#8fb3ff]'
 
@@ -75,7 +75,7 @@ function ResumenInicio({ tienda, tiendas, alCambiar }: { tienda: Tienda; tiendas
     { hecho: true, texto: 'Crear tu tienda', ruta: base },
     { hecho: (productos?.length ?? 0) > 0, texto: 'Agregar tu primer producto', ruta: `${base}/catalogo` },
     { hecho: publicados > 0, texto: 'Publicar un producto', ruta: `${base}/catalogo` },
-    { hecho: tienda.estado === 'ACTIVA', texto: 'Activar tu tienda', ruta: base },
+    { hecho: tienda.estado === 'ACTIVA', texto: 'Abrir tu tienda', ruta: base },
     { hecho: pagosConectados, texto: 'Conectar Mercado Pago', ruta: `${base}/pagos` },
   ]
   const completados = pasos.filter(p => p.hecho).length
@@ -91,7 +91,7 @@ function ResumenInicio({ tienda, tiendas, alCambiar }: { tienda: Tienda; tiendas
             {tiendas.length > 1
               ? <label className="relative inline-flex items-center"><span className="sr-only">Tienda</span><select value={tienda.idTienda} onChange={e => alCambiar(e.target.value)} className="cursor-pointer appearance-none bg-transparent pr-7 text-2xl font-semibold outline-none [&>option]:text-foreground">{tiendas.map(t => <option key={t.idTienda} value={t.idTienda}>{t.nombre}</option>)}</select><ChevronDown className="pointer-events-none absolute right-0 size-5" /></label>
               : <h2 className="text-2xl font-semibold">{tienda.nombre}</h2>}
-            <p className="mt-0.5 text-sm text-white/75">/tienda/{tienda.slug} · {capitalizar(tienda.estado)}</p>
+            <p className="mt-0.5 text-sm text-white/75">/tienda/{tienda.slug} · {etiquetaTienda(tienda.estado).texto}</p>
           </div>
         </div>
         <div className="flex flex-wrap gap-2.5">
@@ -117,8 +117,8 @@ function ResumenInicio({ tienda, tiendas, alCambiar }: { tienda: Tienda; tiendas
           : recientes.length === 0 ? <div className="mt-5 rounded-xl border border-dashed px-5 py-10 text-center"><ShoppingCart className="mx-auto size-8 text-muted-foreground/60" /><p className="mt-2 text-sm font-medium">Todavía no tienes pedidos</p><p className="mt-1 text-sm text-muted-foreground">Comparte el enlace de tu tienda para recibir los primeros.</p></div>
           : <ul className="mt-4 divide-y">{recientes.map(p => <li key={p.id} className="flex items-center gap-4 py-3">
               <span className={`grid size-10 shrink-0 place-items-center rounded-xl ${iconoAzul}`}><ShoppingCart className="size-[18px]" /></span>
-              <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">Pedido #{p.id.slice(0, 8)}</p><p className="text-xs text-muted-foreground">{new Date(p.fecha).toLocaleDateString('es-PE', { day: 'numeric', month: 'short', year: 'numeric' })}</p></div>
-              <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">{capitalizar(p.estado)}</span>
+              <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{p.numero ? `Pedido #${p.numero}` : 'Pedido'}</p><p className="text-xs text-muted-foreground">{new Date(p.fecha).toLocaleDateString('es-PE', { day: 'numeric', month: 'short', year: 'numeric' })}</p></div>
+              <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${claseTono[etiquetaPedido(p.estado).tono].clase}`}>{etiquetaPedido(p.estado).texto}</span>
               <span className="w-24 text-right text-sm font-semibold">{soles(p.total)}</span>
             </li>)}</ul>}
       </section>
@@ -139,7 +139,7 @@ function ResumenInicio({ tienda, tiendas, alCambiar }: { tienda: Tienda; tiendas
     <section>
       <h2 className="mb-3 text-lg font-semibold">Accesos rápidos</h2>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {([[`${base}/catalogo`, 'Agregar producto', 'Sube fotos, precios y presentaciones', Plus], [`${base}/inventario`, 'Revisar inventario', 'Controla el stock de tus productos', Boxes], [`${base}/apariencia`, 'Cambiar apariencia', 'Plantilla, portada y banners', Palette], [`${base}/pagos`, 'Configurar cobros', 'Conecta tu cuenta de Mercado Pago', CreditCard]] as const).map(([ruta, titulo, detalle, Icono]) =>
+        {([[`${base}/catalogo`, 'Agregar producto', 'Sube fotos, precios y versiones', Plus], [`${base}/inventario`, 'Revisar inventario', 'Controla el stock de tus productos', Boxes], [`${base}/apariencia`, 'Cambiar apariencia', 'Plantilla, portada y banners', Palette], [`${base}/pagos`, 'Configurar cobros', 'Conecta tu cuenta de Mercado Pago', CreditCard]] as const).map(([ruta, titulo, detalle, Icono]) =>
           <Link key={titulo} to={ruta} className={`${tarjeta} group flex items-start gap-4 p-5 transition hover:border-primary/40`}>
             <span className={`grid size-11 shrink-0 place-items-center rounded-xl ${iconoAzul}`}><Icono className="size-5" /></span>
             <span className="min-w-0"><span className="flex items-center gap-1.5 font-semibold">{titulo}<ArrowRight className="size-4 opacity-0 transition group-hover:translate-x-0.5 group-hover:opacity-100" /></span><span className="mt-0.5 block text-sm text-muted-foreground">{detalle}</span></span>
@@ -208,17 +208,17 @@ type TemaAyuda = { id: string; titulo: string; icono: typeof Sparkles; preguntas
 const temasAyuda: TemaAyuda[] = [
   { id: 'primeros-pasos', titulo: 'Primeros pasos', icono: Sparkles, preguntas: [
     ['¿Cómo creo mi tienda?', 'Entra a Mis tiendas y pulsa "Crear tienda". Solo necesitas un nombre; con él se genera el enlace de tu tienda (por ejemplo /tienda/mi-tienda). La tienda empieza en borrador.'],
-    ['¿Cómo activo mi tienda?', 'Abre tu tienda y, en Resumen, pulsa "Activar tienda". Una tienda activa puede publicar productos que cumplan los requisitos del catálogo.'],
+    ['¿Cómo abro mi tienda?', 'Entra a tu tienda y pulsa "Abrir tienda" en el aviso de arriba. Con la tienda abierta puedes publicar los productos que estén listos.'],
     ['¿Dónde veo mi tienda como la ven mis clientes?', 'Usa el botón "Ver tienda" o el enlace /tienda/tu-tienda. Ahí aparecen los productos publicados con la plantilla que elegiste.'],
   ] },
   { id: 'catalogo', titulo: 'Catálogo', icono: Package, preguntas: [
-    ['¿Cómo agrego un producto?', 'En Catálogo completa el nombre, la descripción, el precio base y la categoría. Luego abre el producto para agregar imágenes, presentaciones y colecciones.'],
-    ['¿Qué son las variantes y las presentaciones?', 'Las variantes son características como talla o color, con sus valores (S, M, L…). Una presentación combina esos valores, tiene su propio SKU y puede tener un precio distinto al precio base.'],
-    ['¿Por qué un producto no aparece en mi tienda?', 'Revisa que la tienda esté activa y que el producto esté publicado y tenga al menos una presentación activa.'],
+    ['¿Cómo agrego un producto?', 'En Catálogo completa el nombre, la descripción, el precio base y la categoría. Luego abre el producto para agregar fotos, versiones y colecciones.'],
+    ['¿Qué son las variantes y las versiones?', 'Las variantes son características como talla o color, con sus valores (S, M, L…). Una versión del producto combina esos valores, tiene sus propias unidades y puede tener un precio distinto al precio base. Su código interno se genera solo si lo dejas vacío.'],
+    ['¿Por qué un producto no aparece en mi tienda?', 'Abre el producto: la lista "Listo para publicar" te dice qué falta (tienda abierta, categoría activa, una versión a la venta y unidades disponibles).'],
   ] },
   { id: 'inventario', titulo: 'Inventario', icono: Boxes, preguntas: [
-    ['¿Cómo controlo el stock?', 'En Inventario verás cada presentación con su stock actual y su stock mínimo. Puedes buscar por nombre o SKU y filtrar por estado.'],
-    ['¿Qué pasa cuando el stock baja?', 'Usa el filtro de alertas de stock para encontrar rápido las presentaciones que llegaron a su stock mínimo y reponerlas a tiempo.'],
+    ['¿Cómo controlo el stock?', 'En Inventario verás cada versión de tus productos con sus unidades disponibles, las apartadas por pedidos pendientes de pago y el aviso de pocas unidades. Usa + y − para el día a día, o "Fijar por conteo" cuando cuentes lo que tienes en mano.'],
+    ['¿Qué pasa cuando el stock baja?', 'Usa el filtro "Requiere atención" de Inventario para encontrar rápido las versiones que llegaron a su mínimo y reponerlas a tiempo.'],
   ] },
   { id: 'pedidos', titulo: 'Pedidos', icono: ShoppingCart, preguntas: [
     ['¿Dónde veo los pedidos de mis clientes?', 'En Pedidos aparece la lista con fecha, estado y total. Abre uno para ver los productos, el receptor y la dirección de entrega en el mapa.'],

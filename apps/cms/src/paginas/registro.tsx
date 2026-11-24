@@ -13,6 +13,7 @@ export function PaginaRegistro() {
   const [contrasena, establecerContrasena] = useState('')
   const [verContrasena, establecerVerContrasena] = useState(false)
   const [error, establecerError] = useState('')
+  const [campos, establecerCampos] = useState<Record<string, string>>({})
   const [ocupado, establecerOcupado] = useState(false)
   const navegar = useNavigate()
   const ubicacion = useLocation()
@@ -20,7 +21,7 @@ export function PaginaRegistro() {
   const retornoSeguro = retorno && /^\/tienda\/[a-z0-9]+(?:-[a-z0-9]+)*(?:\/carrito)?\/?$/.test(retorno) ? retorno : null
   const { actualizar } = useSesion()
   async function enviar(evento: FormEvent<HTMLFormElement>) {
-    evento.preventDefault(); establecerError(''); establecerOcupado(true)
+    evento.preventDefault(); establecerError(''); establecerCampos({}); establecerOcupado(true)
     try {
       await apiAutenticacion.registrar(nombres, correo, contrasena)
       try {
@@ -32,7 +33,7 @@ export function PaginaRegistro() {
         navegar(`/iniciar-sesion${retornoSeguro ? `?retorno=${encodeURIComponent(retornoSeguro)}` : ''}`, { replace: true, state: { registroCompletado: true } })
       }
     } catch (err) {
-      if (err instanceof ErrorApi) establecerError(Object.values(err.campos || {}).join(' ') || err.message)
+      if (err instanceof ErrorApi) { establecerCampos(err.campos ?? {}); const otros = Object.entries(err.campos ?? {}).filter(([c]) => !['nombres', 'correoElectronico', 'password'].includes(c)).map(([, m]) => m); establecerError(otros.join(' ') || (err.campos ? '' : err.message)) }
       else establecerError('No se pudo crear la cuenta.')
     } finally { establecerOcupado(false) }
   }
@@ -49,12 +50,15 @@ export function PaginaRegistro() {
       <CampoAutenticacion id="nombres" etiqueta="Nombres" icono={<User />}>
         <input id="nombres" autoComplete="given-name" maxLength={100} placeholder="Tu nombre" className={claseEntrada} value={nombres} onChange={e => setNombres(e.target.value)} required />
       </CampoAutenticacion>
+      {campos.nombres && <p role="alert" className="-mt-[8px] text-[12px] text-red-300">{campos.nombres}</p>}
       <CampoAutenticacion id="email" etiqueta="Correo" icono={<Mail />}>
         <input id="email" type="email" autoComplete="email" maxLength={100} placeholder="tucorreo@ejemplo.com" className={claseEntrada} value={correo} onChange={e => establecerCorreo(e.target.value)} required />
       </CampoAutenticacion>
+      {campos.correoElectronico && <p role="alert" className="-mt-[8px] text-[12px] text-red-300">{campos.correoElectronico}</p>}
       <CampoAutenticacion id="password" etiqueta="Contraseña" icono={<Lock />} accion={<BotonVerContrasena visible={verContrasena} alCambiar={() => establecerVerContrasena(v => !v)} />}>
         <input id="password" type={verContrasena ? 'text' : 'password'} autoComplete="new-password" minLength={8} maxLength={128} placeholder="Mínimo 8 caracteres" className={claseEntrada} value={contrasena} onChange={e => establecerContrasena(e.target.value)} required />
       </CampoAutenticacion>
+      {campos.password && <p role="alert" className="-mt-[8px] text-[12px] text-red-300">{campos.password}</p>}
       {error && <p role="alert" className="rounded-[12px] border border-red-400/30 bg-red-500/10 px-[14px] py-[10px] text-[13px] text-red-300">{error}</p>}
       <div className="pt-[6px]">
         <button type="submit" className={claseBotonPrincipal} disabled={ocupado}>

@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
 import { api } from './datos'
 import { Button } from '@/components/ui/button'
+import { mensajeError } from '@/autenticacion/api'
+import { ZonaEdicion } from './comunes'
+import { etiquetaPago, textoAmbientePago } from './estados'
 
 type Pago = { estado: string; estadoPago: string | null; ambiente: string; incidencia: string | null; referencia: string | null }
 export function PagoPedido({ base, pedido, total }: { base: string; pedido: string; total: number }) {
@@ -32,16 +35,16 @@ export function PagoPedido({ base, pedido, total }: { base: string; pedido: stri
     try {
       const datos = await api.crear<Pago>(`${base}/pedidos/${pedido}/reembolsos`, { clave, reponerStock: reponer })
       setPago(datos); setConfirmar(false)
-    } catch (e) { setError(e instanceof Error ? e.message : 'No se pudo confirmar el reembolso. Reintenta para consultar la misma operación.') }
+    } catch (e) { setError(mensajeError(e) || 'No se pudo confirmar la devolución. Reintenta para consultar la misma operación.') }
     finally { setOcupado(false) }
   }
   return <section className="space-y-3" aria-live="polite">{error && <p role="alert">{error}</p>}{pago && <>
-    <p>Pago: {pago.estadoPago || 'En preparación'} · {pago.ambiente === 'PRUEBA' ? 'Prueba sin dinero real' : pago.ambiente === 'PRODUCCION' ? 'Producción' : 'Ambiente sin verificar'}</p>
+    <p>Pago: <strong>{etiquetaPago(pago.estadoPago).texto}</strong>{textoAmbientePago(pago.ambiente) && <> · {textoAmbientePago(pago.ambiente)}{pago.ambiente === 'PRUEBA' && ' (sin dinero real)'}</>}</p>
     {pago.referencia && <p>Referencia en Mercado Pago: {pago.referencia}</p>}
     {pago.incidencia && <p>Requiere atención: {pago.incidencia}. Comprueba la vinculación y la operación en Mercado Pago.</p>}
-    {pago.estadoPago === 'APROBADO' && !confirmar && <Button onClick={() => setConfirmar(true)}>Reembolsar pedido completo</Button>}
+    {pago.estadoPago === 'APROBADO' && !confirmar && <ZonaEdicion><Button onClick={() => setConfirmar(true)}>Devolver el dinero del pedido</Button></ZonaEdicion>}
     {confirmar && <div className="space-y-3 rounded border p-3"><p>Se devolverán {new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(total)} al comprador.</p>
-      <label><input type="checkbox" checked={reponer} disabled={ocupado || enviada} onChange={e => setReponer(e.target.checked)} /> Reponer stock al confirmar la devolución</label>
-      <div className="flex gap-3"><Button disabled={ocupado} onClick={() => void devolver()}>{ocupado ? 'Procesando…' : 'Confirmar reembolso'}</Button><Button variant="outline" disabled={ocupado} onClick={() => setConfirmar(false)}>Volver</Button></div></div>}
+      <label><input type="checkbox" checked={reponer} disabled={ocupado || enviada} onChange={e => setReponer(e.target.checked)} /> Volver a poner las unidades a la venta</label>
+      <div className="flex gap-3"><Button disabled={ocupado} onClick={() => void devolver()}>{ocupado ? 'Procesando…' : 'Confirmar devolución'}</Button><Button variant="outline" disabled={ocupado} onClick={() => setConfirmar(false)}>Volver</Button></div></div>}
   </>}</section>
 }

@@ -1,23 +1,20 @@
 import { useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import { Link, useNavigate, useOutletContext, useParams } from 'react-router-dom'
-import { ArrowLeft, ArrowRight, ArrowUpDown, Boxes, Check, Sparkles, ChevronDown, Eye, EyeOff, ImageOff, ImagePlus, Layers, Package, Pencil, Plus, RefreshCw, Search, SlidersHorizontal, Star, Tags, Trash2, X } from 'lucide-react'
+import { ArrowLeft, ArrowRight, ArrowUpDown, Boxes, Check, CircleCheck, CircleX, Sparkles, ChevronDown, Eye, EyeOff, ImageOff, ImagePlus, Layers, Package, Pencil, Plus, RefreshCw, Search, SlidersHorizontal, Star, Tags, Trash2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { ContextoTienda } from '@/paginas/panel'
 import { api } from './datos'
-import type { Categoria, Coleccion, Producto, Variante, Valor, Presentacion, Imagen, Inventario, PaginaInventario } from './datos'
-import { Aviso, EstadoCarga, useCarga, useOperacion } from './comunes'
+import type { Categoria, Coleccion, Producto, Variante, Valor, Presentacion, Imagen, Inventario, PaginaInventario, RequisitosPublicacion } from './datos'
+import { Aviso, ErrorCampo, EstadoCarga, ZonaEdicion, conError, useCarga, useOperacion } from './comunes'
+import { claseTono, etiquetaProducto, etiquetaVersion } from './estados'
+import { ControlStock } from './inventario'
 
 type Elemento = { id: string; nombre: string; slug?: string; activa?: boolean }
 const soles = (valor: number) => new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(valor)
-const estilosProducto: Record<string, { texto: string; clase: string }> = {
- PUBLICADO: { texto: 'Publicado', clase: 'bg-emerald-500/12 text-emerald-700 dark:text-emerald-400' },
- BORRADOR: { texto: 'Borrador', clase: 'bg-amber-500/15 text-amber-700 dark:text-amber-400' },
- INACTIVO: { texto: 'Inactivo', clase: 'bg-zinc-500/15 text-zinc-600 dark:text-zinc-400' },
-}
 function EstadoProducto({ estado, className = '' }: { estado: string; className?: string }) {
- const e = estilosProducto[estado] ?? { texto: estado, clase: 'bg-muted text-muted-foreground' }
- return <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold backdrop-blur ${e.clase} ${className}`}>{e.texto}</span>
+ const e = etiquetaProducto(estado)
+ return <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold backdrop-blur ${claseTono[e.tono].clase} ${className}`}>{e.texto}</span>
 }
 const claseEntrada = 'h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm outline-none transition focus:border-primary focus:ring-3 focus:ring-primary/20'
 
@@ -45,7 +42,7 @@ function ImagenProducto({ ruta, nombre }: { ruta: string; nombre: string }) {
 }
 
 function Productos({ apiBase, base, irA }: { apiBase: string; base: string; irA: (seccion: string) => void }) {
- const navegar = useNavigate(); const op = useOperacion(); const [nombre, setNombre] = useState(''); const [descripcion, setDescripcion] = useState(''); const [precio, setPrecio] = useState(''); const [categoria, setCategoria] = useState(''); const [sku, setSku] = useState(''); const [skuManual, setSkuManual] = useState(false); const [stock, setStock] = useState(''); const [stockMinimo, setStockMinimo] = useState('')
+ const navegar = useNavigate(); const op = useOperacion(['nombre', 'descripcion', 'precioBase', 'idCategoria', 'sku', 'stockInicial', 'stockMinimo']); const [nombre, setNombre] = useState(''); const [descripcion, setDescripcion] = useState(''); const [precio, setPrecio] = useState(''); const [categoria, setCategoria] = useState(''); const [sku, setSku] = useState(''); const [stock, setStock] = useState(''); const [stockMinimo, setStockMinimo] = useState('')
  const [mostrarCrear, setMostrarCrear] = useState(false); const [busqueda, setBusqueda] = useState(''); const [filtroEstado, setFiltroEstado] = useState(''); const [filtroCategoria, setFiltroCategoria] = useState('')
  const { datos, error, recargar } = useCarga(async () => { const [productos, categorias] = await Promise.all([api.leer<Producto[]>(`${apiBase}/productos`), api.leer<Categoria[]>(`${apiBase}/categorias`)]); return { productos, categorias } }, [apiBase])
  if (error || !datos) return <EstadoCarga error={error} recargar={recargar} />
@@ -58,39 +55,39 @@ function Productos({ apiBase, base, irA }: { apiBase: string; base: string; irA:
  return <div className="space-y-6">
   {/* Resumen */}
   <div className="grid gap-3 sm:grid-cols-4">
-   {([['', 'Todos', datos.productos.length], ['PUBLICADO', 'Publicados', cuenta('PUBLICADO')], ['BORRADOR', 'Borradores', cuenta('BORRADOR')], ['INACTIVO', 'Inactivos', cuenta('INACTIVO')]] as const).map(([valor, texto, total]) => <button key={texto} type="button" onClick={() => setFiltroEstado(valor)} className={`cursor-pointer rounded-2xl border bg-card p-4 text-left transition hover:border-primary/40 ${filtroEstado === valor ? 'border-primary ring-3 ring-primary/15' : ''}`}><p className="text-sm text-muted-foreground">{texto}</p><p className="mt-1 text-2xl font-semibold tracking-tight">{total}</p></button>)}
+   {([['', 'Todos', datos.productos.length], ['PUBLICADO', 'Visibles en tu tienda', cuenta('PUBLICADO')], ['BORRADOR', 'Borradores', cuenta('BORRADOR')], ['INACTIVO', 'Ocultos', cuenta('INACTIVO')]] as const).map(([valor, texto, total]) => <button key={texto} type="button" onClick={() => setFiltroEstado(valor)} className={`cursor-pointer rounded-2xl border bg-card p-4 text-left transition hover:border-primary/40 ${filtroEstado === valor ? 'border-primary ring-3 ring-primary/15' : ''}`}><p className="text-sm text-muted-foreground">{texto}</p><p className="mt-1 text-2xl font-semibold tracking-tight">{total}</p></button>)}
   </div>
 
   {/* Crear producto */}
-  {formularioVisible ? <section className="rounded-2xl border bg-card">
+  {formularioVisible ? <ZonaEdicion><section className="rounded-2xl border bg-card">
    <div className="flex items-start justify-between gap-3 border-b px-6 py-4">
-    <div className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-xl bg-primary/10 text-primary"><Plus className="size-5" /></span><div><h3 className="font-semibold">Nuevo producto</h3><p className="text-sm text-muted-foreground">Luego podrás añadir fotos, presentaciones e inventario.</p></div></div>
+    <div className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-xl bg-primary/10 text-primary"><Plus className="size-5" /></span><div><h3 className="font-semibold">Nuevo producto</h3><p className="text-sm text-muted-foreground">Luego podrás añadir fotos, versiones y unidades.</p></div></div>
     {datos.productos.length > 0 && <button type="button" aria-label="Cerrar" onClick={() => setMostrarCrear(false)} className="grid size-8 cursor-pointer place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"><X className="size-4" /></button>}
    </div>
    {!hayCategorias ? <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-5"><p className="text-sm text-muted-foreground">Primero crea una categoría para poder agregar productos.</p><Button type="button" variant="outline" onClick={() => irA('categorias')}><Tags className="size-4" />Crear categoría</Button></div>
-   : <form className="grid gap-4 p-6 sm:grid-cols-2" onSubmit={e => { e.preventDefault(); void op.ejecutar(async () => { const producto = await api.crear<Producto>(`${apiBase}/productos`, { nombre, descripcion, precioBase: Number(precio), idCategoria: categoria }); if (stock !== '') { const presentacion = await api.crear<Presentacion>(`${apiBase}/productos/${producto.idProducto}/presentaciones`, { sku: sku || skuAutomatico(nombre), precioOverride: null, idsValores: [] }); await api.actualizar(`${apiBase}/inventario/${presentacion.idPresentacion}`, { stockActual: Number(stock), stockMinimo: Number(stockMinimo || 0) }) } navegar(`${base}/catalogo/productos/${producto.idProducto}`) }) }}>
-    <label className="grid gap-1.5 text-sm font-medium">Nombre<input className={claseEntrada} required maxLength={150} value={nombre} onChange={e => { setNombre(e.target.value); if (!skuManual) setSku(skuAutomatico(e.target.value)) }} placeholder="Ej. Camisa de lino" /></label>
-    <label className="grid gap-1.5 text-sm font-medium">Categoría<select className={`${claseEntrada} cursor-pointer`} required value={categoria} onChange={e => setCategoria(e.target.value)}><option value="">Selecciona una categoría</option>{datos.categorias.filter(c => c.activa).map(c => <option value={c.idCategoria} key={c.idCategoria}>{c.nombre}</option>)}</select></label>
-    <label className="grid gap-1.5 text-sm font-medium">Precio base<span className="relative"><span className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-sm text-muted-foreground">S/</span><input className={`${claseEntrada} pl-9`} type="number" min="0" step="0.01" required value={precio} onChange={e => setPrecio(e.target.value)} placeholder="0.00" /></span></label>
-    <label className="grid gap-1.5 text-sm font-medium">Descripción<input className={claseEntrada} value={descripcion} onChange={e => setDescripcion(e.target.value)} placeholder="Breve descripción (opcional)" /></label>
+   : <form className="grid gap-4 p-6 sm:grid-cols-2" onSubmit={e => { e.preventDefault(); void op.ejecutar(async () => { const producto = await api.crear<Producto>(`${apiBase}/productos`, { nombre, descripcion, precioBase: Number(precio), idCategoria: categoria }); if (stock !== '') await api.crear<Presentacion>(`${apiBase}/productos/${producto.idProducto}/presentaciones`, { sku: sku.trim() || undefined, precioOverride: null, idsValores: [], stockInicial: Number(stock), stockMinimo: Number(stockMinimo || 0) }); navegar(`${base}/catalogo/productos/${producto.idProducto}`) }) }}>
+    <label className="grid gap-1.5 text-sm font-medium">Nombre<input className={claseEntrada + conError(op.errorDe('nombre'))} required maxLength={150} value={nombre} onChange={e => setNombre(e.target.value)} placeholder="Ej. Camisa de lino" /><ErrorCampo mensaje={op.errorDe('nombre')} /></label>
+    <label className="grid gap-1.5 text-sm font-medium">Categoría<select className={`${claseEntrada} cursor-pointer${conError(op.errorDe('idCategoria'))}`} required value={categoria} onChange={e => setCategoria(e.target.value)}><option value="">Selecciona una categoría</option>{datos.categorias.filter(c => c.activa).map(c => <option value={c.idCategoria} key={c.idCategoria}>{c.nombre}</option>)}</select><ErrorCampo mensaje={op.errorDe('idCategoria')} /></label>
+    <label className="grid gap-1.5 text-sm font-medium">Precio base<span className="relative"><span className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-sm text-muted-foreground">S/</span><input className={`${claseEntrada} pl-9${conError(op.errorDe('precioBase'))}`} type="number" min="0" step="0.01" required value={precio} onChange={e => setPrecio(e.target.value)} placeholder="0.00" /></span><ErrorCampo mensaje={op.errorDe('precioBase')} /></label>
+    <label className="grid gap-1.5 text-sm font-medium">Descripción<input className={claseEntrada + conError(op.errorDe('descripcion'))} value={descripcion} onChange={e => setDescripcion(e.target.value)} placeholder="Breve descripción (opcional)" /><ErrorCampo mensaje={op.errorDe('descripcion')} /></label>
     <div className="rounded-xl border border-dashed bg-muted/30 p-4 sm:col-span-2">
-     <p className="flex items-center gap-2 text-sm font-semibold"><Boxes className="size-4 text-primary" />Stock inicial <span className="font-normal text-muted-foreground">(opcional)</span></p>
-     <p className="mt-1 text-xs text-muted-foreground">Si llenas el stock se crea una presentación única con ese inventario. Si vendes tallas o colores, déjalo vacío y añade las presentaciones después.</p>
+     <p className="flex items-center gap-2 text-sm font-semibold"><Boxes className="size-4 text-primary" />Unidades iniciales <span className="font-normal text-muted-foreground">(opcional)</span></p>
+     <p className="mt-1 text-xs text-muted-foreground">Si indicas las unidades se crea una versión única con ellas. Si vendes tallas o colores, déjalo vacío y añade las versiones después.</p>
      <div className="mt-3 grid gap-3 sm:grid-cols-3">
-      <label className="grid gap-1.5 text-sm font-medium">SKU<input className={claseEntrada} maxLength={80} value={sku} onChange={e => { setSku(e.target.value); setSkuManual(true) }} placeholder="Se genera solo" /></label>
-      <label className="grid gap-1.5 text-sm font-medium">Stock<input className={claseEntrada} type="number" min="0" step="1" value={stock} onChange={e => setStock(e.target.value)} placeholder="Ej. 20" /></label>
-      <label className="grid gap-1.5 text-sm font-medium">Stock mínimo<input className={claseEntrada} type="number" min="0" step="1" value={stockMinimo} onChange={e => setStockMinimo(e.target.value)} placeholder="Ej. 3" disabled={stock === ''} /></label>
+      <CampoCodigoInterno valor={sku} cambiar={setSku} error={op.errorDe('sku')} />
+      <label className="grid gap-1.5 text-sm font-medium">Unidades disponibles<input className={claseEntrada + conError(op.errorDe('stockInicial'))} type="number" min="0" step="1" value={stock} onChange={e => setStock(e.target.value)} placeholder="Ej. 20" /><ErrorCampo mensaje={op.errorDe('stockInicial')} /></label>
+      <label className="grid gap-1.5 text-sm font-medium">Avisarme cuando queden<input className={claseEntrada + conError(op.errorDe('stockMinimo'))} type="number" min="0" step="1" value={stockMinimo} onChange={e => setStockMinimo(e.target.value)} placeholder="Ej. 3" disabled={stock === ''} /><ErrorCampo mensaje={op.errorDe('stockMinimo')} /></label>
      </div>
     </div>
     <div className="flex flex-wrap items-center justify-end gap-3 sm:col-span-2"><Aviso error={op.error} /><Button type="submit" className="h-11 rounded-xl px-5" disabled={op.ocupado}>{op.ocupado ? 'Creando...' : <>Crear y continuar <ArrowRight className="size-4" /></>}</Button></div>
    </form>}
-  </section> : null}
+  </section></ZonaEdicion> : null}
 
   {/* Barra de herramientas */}
   {datos.productos.length > 0 && <div className="flex flex-wrap items-center gap-3">
    <label className="relative min-w-56 flex-1"><span className="sr-only">Buscar producto</span><Search className="pointer-events-none absolute top-1/2 left-3.5 size-[18px] -translate-y-1/2 text-muted-foreground" /><input className={`${claseEntrada} bg-card pl-11`} placeholder="Buscar producto por nombre..." value={busqueda} onChange={e => setBusqueda(e.target.value)} /></label>
    <label className="flex h-11 items-center gap-2 rounded-xl border border-input bg-card pr-2 pl-4 text-sm"><span className="text-muted-foreground">Categoría:</span><select className="h-full cursor-pointer bg-transparent font-medium outline-none" value={filtroCategoria} onChange={e => setFiltroCategoria(e.target.value)}><option value="">Todas</option>{datos.categorias.map(c => <option key={c.idCategoria} value={c.idCategoria}>{c.nombre}</option>)}</select></label>
-   {!formularioVisible && <Button type="button" className="h-11 gap-2 rounded-xl px-5" onClick={() => setMostrarCrear(true)}><Plus className="size-4" />Nuevo producto</Button>}
+   {!formularioVisible && <ZonaEdicion><Button type="button" className="h-11 gap-2 rounded-xl px-5" onClick={() => setMostrarCrear(true)}><Plus className="size-4" />Nuevo producto</Button></ZonaEdicion>}
   </div>}
 
   {/* Productos */}
@@ -106,8 +103,10 @@ function Productos({ apiBase, base, irA }: { apiBase: string; base: string; irA:
    </Link>)}</div>}
  </div>
 }
-const skuAutomatico = (nombre: string) => (nombre.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 20) || 'PROD') + '-' + Math.random().toString(36).slice(2, 6).toUpperCase()
-const slugificar = (texto: string) => texto.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+// Código interno (SKU) de una versión: opcional al crear, el backend genera uno único si se deja vacío.
+function CampoCodigoInterno({ valor, cambiar, error, obligatorio = false }: { valor: string; cambiar: (v: string) => void; error: string; obligatorio?: boolean }) {
+ return <label className="grid gap-1.5 text-sm font-medium"><span>Código interno {!obligatorio && <span className="font-normal text-muted-foreground">(opcional)</span>}</span><input className={claseEntrada + conError(error)} maxLength={80} required={obligatorio} value={valor} onChange={e => cambiar(e.target.value)} placeholder={obligatorio ? '' : 'Ej. CAM-LIN-M'} />{error ? <ErrorCampo mensaje={error} /> : !obligatorio && <span className="text-xs font-normal text-muted-foreground">Código interno, se genera solo si lo dejas vacío.</span>}</label>
+}
 
 // Fila compacta de producto (foto, nombre, precio y estado) usada en categorías, colecciones y variantes.
 function TarjetaMini({ producto: p, apiBase, base, detalle, accion }: { producto: Producto; apiBase: string; base: string; detalle?: ReactNode; accion?: ReactNode }) {
@@ -134,7 +133,7 @@ function ListaLateral<T>({ elementos, seleccionado, alElegir, clave, render, bus
 
 function Listas({ apiBase, base, tipo }: { apiBase: string; base: string; tipo: 'categorias' | 'colecciones' }) {
  const singular = tipo === 'categorias' ? 'categoría' : 'colección'
- const [nombre, setNombre] = useState(''); const [slug, setSlug] = useState(''); const [slugManual, setSlugManual] = useState(false); const [edicion, setEdicion] = useState(''); const [seleccion, setSeleccion] = useState(''); const [busqueda, setBusqueda] = useState(''); const op = useOperacion()
+ const [nombre, setNombre] = useState(''); const [edicion, setEdicion] = useState(''); const [seleccion, setSeleccion] = useState(''); const [busqueda, setBusqueda] = useState(''); const op = useOperacion(['nombre', 'slug'])
  const { datos, error, recargar } = useCarga(async () => {
   const [items, productos] = await Promise.all([
    tipo === 'categorias'
@@ -144,24 +143,23 @@ function Listas({ apiBase, base, tipo }: { apiBase: string; base: string; tipo: 
   ])
   return { items: items as Elemento[], productos }
  }, [apiBase, tipo])
- function limpiar() { setNombre(''); setSlug(''); setSlugManual(false); setEdicion('') }
- async function guardar(e: FormEvent) { e.preventDefault(); await op.ejecutar(async () => { const cuerpo = { nombre, slug }; if (edicion) await api.actualizar(`${apiBase}/${tipo}/${edicion}`, cuerpo); else await api.crear(`${apiBase}/${tipo}`, cuerpo); limpiar(); recargar() }) }
- function editar(item: Elemento) { setNombre(item.nombre); setSlug(item.slug ?? ''); setSlugManual(true); setEdicion(item.id); window.scrollTo({ top: 0, behavior: 'smooth' }) }
+ function limpiar() { setNombre(''); setEdicion(''); op.limpiar() }
+ async function guardar(e: FormEvent) { e.preventDefault(); await op.ejecutar(async () => { const cuerpo = { nombre } /* la dirección web la genera el backend y se conserva al editar */; if (edicion) await api.actualizar(`${apiBase}/${tipo}/${edicion}`, cuerpo); else await api.crear(`${apiBase}/${tipo}`, cuerpo); limpiar(); recargar() }) }
+ function editar(item: Elemento) { setNombre(item.nombre); setEdicion(item.id); op.limpiar(); window.scrollTo({ top: 0, behavior: 'smooth' }) }
  if (error || !datos) return <EstadoCarga error={error} recargar={recargar} />
  const visibles = datos.items.filter(i => i.nombre.toLowerCase().includes(busqueda.trim().toLowerCase()))
  const actual = datos.items.find(i => i.id === seleccion) ?? datos.items[0]
  const conteo = (id: string) => datos.productos.filter(p => p.idCategoria === id).length
 
  return <div className="space-y-6">
-  <section className="rounded-2xl border bg-card p-5">
+  <ZonaEdicion><section className="rounded-2xl border bg-card p-5">
    <div className="mb-4 flex items-center justify-between gap-3"><h3 className="font-semibold">{edicion ? `Editar ${singular}` : `Nueva ${singular}`}</h3>{edicion && <Button type="button" variant="ghost" size="sm" onClick={limpiar}><X className="size-4" />Cancelar</Button>}</div>
-   <form className="grid items-end gap-3 sm:grid-cols-[1fr_1fr_auto]" onSubmit={e => void guardar(e)}>
-    <label className="grid gap-1.5 text-sm font-medium">Nombre<input className={claseEntrada} required value={nombre} onChange={e => { setNombre(e.target.value); if (!slugManual) setSlug(slugificar(e.target.value)) }} placeholder={tipo === 'categorias' ? 'Ej. Polos' : 'Ej. Verano 2026'} /></label>
-    <label className="grid gap-1.5 text-sm font-medium"><span>Enlace <span className="font-normal text-muted-foreground">(se genera solo)</span></span><span className="relative"><span className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-sm text-muted-foreground">/</span><input className={`${claseEntrada} pl-6`} required value={slug} onChange={e => { setSlug(e.target.value); setSlugManual(true) }} placeholder="ejemplo-tienda" /></span></label>
-    <Button type="submit" className="h-11 rounded-xl px-5" disabled={op.ocupado}>{edicion ? 'Guardar cambios' : <><Plus className="size-4" />Crear</>}</Button>
+   <form className="grid items-start gap-3 sm:grid-cols-[1fr_auto]" onSubmit={e => void guardar(e)}>
+    <label className="grid gap-1.5 text-sm font-medium">Nombre<input className={claseEntrada + conError(op.errorDe('nombre') || op.errorDe('slug'))} required maxLength={100} value={nombre} onChange={e => setNombre(e.target.value)} placeholder={tipo === 'categorias' ? 'Ej. Polos' : 'Ej. Verano 2026'} /><ErrorCampo mensaje={op.errorDe('nombre') || op.errorDe('slug')} />{!op.errorDe('nombre') && !op.errorDe('slug') && <span className="text-xs font-normal text-muted-foreground">La dirección web se genera sola a partir del nombre.</span>}</label>
+    <Button type="submit" className="h-11 rounded-xl px-5 sm:mt-[26px]" disabled={op.ocupado}>{edicion ? 'Guardar cambios' : <><Plus className="size-4" />Crear</>}</Button>
    </form>
    <div className="mt-3"><Aviso error={op.error} /></div>
-  </section>
+  </section></ZonaEdicion>
 
   {datos.items.length === 0 ? <Vacio icono={tipo === 'categorias' ? <Tags className="size-6" /> : <Layers className="size-6" />} titulo={`Aún no tienes ${tipo}`} texto={tipo === 'categorias' ? 'Las categorías agrupan tus productos (por ejemplo: Polos, Pantalones).' : 'Las colecciones destacan productos juntos (por ejemplo: Verano, Ofertas).'} />
   : <div className="grid gap-5 lg:grid-cols-[300px_1fr]">
@@ -185,49 +183,49 @@ function DetalleGrupo({ apiBase, base, tipo, item, productos, alEditar, alCambia
   <div className="flex flex-wrap items-start justify-between gap-4 border-b p-5">
    <div className="min-w-0">
     <div className="flex flex-wrap items-center gap-2.5"><h3 className="truncate text-xl font-semibold tracking-tight">{item.nombre}</h3><span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold ${item.activa ? 'bg-emerald-500/12 text-emerald-700 dark:text-emerald-400' : 'bg-zinc-500/15 text-zinc-600 dark:text-zinc-400'}`}><span className={`size-1.5 rounded-full ${item.activa ? 'bg-emerald-500' : 'bg-zinc-400'}`} />{item.activa ? 'Activa' : 'Inactiva'}</span></div>
-    <p className="mt-1 text-sm text-muted-foreground">/{item.slug} · {lista ? `${lista.length} ${lista.length === 1 ? 'producto' : 'productos'}` : 'Cargando...'}</p>
+    <p className="mt-1 text-sm text-muted-foreground"><span title="Dirección web (se genera sola)">Dirección web: /{item.slug}</span> · {lista ? `${lista.length} ${lista.length === 1 ? 'producto' : 'productos'}` : 'Cargando...'}</p>
    </div>
-   <div className="flex gap-2">
+   <ZonaEdicion className="flex gap-2">
     <Button variant="outline" size="sm" onClick={alEditar}><Pencil className="size-4" />Editar</Button>
     <Button variant="outline" size="sm" disabled={op.ocupado} onClick={() => void op.ejecutar(async () => { await api.modificar(`${apiBase}/${tipo}/${item.id}/estado?activa=${!item.activa}`); alCambiar() })}>{item.activa ? 'Desactivar' : 'Activar'}</Button>
-   </div>
+   </ZonaEdicion>
   </div>
   <div className="space-y-4 p-5">
-   {esColeccion && enColeccion.datos && <div className="flex flex-wrap gap-2">
+   {esColeccion && enColeccion.datos && <ZonaEdicion className="flex flex-wrap gap-2">
     <select className={`${claseEntrada} min-w-56 flex-1 cursor-pointer`} value={agregar} onChange={e => setAgregar(e.target.value)} aria-label="Producto para agregar"><option value="">{disponibles.length ? 'Elige un producto para agregar...' : 'Todos tus productos ya están en esta colección'}</option>{disponibles.map(p => <option key={p.idProducto} value={p.idProducto}>{p.nombre}</option>)}</select>
     <Button className="h-11 rounded-xl" disabled={!agregar || op.ocupado} onClick={() => void op.ejecutar(async () => { await api.crear(`${apiBase}/colecciones/${item.id}/productos/${agregar}`); setAgregar(''); enColeccion.recargar() })}><Plus className="size-4" />Agregar</Button>
-   </div>}
+   </ZonaEdicion>}
    <Aviso error={op.error || enColeccion.error} />
    {!lista ? <div className="space-y-2">{[0, 1, 2].map(i => <div key={i} className="h-[76px] animate-pulse rounded-xl bg-muted" />)}</div>
    : lista.length === 0 ? <p className="rounded-xl border border-dashed px-5 py-8 text-center text-sm text-muted-foreground">{esColeccion ? 'Esta colección aún no tiene productos. Agrégalos con el selector de arriba.' : 'Ningún producto usa esta categoría. Elige la categoría al crear o editar un producto.'}</p>
-   : <div className="grid gap-2.5 xl:grid-cols-2">{lista.map(p => <TarjetaMini key={p.idProducto} producto={p} apiBase={apiBase} base={base} accion={esColeccion ? <button type="button" aria-label={`Quitar ${p.nombre} de la colección`} title="Quitar de la colección" disabled={op.ocupado} onClick={() => void op.ejecutar(async () => { await api.eliminar(`${apiBase}/colecciones/${item.id}/productos/${p.idProducto}`); enColeccion.recargar() })} className="grid size-8 shrink-0 cursor-pointer place-items-center rounded-lg text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"><X className="size-4" /></button> : undefined} />)}</div>}
+   : <div className="grid gap-2.5 xl:grid-cols-2">{lista.map(p => <TarjetaMini key={p.idProducto} producto={p} apiBase={apiBase} base={base} accion={esColeccion ? <ZonaEdicion><button type="button" aria-label={`Quitar ${p.nombre} de la colección`} title="Quitar de la colección" disabled={op.ocupado} onClick={() => void op.ejecutar(async () => { await api.eliminar(`${apiBase}/colecciones/${item.id}/productos/${p.idProducto}`); enColeccion.recargar() })} className="grid size-8 shrink-0 cursor-pointer place-items-center rounded-lg text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-40"><X className="size-4" /></button></ZonaEdicion> : undefined} />)}</div>}
   </div>
  </section>
 }
 
 function Variantes({ apiBase, base }: { apiBase: string; base: string }) {
- const [nombre, setNombre] = useState(''); const [edicion, setEdicion] = useState(''); const [seleccion, setSeleccion] = useState(''); const [busqueda, setBusqueda] = useState(''); const op = useOperacion()
+ const [nombre, setNombre] = useState(''); const [edicion, setEdicion] = useState(''); const [seleccion, setSeleccion] = useState(''); const [busqueda, setBusqueda] = useState(''); const op = useOperacion(['nombre'])
  const { datos, error, recargar } = useCarga(() => api.leer<Variante[]>(`${apiBase}/variantes`), [apiBase])
  if (error || !datos) return <EstadoCarga error={error} recargar={recargar} />
  const visibles = datos.filter(v => v.nombre.toLowerCase().includes(busqueda.trim().toLowerCase()))
  const actual = datos.find(v => v.idVariante === seleccion) ?? datos[0]
  return <div className="space-y-6">
-  <section className="rounded-2xl border bg-card p-5">
+  <ZonaEdicion><section className="rounded-2xl border bg-card p-5">
    <div className="mb-1 flex items-center justify-between gap-3"><h3 className="font-semibold">{edicion ? 'Editar variante' : 'Nueva variante'}</h3>{edicion && <Button type="button" variant="ghost" size="sm" onClick={() => { setEdicion(''); setNombre('') }}><X className="size-4" />Cancelar</Button>}</div>
    <p className="mb-4 text-sm text-muted-foreground">Opciones reutilizables como <strong className="font-medium text-foreground">Talla</strong> o <strong className="font-medium text-foreground">Color</strong>. Luego agrega sus valores (S, M, L…).</p>
    <form className="flex flex-wrap gap-3" onSubmit={e => { e.preventDefault(); void op.ejecutar(async () => { if (edicion) await api.actualizar(`${apiBase}/variantes/${edicion}`, { nombre }); else await api.crear(`${apiBase}/variantes`, { nombre }); setNombre(''); setEdicion(''); recargar() }) }}>
-    <input className={`${claseEntrada} min-w-56 flex-1`} aria-label="Nombre de variante" placeholder="Ej. Talla" required value={nombre} onChange={e => setNombre(e.target.value)} />
+    <label className="grid min-w-56 flex-1 gap-1"><input className={claseEntrada + conError(op.errorDe('nombre'))} aria-label="Nombre de variante" placeholder="Ej. Talla" required value={nombre} onChange={e => setNombre(e.target.value)} /><ErrorCampo mensaje={op.errorDe('nombre')} /></label>
     <Button type="submit" className="h-11 rounded-xl px-5" disabled={op.ocupado}>{edicion ? 'Guardar cambios' : <><Plus className="size-4" />Crear variante</>}</Button>
    </form>
    <div className="mt-3"><Aviso error={op.error} /></div>
-  </section>
-  {datos.length === 0 ? <Vacio icono={<SlidersHorizontal className="size-6" />} titulo="Aún no tienes variantes" texto="Crea una variante como Talla o Color para usarla en las presentaciones de tus productos." />
+  </section></ZonaEdicion>
+  {datos.length === 0 ? <Vacio icono={<SlidersHorizontal className="size-6" />} titulo="Aún no tienes variantes" texto="Crea una variante como Talla o Color para usarla en las versiones de tus productos." />
   : <div className="grid gap-5 lg:grid-cols-[300px_1fr]">
    <ListaLateral elementos={visibles} seleccionado={actual.idVariante} alElegir={setSeleccion} clave={v => v.idVariante} busqueda={busqueda} alBuscar={setBusqueda} placeholder="Buscar variante..." render={v => <><SlidersHorizontal className="size-4 shrink-0 opacity-60" /><span className="truncate text-sm font-medium">{v.nombre}</span></>} />
    <section className="rounded-2xl border bg-card">
     <div className="flex flex-wrap items-start justify-between gap-4 border-b p-5">
      <div><h3 className="text-xl font-semibold tracking-tight">{actual.nombre}</h3><p className="mt-1 text-sm text-muted-foreground">Haz clic en un valor para editarlo.</p></div>
-     <Button variant="outline" size="sm" onClick={() => { setNombre(actual.nombre); setEdicion(actual.idVariante); window.scrollTo({ top: 0, behavior: 'smooth' }) }}><Pencil className="size-4" />Editar nombre</Button>
+     <ZonaEdicion><Button variant="outline" size="sm" onClick={() => { setNombre(actual.nombre); setEdicion(actual.idVariante); window.scrollTo({ top: 0, behavior: 'smooth' }) }}><Pencil className="size-4" />Editar nombre</Button></ZonaEdicion>
     </div>
     <div className="space-y-6 p-5">
      <ValoresVariante key={actual.idVariante} apiBase={apiBase} variante={actual} />
@@ -248,21 +246,21 @@ function ProductosConVariante({ apiBase, base, variante }: { apiBase: string; ba
  return <div>
   <h4 className="mb-3 text-sm font-semibold">Productos que usan {variante.nombre.toLowerCase()} {datos && <span className="font-normal text-muted-foreground">({datos.length})</span>}</h4>
   {error ? <EstadoCarga error={error} recargar={recargar} /> : !datos ? <div className="space-y-2">{[0, 1].map(i => <div key={i} className="h-[76px] animate-pulse rounded-xl bg-muted" />)}</div>
-  : datos.length === 0 ? <p className="rounded-xl border border-dashed px-5 py-8 text-center text-sm text-muted-foreground">Ningún producto usa esta variante todavía. Se asigna al crear las presentaciones de un producto.</p>
+  : datos.length === 0 ? <p className="rounded-xl border border-dashed px-5 py-8 text-center text-sm text-muted-foreground">Ningún producto usa esta variante todavía. Se asigna al crear las versiones de un producto.</p>
   : <div className="grid gap-2.5 xl:grid-cols-2">{datos.map(({ producto, valores }) => <TarjetaMini key={producto.idProducto} producto={producto} apiBase={apiBase} base={base} detalle={<span className="mt-1 flex flex-wrap gap-1">{valores.map(v => <span key={v} className="rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-medium">{v}</span>)}</span>} />)}</div>}
  </div>
 }
 function ValoresVariante({ apiBase, variante }: { apiBase: string; variante: Variante }) {
- const ruta = `${apiBase}/variantes/${variante.idVariante}/valores`; const [valor, setValor] = useState(''); const [edicion, setEdicion] = useState(''); const op = useOperacion(); const { datos, error, recargar } = useCarga(() => api.leer<Valor[]>(ruta), [ruta])
+ const ruta = `${apiBase}/variantes/${variante.idVariante}/valores`; const [valor, setValor] = useState(''); const [edicion, setEdicion] = useState(''); const op = useOperacion(['valor']); const { datos, error, recargar } = useCarga(() => api.leer<Valor[]>(ruta), [ruta])
  return <div className="space-y-3">
   <h4 className="text-sm font-semibold">Valores {datos && <span className="font-normal text-muted-foreground">({datos.length})</span>}</h4>
   {error || !datos ? <EstadoCarga error={error} recargar={recargar} /> : datos.length === 0 ? <p className="text-sm text-muted-foreground">Aún no tiene valores.</p>
-  : <div className="flex flex-wrap gap-2">{datos.map(v => <button type="button" key={v.idValor} onClick={() => { setValor(v.valor); setEdicion(v.idValor) }} className={`group inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-medium transition hover:border-primary/50 ${edicion === v.idValor ? 'border-primary bg-primary/10 text-primary' : 'bg-background'}`}>{v.valor}<Pencil className="size-3 opacity-0 transition group-hover:opacity-60" /></button>)}</div>}
-  <form className="flex flex-wrap gap-2" onSubmit={e => { e.preventDefault(); void op.ejecutar(async () => { if (edicion) await api.actualizar(`${ruta}/${edicion}`, { valor }); else await api.crear(ruta, { valor }); setValor(''); setEdicion(''); recargar() }) }}>
-   <input className={`${claseEntrada} min-w-48 flex-1`} aria-label={`Valor de ${variante.nombre}`} placeholder={edicion ? 'Nuevo texto del valor' : 'Añadir un valor, ej. M'} required value={valor} onChange={e => setValor(e.target.value)} />
+  : <ZonaEdicion className="flex flex-wrap gap-2">{datos.map(v => <button type="button" key={v.idValor} onClick={() => { setValor(v.valor); setEdicion(v.idValor) }} className={`group inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-medium transition hover:border-primary/50 ${edicion === v.idValor ? 'border-primary bg-primary/10 text-primary' : 'bg-background'}`}>{v.valor}<Pencil className="size-3 opacity-0 transition group-hover:opacity-60" /></button>)}</ZonaEdicion>}
+  <ZonaEdicion><form className="flex flex-wrap gap-2" onSubmit={e => { e.preventDefault(); void op.ejecutar(async () => { if (edicion) await api.actualizar(`${ruta}/${edicion}`, { valor }); else await api.crear(ruta, { valor }); setValor(''); setEdicion(''); recargar() }) }}>
+   <label className="grid min-w-48 flex-1 gap-1"><input className={claseEntrada + conError(op.errorDe('valor'))} aria-label={`Valor de ${variante.nombre}`} placeholder={edicion ? 'Nuevo texto del valor' : 'Añadir un valor, ej. M'} required value={valor} onChange={e => setValor(e.target.value)} /><ErrorCampo mensaje={op.errorDe('valor')} /></label>
    <Button type="submit" variant={edicion ? 'default' : 'outline'} className="h-11 rounded-xl" disabled={op.ocupado}>{edicion ? 'Guardar valor' : <><Plus className="size-4" />Añadir valor</>}</Button>
    {edicion && <Button type="button" variant="ghost" className="h-11 rounded-xl" onClick={() => { setEdicion(''); setValor('') }}>Cancelar</Button>}
-  </form>
+  </form></ZonaEdicion>
   <Aviso error={op.error} />
  </div>
 }
@@ -293,18 +291,18 @@ export function DetalleProducto() {
 
   <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
    <div className="space-y-6">
-    <ProductoFormulario key={JSON.stringify(producto) + JSON.stringify(datos.stock)} producto={producto} categorias={datos.categorias} ruta={ruta} apiBase={apiBase} presentaciones={datos.presentaciones} stock={datos.stock} recargar={recargar} />
+    <ProductoFormulario key={JSON.stringify(producto)} producto={producto} categorias={datos.categorias} ruta={ruta} apiBase={apiBase} presentaciones={datos.presentaciones} stock={datos.stock} recargar={recargar} />
     <Imagenes ruta={ruta} imagenes={datos.imagenes} recargar={recargar} />
     <Presentaciones ruta={ruta} apiBase={apiBase} presentaciones={datos.presentaciones} valores={datos.valores} imagenes={datos.imagenes} stock={datos.stock} recargar={recargar} />
    </div>
    <div className="space-y-6 lg:sticky lg:top-24">
-    <EstadoPublicacion producto={producto} estadoTienda={tienda.estado} ruta={ruta} recargar={recargar} />
+    <EstadoPublicacion key={JSON.stringify([producto, tienda.estado, datos.presentaciones, datos.stock, datos.categorias])} producto={producto} ruta={ruta} recargar={recargar} />
     <ColeccionesProducto apiBase={apiBase} idProducto={idProducto} colecciones={datos.colecciones} asociadas={datos.asociadas} recargar={recargar} />
     <Tarjeta titulo="Resumen">
      <dl className="space-y-2.5 text-sm">
-      {([['Categoría', datos.categorias.find(c => c.idCategoria === producto.idCategoria)?.nombre ?? '—'], ['Precio base', soles(producto.precioBase)], ['Presentaciones', `${datos.presentaciones.filter(p => p.estado === 'ACTIVA').length} activas de ${datos.presentaciones.length}`], ['Stock total', `${Object.values(datos.stock).reduce((s, i) => s + (i.stockActual ?? 0), 0)} unid.`], ['Imágenes', String(datos.imagenes.length)], ['Colecciones', String(datos.asociadas.length)]] as const).map(([k, v]) => <div key={k} className="flex justify-between gap-3"><dt className="text-muted-foreground">{k}</dt><dd className="text-right font-medium">{v}</dd></div>)}
+      {([['Categoría', datos.categorias.find(c => c.idCategoria === producto.idCategoria)?.nombre ?? '—'], ['Precio base', soles(producto.precioBase)], ['Versiones', `${datos.presentaciones.filter(p => p.estado === 'ACTIVA').length} a la venta de ${datos.presentaciones.length}`], ['Unidades disponibles', String(Object.values(datos.stock).reduce((s, i) => s + (i.stockActual ?? 0), 0))], ['Imágenes', String(datos.imagenes.length)], ['Colecciones', String(datos.asociadas.length)]] as const).map(([k, v]) => <div key={k} className="flex justify-between gap-3"><dt className="text-muted-foreground">{k}</dt><dd className="text-right font-medium">{v}</dd></div>)}
      </dl>
-     <p className="mt-4 text-xs text-muted-foreground">El stock de cada presentación se ajusta en <Link to={`${base}/inventario`} className="font-medium text-primary hover:underline">Inventario</Link>.</p>
+     <p className="mt-4 text-xs text-muted-foreground">Las unidades de cada versión también se ajustan en <Link to={`${base}/inventario`} className="font-medium text-primary hover:underline">Inventario</Link>.</p>
     </Tarjeta>
    </div>
   </div>
@@ -313,44 +311,66 @@ export function DetalleProducto() {
 
 function ProductoFormulario({ producto, categorias, ruta, apiBase, presentaciones, stock, recargar }: { producto: Producto; categorias: Categoria[]; ruta: string; apiBase: string; presentaciones: Presentacion[]; stock: Record<string, Inventario>; recargar: () => void }) {
  const unica = presentaciones.length === 1 ? stock[presentaciones[0].idPresentacion] : undefined
- const [stockActual, setStockActual] = useState(String(unica?.stockActual ?? 0)); const [stockMin, setStockMin] = useState(String(unica?.stockMinimo ?? 0))
- const stockCambiado = !!unica && (stockActual !== String(unica.stockActual ?? 0) || stockMin !== String(unica.stockMinimo ?? 0))
  const total = Object.values(stock).reduce((s, i) => s + (i.stockActual ?? 0), 0)
- const [nombre, setNombre] = useState(producto.nombre); const [descripcion, setDescripcion] = useState(producto.descripcion ?? ''); const [precio, setPrecio] = useState(String(producto.precioBase)); const [categoria, setCategoria] = useState(producto.idCategoria); const op = useOperacion(); const [guardado, setGuardado] = useState(false)
- const datosCambiados = nombre !== producto.nombre || descripcion !== (producto.descripcion ?? '') || precio !== String(producto.precioBase) || categoria !== producto.idCategoria
- const cambiado = datosCambiados || stockCambiado
- return <Tarjeta titulo="Información del producto" descripcion="Nombre, precio, categoría y stock de tu producto.">
-  <form className="grid gap-4 sm:grid-cols-2" onSubmit={e => { e.preventDefault(); void op.ejecutar(async () => { if (datosCambiados) await api.actualizar(ruta, { nombre, descripcion, precioBase: Number(precio), idCategoria: categoria }); if (unica && stockCambiado) await api.actualizar(`${apiBase}/inventario/${unica.idPresentacion}`, { stockActual: Number(stockActual), stockMinimo: Number(stockMin) }); setGuardado(true); recargar() }) }}>
-   <label className="grid gap-1.5 text-sm font-medium sm:col-span-2">Nombre<input className={claseEntrada} required value={nombre} onChange={e => { setGuardado(false); setNombre(e.target.value) }} /></label>
-   <label className="grid gap-1.5 text-sm font-medium sm:col-span-2">Descripción<textarea className={`${claseEntrada} h-24 resize-y py-2.5`} value={descripcion} onChange={e => { setGuardado(false); setDescripcion(e.target.value) }} placeholder="Cuenta qué hace especial a este producto." /></label>
-   <label className="grid gap-1.5 text-sm font-medium">Precio base<span className="relative"><span className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-sm text-muted-foreground">S/</span><input className={`${claseEntrada} pl-9`} type="number" min="0" step="0.01" required value={precio} onChange={e => { setGuardado(false); setPrecio(e.target.value) }} /></span></label>
-   <label className="grid gap-1.5 text-sm font-medium">Categoría<select className={`${claseEntrada} cursor-pointer`} value={categoria} onChange={e => { setGuardado(false); setCategoria(e.target.value) }}>{categorias.map(c => <option key={c.idCategoria} value={c.idCategoria}>{c.nombre}</option>)}</select></label>
-   <div className="rounded-xl border bg-muted/30 p-4 sm:col-span-2">
-    <p className="flex items-center gap-2 text-sm font-semibold"><Boxes className="size-4 text-primary" />Stock</p>
-    {unica ? <div className="mt-3 grid gap-3 sm:grid-cols-2">
-     <label className="grid gap-1.5 text-sm font-medium">Stock disponible<input className={claseEntrada} type="number" min="0" step="1" required value={stockActual} onChange={e => { setGuardado(false); setStockActual(e.target.value) }} /></label>
-     <label className="grid gap-1.5 text-sm font-medium">Stock mínimo<input className={claseEntrada} type="number" min="0" step="1" required value={stockMin} onChange={e => { setGuardado(false); setStockMin(e.target.value) }} /></label>
-     <p className="text-xs text-muted-foreground sm:col-span-2">Se actualiza directo en Inventario. Avisamos "Stock bajo" cuando quede el mínimo o menos.</p>
-    </div>
-    : presentaciones.length === 0 ? <p className="mt-1 text-sm text-muted-foreground">Este producto aún no tiene presentación. Añade una abajo (en "Presentaciones") e indica su stock inicial.</p>
-    : <p className="mt-1 text-sm text-muted-foreground"><strong className="text-foreground">{total} unidades</strong> en {presentaciones.length} presentaciones. Ajusta el stock de cada una abajo, en "Presentaciones".</p>}
-   </div>
+ const [nombre, setNombre] = useState(producto.nombre); const [descripcion, setDescripcion] = useState(producto.descripcion ?? ''); const [precio, setPrecio] = useState(String(producto.precioBase)); const [categoria, setCategoria] = useState(producto.idCategoria); const op = useOperacion(['nombre', 'descripcion', 'precioBase', 'idCategoria']); const [guardado, setGuardado] = useState(false)
+ const cambiado = nombre !== producto.nombre || descripcion !== (producto.descripcion ?? '') || precio !== String(producto.precioBase) || categoria !== producto.idCategoria
+ return <Tarjeta titulo="Información del producto" descripcion="Nombre, precio, categoría y unidades de tu producto.">
+  <ZonaEdicion><form className="grid gap-4 sm:grid-cols-2" onSubmit={e => { e.preventDefault(); void op.ejecutar(async () => { await api.actualizar(ruta, { nombre, descripcion, precioBase: Number(precio), idCategoria: categoria }); setGuardado(true); recargar() }) }}>
+   <label className="grid gap-1.5 text-sm font-medium sm:col-span-2">Nombre<input className={claseEntrada + conError(op.errorDe('nombre'))} required maxLength={150} value={nombre} onChange={e => { setGuardado(false); setNombre(e.target.value) }} /><ErrorCampo mensaje={op.errorDe('nombre')} /></label>
+   <label className="grid gap-1.5 text-sm font-medium sm:col-span-2">Descripción<textarea className={`${claseEntrada} h-24 resize-y py-2.5${conError(op.errorDe('descripcion'))}`} value={descripcion} onChange={e => { setGuardado(false); setDescripcion(e.target.value) }} placeholder="Cuenta qué hace especial a este producto." /><ErrorCampo mensaje={op.errorDe('descripcion')} /></label>
+   <label className="grid gap-1.5 text-sm font-medium">Precio base<span className="relative"><span className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-sm text-muted-foreground">S/</span><input className={`${claseEntrada} pl-9${conError(op.errorDe('precioBase'))}`} type="number" min="0" step="0.01" required value={precio} onChange={e => { setGuardado(false); setPrecio(e.target.value) }} /></span><ErrorCampo mensaje={op.errorDe('precioBase')} /></label>
+   <label className="grid gap-1.5 text-sm font-medium">Categoría<select className={`${claseEntrada} cursor-pointer${conError(op.errorDe('idCategoria'))}`} value={categoria} onChange={e => { setGuardado(false); setCategoria(e.target.value) }}>{categorias.map(c => <option key={c.idCategoria} value={c.idCategoria}>{c.nombre}{c.activa ? '' : ' (inactiva)'}</option>)}</select><ErrorCampo mensaje={op.errorDe('idCategoria')} /></label>
    <div className="flex flex-wrap items-center justify-end gap-3 sm:col-span-2">
     {guardado && !cambiado && <span className="inline-flex items-center gap-1.5 text-sm text-emerald-600 dark:text-emerald-400"><Check className="size-4" />Cambios guardados</span>}
     <Button type="submit" className="h-11 rounded-xl px-5" disabled={op.ocupado || !cambiado}>{op.ocupado ? 'Guardando...' : 'Guardar cambios'}</Button>
    </div>
-  </form>
+  </form></ZonaEdicion>
   <div className="mt-3"><Aviso error={op.error} /></div>
+  <div className="mt-4 rounded-xl border bg-muted/30 p-4">
+   <p className="mb-2 flex items-center gap-2 text-sm font-semibold"><Boxes className="size-4 text-primary" />Unidades</p>
+   {unica && !unica.sinRegistroInventario ? <ControlStock apiBase={apiBase} idPresentacion={unica.idPresentacion} inventario={unica} nombre={producto.nombre} alCambiar={recargar} alRecargar={recargar} />
+   : presentaciones.length === 0 ? <p className="text-sm text-muted-foreground">Este producto aún no tiene versión. Añade una abajo, en "Versiones del producto", con sus unidades iniciales.</p>
+   : <p className="text-sm text-muted-foreground"><strong className="text-foreground">{total} disponibles</strong> en {presentaciones.length} versiones. Ajusta las unidades de cada una abajo, en "Versiones del producto".</p>}
+  </div>
  </Tarjeta>
 }
 
-function EstadoPublicacion({ producto, estadoTienda, ruta, recargar }: { producto: Producto; estadoTienda: string; ruta: string; recargar: () => void }) {
+const textoRequisito: Record<string, string> = {
+ TIENDA_ACTIVA: 'Tu tienda está abierta',
+ CATEGORIA_ACTIVA: 'Su categoría está activa',
+ VERSION_ACTIVA: 'Tiene al menos una versión a la venta',
+ VERSION_CON_UNIDADES: 'Alguna versión a la venta tiene unidades disponibles',
+}
+
+function EstadoPublicacion({ producto, ruta, recargar }: { producto: Producto; ruta: string; recargar: () => void }) {
  const op = useOperacion()
- const textos: Record<string, string> = { PUBLICADO: 'Visible en tu tienda para tus clientes.', BORRADOR: 'Solo tú lo ves. Publícalo cuando esté listo.', INACTIVO: 'Oculto en tu tienda.' }
+ const requisitos = useCarga(() => api.leer<RequisitosPublicacion>(`${ruta}/requisitos`), [ruta])
+ const textos: Record<string, string> = { PUBLICADO: 'Tus clientes lo ven en tu tienda.', BORRADOR: 'Solo tú lo ves. Publícalo cuando esté listo.', INACTIVO: 'Oculto: tus clientes no lo ven.' }
+ const pendientes = requisitos.datos?.requisitos.filter(r => !r.cumplido) ?? []
+ const publicable = !!requisitos.datos?.publicable
+ const motivo = !requisitos.datos ? 'Comprobando si está listo para publicar...' : pendientes[0]?.mensaje ?? ''
+ const cambiar = (estado: string) => void op.ejecutar(async () => { await api.modificar(`${ruta}/estado?estado=${estado}`); recargar() })
  return <Tarjeta titulo="Estado">
   <div className="flex items-center gap-2.5"><EstadoProducto estado={producto.estado} /><span className="text-sm text-muted-foreground">{textos[producto.estado] ?? ''}</span></div>
-  {estadoTienda !== 'ACTIVA' && <p className="mt-3 rounded-lg bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">Para publicar, la tienda debe estar activa. Usa el botón "Activar tienda" de arriba.</p>}
-  <div className="mt-4 grid gap-2">{['PUBLICADO', 'BORRADOR', 'INACTIVO'].filter(e => e !== producto.estado).map(estado => <Button key={estado} variant={estado === 'PUBLICADO' ? 'default' : 'outline'} className="h-10 w-full rounded-xl" disabled={op.ocupado || (estado === 'PUBLICADO' && estadoTienda !== 'ACTIVA')} onClick={() => void op.ejecutar(async () => { await api.modificar(`${ruta}/estado?estado=${estado}`); recargar() })}>{estado === 'PUBLICADO' ? <><Eye className="size-4" />Publicar</> : estado === 'INACTIVO' ? <><EyeOff className="size-4" />Desactivar</> : 'Pasar a borrador'}</Button>)}</div>
+
+  <div className="mt-4 rounded-xl border bg-muted/30 p-3.5">
+   <p className="text-sm font-semibold">Listo para publicar</p>
+   {requisitos.error ? <div className="mt-2"><EstadoCarga error={requisitos.error} recargar={requisitos.recargar} /></div>
+   : !requisitos.datos ? <div className="mt-2 space-y-2">{[0, 1, 2, 3].map(i => <div key={i} className="h-4 animate-pulse rounded bg-muted" />)}</div>
+   : <ul className="mt-2 space-y-2">{requisitos.datos.requisitos.map(r => <li key={r.codigo} className="flex gap-2 text-sm">
+     {r.cumplido ? <CircleCheck className="mt-0.5 size-4 shrink-0 text-emerald-600 dark:text-emerald-400" /> : <CircleX className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />}
+     <span className={r.cumplido ? '' : 'text-muted-foreground'}>{r.cumplido ? textoRequisito[r.codigo] ?? r.mensaje : r.mensaje}</span>
+    </li>)}</ul>}
+  </div>
+
+  <ZonaEdicion className="mt-4 grid gap-2">
+   {producto.estado !== 'PUBLICADO' && <>
+    <Button className="h-10 w-full rounded-xl" disabled={op.ocupado || !publicable} aria-describedby={!publicable ? 'motivo-publicar' : undefined} onClick={() => cambiar('PUBLICADO')}><Eye className="size-4" />Publicar</Button>
+    {!publicable && motivo && <p id="motivo-publicar" className="text-xs text-muted-foreground">{motivo}</p>}
+   </>}
+   {producto.estado !== 'INACTIVO' && <Button variant="outline" className="h-10 w-full rounded-xl" disabled={op.ocupado} onClick={() => cambiar('INACTIVO')}><EyeOff className="size-4" />Ocultar</Button>}
+   {producto.estado !== 'BORRADOR' && <Button variant="outline" className="h-10 w-full rounded-xl" disabled={op.ocupado} onClick={() => cambiar('BORRADOR')}>Pasar a borrador</Button>}
+  </ZonaEdicion>
   <div className="mt-3"><Aviso error={op.error} /></div>
  </Tarjeta>
 }
@@ -359,35 +379,35 @@ type VarianteConValores = Variante & { valores: Valor[] }
 function SelectorValores({ variantes, seleccion, cambiar }: { variantes: VarianteConValores[]; seleccion: Record<string, string>; cambiar: (v: Record<string, string>) => void }) { return <div className="grid gap-3 sm:grid-cols-3">{variantes.map(v => <label className="grid gap-1.5 text-sm font-medium" key={v.idVariante}>{v.nombre}<select className={`${claseEntrada} cursor-pointer`} value={seleccion[v.idVariante] ?? ''} onChange={e => cambiar({ ...seleccion, [v.idVariante]: e.target.value })}><option value="">Sin seleccionar</option>{v.valores.map(x => <option key={x.idValor} value={x.idValor}>{x.valor}</option>)}</select></label>)}</div> }
 
 function Presentaciones({ ruta, apiBase, presentaciones, valores, imagenes, stock, recargar }: { ruta: string; apiBase: string; presentaciones: Presentacion[]; valores: VarianteConValores[]; imagenes: Imagen[]; stock: Record<string, Inventario>; recargar: () => void }) {
- const [stockInicial, setStockInicial] = useState(''); const [stockMinimoInicial, setStockMinimoInicial] = useState(''); const [sku, setSku] = useState(''); const [precio, setPrecio] = useState(''); const [seleccion, setSeleccion] = useState<Record<string,string>>({}); const op = useOperacion(); const [mostrarNueva, setMostrarNueva] = useState(false); const [mostrarGenerador, setMostrarGenerador] = useState(false)
+ const [stockInicial, setStockInicial] = useState(''); const [stockMinimoInicial, setStockMinimoInicial] = useState(''); const [sku, setSku] = useState(''); const [precio, setPrecio] = useState(''); const [seleccion, setSeleccion] = useState<Record<string,string>>({}); const op = useOperacion(['sku', 'precioOverride', 'idsValores', 'stockInicial', 'stockMinimo']); const [mostrarNueva, setMostrarNueva] = useState(false); const [mostrarGenerador, setMostrarGenerador] = useState(false)
  const formularioVisible = mostrarNueva || presentaciones.length === 0
- return <Tarjeta titulo="Presentaciones" descripcion="Cada combinación que vendes (por ejemplo talla M, color azul), con su SKU y precio." accion={<div className="flex gap-2">{valores.some(v => v.valores.length > 0) && <Button variant="outline" size="sm" onClick={() => setMostrarGenerador(g => !g)}><Sparkles className="size-4" />Generar combinaciones</Button>}{!formularioVisible && <Button variant="outline" size="sm" onClick={() => setMostrarNueva(true)}><Plus className="size-4" />Añadir</Button>}</div>}>
+ return <Tarjeta titulo="Versiones del producto" descripcion="Cada combinación que vendes (por ejemplo talla M, color azul), con su precio y sus unidades." accion={<ZonaEdicion className="flex gap-2">{valores.some(v => v.valores.length > 0) && <Button variant="outline" size="sm" onClick={() => setMostrarGenerador(g => !g)}><Sparkles className="size-4" />Generar combinaciones</Button>}{!formularioVisible && <Button variant="outline" size="sm" onClick={() => setMostrarNueva(true)}><Plus className="size-4" />Añadir</Button>}</ZonaEdicion>}>
   <div className="space-y-4">
-   {mostrarGenerador && <GeneradorCombinaciones ruta={ruta} apiBase={apiBase} variantes={valores} presentaciones={presentaciones} alCerrar={() => setMostrarGenerador(false)} alTerminar={() => { setMostrarGenerador(false); recargar() }} />}
-   {formularioVisible && <form className="space-y-4 rounded-xl border border-dashed bg-muted/30 p-4" onSubmit={e => { e.preventDefault(); void op.ejecutar(async () => { const nueva = await api.crear<Presentacion>(`${ruta}/presentaciones`, { sku, precioOverride: precio === '' ? null : Number(precio), idsValores: Object.values(seleccion).filter(Boolean) }); if (stockInicial !== '') await api.actualizar(`${apiBase}/inventario/${nueva.idPresentacion}`, { stockActual: Number(stockInicial), stockMinimo: Number(stockMinimoInicial || 0) }); setSku(''); setPrecio(''); setStockInicial(''); setStockMinimoInicial(''); setSeleccion({}); setMostrarNueva(false); recargar() }) }}>
-    <div className="flex items-center justify-between gap-3"><p className="text-sm font-semibold">Nueva presentación</p>{presentaciones.length > 0 && <button type="button" aria-label="Cerrar" onClick={() => setMostrarNueva(false)} className="grid size-7 cursor-pointer place-items-center rounded-lg text-muted-foreground hover:bg-muted"><X className="size-4" /></button>}</div>
+   {mostrarGenerador && <GeneradorCombinaciones ruta={ruta} variantes={valores} presentaciones={presentaciones} alCerrar={() => setMostrarGenerador(false)} alTerminar={() => { setMostrarGenerador(false); recargar() }} />}
+   {formularioVisible && <ZonaEdicion><form className="space-y-4 rounded-xl border border-dashed bg-muted/30 p-4" onSubmit={e => { e.preventDefault(); void op.ejecutar(async () => { await api.crear<Presentacion>(`${ruta}/presentaciones`, { sku: sku.trim() || undefined, precioOverride: precio === '' ? null : Number(precio), idsValores: Object.values(seleccion).filter(Boolean), stockInicial: stockInicial === '' ? undefined : Number(stockInicial), stockMinimo: stockMinimoInicial === '' ? undefined : Number(stockMinimoInicial) }); setSku(''); setPrecio(''); setStockInicial(''); setStockMinimoInicial(''); setSeleccion({}); setMostrarNueva(false); recargar() }) }}>
+    <div className="flex items-center justify-between gap-3"><p className="text-sm font-semibold">Nueva versión</p>{presentaciones.length > 0 && <button type="button" aria-label="Cerrar" onClick={() => setMostrarNueva(false)} className="grid size-7 cursor-pointer place-items-center rounded-lg text-muted-foreground hover:bg-muted"><X className="size-4" /></button>}</div>
     <div className="grid gap-3 sm:grid-cols-2">
-     <label className="grid gap-1.5 text-sm font-medium">SKU<input className={claseEntrada} required maxLength={80} value={sku} onChange={e => setSku(e.target.value)} placeholder="Código único, ej. CAM-LIN-M" /></label>
-     <label className="grid gap-1.5 text-sm font-medium"><span>Precio especial <span className="font-normal text-muted-foreground">(opcional)</span></span><span className="relative"><span className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-sm text-muted-foreground">S/</span><input className={`${claseEntrada} pl-9`} type="number" min="0" step="0.01" value={precio} onChange={e => setPrecio(e.target.value)} placeholder="Usa el precio base" /></span></label>
+     <CampoCodigoInterno valor={sku} cambiar={setSku} error={op.errorDe('sku')} />
+     <label className="grid gap-1.5 text-sm font-medium"><span>Precio especial <span className="font-normal text-muted-foreground">(opcional)</span></span><span className="relative"><span className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-sm text-muted-foreground">S/</span><input className={`${claseEntrada} pl-9${conError(op.errorDe('precioOverride'))}`} type="number" min="0" step="0.01" value={precio} onChange={e => setPrecio(e.target.value)} placeholder="Usa el precio base" /></span><ErrorCampo mensaje={op.errorDe('precioOverride')} /></label>
     </div>
-    {valores.length > 0 ? <SelectorValores variantes={valores} seleccion={seleccion} cambiar={setSeleccion} /> : <p className="text-xs text-muted-foreground">Sin variantes: esta será la presentación única del producto.</p>}
+    {valores.length > 0 ? <SelectorValores variantes={valores} seleccion={seleccion} cambiar={setSeleccion} /> : <p className="text-xs text-muted-foreground">Sin variantes: esta será la versión única del producto.</p>}
+    <ErrorCampo mensaje={op.errorDe('idsValores')} />
     <div className="grid gap-3 sm:grid-cols-2">
-     <label className="grid gap-1.5 text-sm font-medium">Stock inicial<input className={claseEntrada} type="number" min="0" step="1" value={stockInicial} onChange={e => setStockInicial(e.target.value)} placeholder="Ej. 20" /></label>
-     <label className="grid gap-1.5 text-sm font-medium">Stock mínimo<input className={claseEntrada} type="number" min="0" step="1" value={stockMinimoInicial} onChange={e => setStockMinimoInicial(e.target.value)} placeholder="Ej. 3" /></label>
+     <label className="grid gap-1.5 text-sm font-medium"><span>Unidades iniciales <span className="font-normal text-muted-foreground">(opcional)</span></span><input className={claseEntrada + conError(op.errorDe('stockInicial'))} type="number" min="0" step="1" value={stockInicial} onChange={e => setStockInicial(e.target.value)} placeholder="Ej. 20" /><ErrorCampo mensaje={op.errorDe('stockInicial')} /></label>
+     <label className="grid gap-1.5 text-sm font-medium"><span>Avisarme cuando queden <span className="font-normal text-muted-foreground">(opcional)</span></span><input className={claseEntrada + conError(op.errorDe('stockMinimo'))} type="number" min="0" step="1" value={stockMinimoInicial} onChange={e => setStockMinimoInicial(e.target.value)} placeholder="Ej. 3" /><ErrorCampo mensaje={op.errorDe('stockMinimo')} /></label>
     </div>
-    <div className="flex justify-end"><Button type="submit" className="h-10 rounded-xl" disabled={op.ocupado}><Plus className="size-4" />Añadir presentación</Button></div>
+    <div className="flex justify-end"><Button type="submit" className="h-10 rounded-xl" disabled={op.ocupado}><Plus className="size-4" />Añadir versión</Button></div>
     <Aviso error={op.error} />
-   </form>}
+   </form></ZonaEdicion>}
    {presentaciones.length > 0 && <ListaPresentaciones presentaciones={presentaciones} variantes={valores} stock={stock} fila={(p, ocultar) => <PresentacionFila key={`${p.idPresentacion}-${p.sku}-${p.precioOverride}-${p.estado}-${p.idsValores.join(",")}-${stock[p.idPresentacion]?.stockActual}-${stock[p.idPresentacion]?.stockMinimo}`} presentacion={p} ruta={`${ruta}/presentaciones/${p.idPresentacion}`} apiBase={apiBase} variantes={valores} imagenes={imagenes} inventario={stock[p.idPresentacion]} ocultarVariante={ocultar} recargar={recargar} />} />}
   </div>
  </Tarjeta>
 }
 
 function PresentacionFila({ presentacion, ruta, apiBase, variantes, imagenes, inventario, ocultarVariante, recargar }: { presentacion: Presentacion; ruta: string; apiBase: string; variantes: VarianteConValores[]; imagenes: Imagen[]; inventario?: Inventario; ocultarVariante?: string; recargar: () => void }) {
- const [stockActual, setStockActual] = useState(String(inventario?.stockActual ?? 0)); const [stockMin, setStockMin] = useState(String(inventario?.stockMinimo ?? 0))
  const unidades = inventario?.stockActual ?? null
  const stockBajo = inventario && !inventario.sinRegistroInventario && (inventario.stockActual ?? 0) <= (inventario.stockMinimo ?? 0)
- const [sku, setSku] = useState(presentacion.sku); const [precio, setPrecio] = useState(presentacion.precioOverride === null ? '' : String(presentacion.precioOverride)); const [seleccion, setSeleccion] = useState<Record<string,string>>(() => Object.fromEntries(variantes.flatMap(variante => { const valor = variante.valores.find(v => presentacion.idsValores.includes(v.idValor)); return valor ? [[variante.idVariante, valor.idValor]] : [] }))); const op = useOperacion(); const asignadas = useCarga(() => api.leer<Imagen[]>(`${apiBase}/presentaciones/${presentacion.idPresentacion}/imagenes`), [apiBase, presentacion.idPresentacion])
+ const [sku, setSku] = useState(presentacion.sku); const [precio, setPrecio] = useState(presentacion.precioOverride === null ? '' : String(presentacion.precioOverride)); const [seleccion, setSeleccion] = useState<Record<string,string>>(() => Object.fromEntries(variantes.flatMap(variante => { const valor = variante.valores.find(v => presentacion.idsValores.includes(v.idValor)); return valor ? [[variante.idVariante, valor.idValor]] : [] }))); const op = useOperacion(['sku', 'precioOverride', 'idsValores']); const asignadas = useCarga(() => api.leer<Imagen[]>(`${apiBase}/presentaciones/${presentacion.idPresentacion}/imagenes`), [apiBase, presentacion.idPresentacion])
  const [abierta, setAbierta] = useState(false)
  const activa = presentacion.estado === 'ACTIVA'
  const etiquetas = variantes.filter(v => v.idVariante !== ocultarVariante).flatMap(v => v.valores.filter(x => presentacion.idsValores.includes(x.idValor)).map(x => `${v.nombre.charAt(0) + v.nombre.slice(1).toLowerCase()}: ${x.valor}`))
@@ -396,30 +416,27 @@ function PresentacionFila({ presentacion, ruta, apiBase, variantes, imagenes, in
   <button type="button" onClick={() => setAbierta(a => !a)} className="flex w-full cursor-pointer flex-wrap items-center gap-3 px-3.5 py-2.5 text-left transition hover:bg-muted/40">
    <span className="relative size-9 shrink-0 overflow-hidden rounded-lg bg-muted">{miniatura ? <img src={miniatura.url} alt="" className="size-full object-cover" /> : <Package className="absolute top-1/2 left-1/2 size-4 -translate-x-1/2 -translate-y-1/2 text-muted-foreground" />}</span>
    <span className="min-w-0 flex-1">
-    <span className="flex flex-wrap items-center gap-1.5">{etiquetas.length ? etiquetas.map(t => <span key={t} className="inline-flex items-center gap-1.5 rounded-md bg-muted px-2 py-0.5 text-xs font-medium">{muestra(t.split(': ')[1]) && <span className="size-2.5 rounded-full border border-black/15" style={{ background: muestra(t.split(': ')[1]) }} />}{t}</span>) : !ocultarVariante && <span className="text-sm font-medium">Presentación única</span>}</span>
+    <span className="flex flex-wrap items-center gap-1.5">{etiquetas.length ? etiquetas.map(t => <span key={t} className="inline-flex items-center gap-1.5 rounded-md bg-muted px-2 py-0.5 text-xs font-medium">{muestra(t.split(': ')[1]) && <span className="size-2.5 rounded-full border border-black/15" style={{ background: muestra(t.split(': ')[1]) }} />}{t}</span>) : !ocultarVariante && <span className="text-sm font-medium">Versión única</span>}</span>
     <span className="mt-0.5 block truncate font-mono text-[11px] text-muted-foreground">{presentacion.sku}</span>
    </span>
-   {unidades !== null && <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${unidades === 0 ? 'bg-red-500/12 text-red-600 dark:text-red-400' : stockBajo ? 'bg-amber-500/15 text-amber-700 dark:text-amber-400' : 'bg-muted text-foreground'}`}>{unidades === 0 ? 'Agotado' : `${unidades} en stock`}</span>}
+   {unidades !== null && <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${unidades === 0 ? 'bg-red-500/12 text-red-600 dark:text-red-400' : stockBajo ? 'bg-amber-500/15 text-amber-700 dark:text-amber-400' : 'bg-muted text-foreground'}`}>{unidades === 0 ? 'Agotado' : `${unidades} ${unidades === 1 ? 'disponible' : 'disponibles'}`}{(inventario?.stockReservado ?? 0) > 0 && ` · ${inventario!.stockReservado} ${inventario!.stockReservado === 1 ? 'apartada' : 'apartadas'}`}</span>}
    <span className="text-right"><span className="block font-semibold">{soles(presentacion.precioEfectivo)}</span>{presentacion.precioOverride !== null && <span className="text-[11px] text-muted-foreground">precio especial</span>}</span>
-   <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${activa ? 'bg-emerald-500/12 text-emerald-700 dark:text-emerald-400' : 'bg-zinc-500/15 text-zinc-600 dark:text-zinc-400'}`}>{activa ? 'Activa' : 'Inactiva'}</span>
+   <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${claseTono[etiquetaVersion(presentacion.estado).tono].clase}`}>{etiquetaVersion(presentacion.estado).texto}</span>
    <ChevronDown className={`size-4 text-muted-foreground transition-transform ${abierta ? 'rotate-180' : ''}`} />
   </button>
   {abierta && <div className="space-y-5 border-t p-4">
-   <form className="grid items-end gap-3 sm:grid-cols-[1fr_1fr_auto]" onSubmit={e => { e.preventDefault(); void op.ejecutar(async () => { await api.actualizar(ruta, { sku, precioOverride: precio === '' ? null : Number(precio) }); recargar() }) }}>
-    <label className="grid gap-1.5 text-sm font-medium">SKU<input className={claseEntrada} required value={sku} onChange={e => setSku(e.target.value)} /></label>
-    <label className="grid gap-1.5 text-sm font-medium">Precio especial<span className="relative"><span className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-sm text-muted-foreground">S/</span><input className={`${claseEntrada} pl-9`} type="number" min="0" step="0.01" value={precio} onChange={e => setPrecio(e.target.value)} placeholder="Precio base" /></span></label>
-    <Button type="submit" className="h-11 rounded-xl" disabled={op.ocupado}>Guardar</Button>
+   {inventario && !inventario.sinRegistroInventario && <ControlStock apiBase={apiBase} idPresentacion={presentacion.idPresentacion} inventario={inventario} nombre={etiquetas.join(', ') || presentacion.sku} alCambiar={recargar} alRecargar={recargar} />}
+   <ZonaEdicion className="block space-y-5"><form className="grid items-start gap-3 sm:grid-cols-[1fr_1fr_auto]" onSubmit={e => { e.preventDefault(); void op.ejecutar(async () => { await api.actualizar(ruta, { sku, precioOverride: precio === '' ? null : Number(precio) }); recargar() }) }}>
+    <CampoCodigoInterno valor={sku} cambiar={setSku} error={op.errorDe('sku')} obligatorio />
+    <label className="grid gap-1.5 text-sm font-medium">Precio especial<span className="relative"><span className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-sm text-muted-foreground">S/</span><input className={`${claseEntrada} pl-9${conError(op.errorDe('precioOverride'))}`} type="number" min="0" step="0.01" value={precio} onChange={e => setPrecio(e.target.value)} placeholder="Precio base" /></span><ErrorCampo mensaje={op.errorDe('precioOverride')} /></label>
+    <Button type="submit" className="h-11 rounded-xl sm:mt-[26px]" disabled={op.ocupado}>Guardar</Button>
    </form>
-   {inventario && <form className="grid items-end gap-3 rounded-xl bg-muted/40 p-3 sm:grid-cols-[1fr_1fr_auto]" onSubmit={e => { e.preventDefault(); void op.ejecutar(async () => { await api.actualizar(`${apiBase}/inventario/${presentacion.idPresentacion}`, { stockActual: Number(stockActual), stockMinimo: Number(stockMin) }); recargar() }) }}>
-    <label className="grid gap-1.5 text-sm font-medium">Stock disponible<input className={claseEntrada} type="number" min="0" step="1" required value={stockActual} onChange={e => setStockActual(e.target.value)} /></label>
-    <label className="grid gap-1.5 text-sm font-medium">Stock mínimo<input className={claseEntrada} type="number" min="0" step="1" required value={stockMin} onChange={e => setStockMin(e.target.value)} /></label>
-    <Button type="submit" variant="outline" className="h-11 rounded-xl" disabled={op.ocupado || (stockActual === String(inventario.stockActual ?? 0) && stockMin === String(inventario.stockMinimo ?? 0))}><Boxes className="size-4" />Guardar stock</Button>
-   </form>}
-   {variantes.length > 0 && <div className="space-y-3"><p className="text-sm font-semibold">Combinación de variantes</p><SelectorValores variantes={variantes} seleccion={seleccion} cambiar={setSeleccion} /><Button variant="outline" size="sm" disabled={op.ocupado} onClick={() => void op.ejecutar(async () => { await api.actualizar(`${ruta}/valores`, Object.values(seleccion).filter(Boolean)); recargar() })}>Guardar combinación</Button></div>}
-   {imagenes.length > 0 && <div className="space-y-3"><p className="text-sm font-semibold">Fotos de esta presentación <span className="font-normal text-muted-foreground">(toca para asignar o quitar)</span></p>
+   {variantes.length > 0 && <div className="space-y-3"><p className="text-sm font-semibold">Combinación de variantes</p><SelectorValores variantes={variantes} seleccion={seleccion} cambiar={setSeleccion} /><ErrorCampo mensaje={op.errorDe('idsValores')} /><Button variant="outline" size="sm" disabled={op.ocupado} onClick={() => void op.ejecutar(async () => { await api.actualizar(`${ruta}/valores`, Object.values(seleccion).filter(Boolean)); recargar() })}>Guardar combinación</Button></div>}
+   {imagenes.length > 0 && <div className="space-y-3"><p className="text-sm font-semibold">Fotos de esta versión <span className="font-normal text-muted-foreground">(toca para asignar o quitar)</span></p>
     {asignadas.error || !asignadas.datos ? <EstadoCarga error={asignadas.error} recargar={asignadas.recargar} /> : <div className="flex flex-wrap gap-2">{imagenes.map(imagen => { const vinculada = asignadas.datos!.some(a => a.idImagen === imagen.idImagen); return <button type="button" key={imagen.idImagen} aria-pressed={vinculada} disabled={op.ocupado} onClick={() => void op.ejecutar(async () => { const r = `${apiBase}/presentaciones/${presentacion.idPresentacion}/imagenes/${imagen.idImagen}`; if (vinculada) await api.eliminar(r); else await api.crear(r); asignadas.recargar() })} className={`relative size-16 cursor-pointer overflow-hidden rounded-lg border-2 transition ${vinculada ? 'border-primary' : 'border-transparent opacity-60 hover:opacity-100'}`}><img src={imagen.url} alt={`Imagen ${imagen.orden}`} className="size-full object-cover" />{vinculada && <span className="absolute top-1 right-1 grid size-5 place-items-center rounded-full bg-primary text-primary-foreground"><Check className="size-3" strokeWidth={3} /></span>}</button> })}</div>}
    </div>}
-   <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4"><Aviso error={op.error} /><Button type="button" variant="outline" size="sm" className="ml-auto" disabled={op.ocupado} onClick={() => void op.ejecutar(async () => { await api.modificar(`${ruta}/estado?estado=${activa ? 'INACTIVA' : 'ACTIVA'}`); recargar() })}>{activa ? 'Desactivar presentación' : 'Activar presentación'}</Button></div>
+   <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4"><Aviso error={op.error} /><Button type="button" variant="outline" size="sm" className="ml-auto" disabled={op.ocupado} onClick={() => void op.ejecutar(async () => { await api.modificar(`${ruta}/estado?estado=${activa ? 'INACTIVA' : 'ACTIVA'}`); recargar() })}>{activa ? 'Pausar la venta' : 'Poner a la venta'}</Button></div>
+   </ZonaEdicion>
   </div>}
  </div>
 }
@@ -430,7 +447,7 @@ function Imagenes({ ruta, imagenes, recargar }: { ruta: string; imagenes: Imagen
  function subir(archivo: File) { const datos = new FormData(); datos.append('archivo', archivo); void op.ejecutar(async () => { await api.crear(`${base}?orden=${Math.max(0, ...imagenes.map(i => i.orden)) + 1}&esPrincipal=${imagenes.length === 0}`, datos); recargar() }) }
  const accionImagen = 'grid size-8 cursor-pointer place-items-center rounded-lg bg-white/90 text-zinc-800 shadow transition hover:bg-white disabled:opacity-40'
  return <Tarjeta titulo="Fotos" descripcion="La foto principal es la que se ve en el catálogo. Pasa el mouse sobre una foto para ver sus opciones.">
-  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+  <ZonaEdicion><div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
    {ordenadas.map((i, indice) => <div key={i.idImagen} className={`group relative aspect-square overflow-hidden rounded-xl border bg-muted ${indice === 0 ? 'sm:col-span-2 sm:row-span-2' : ''}`}>
     <img src={i.url} alt={`Imagen ${i.orden}`} className="size-full object-cover" />
     {i.esPrincipal && <span className="absolute top-2 left-2 inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[11px] font-semibold text-primary-foreground"><Star className="size-3 fill-current" />Principal</span>}
@@ -448,7 +465,7 @@ function Imagenes({ ruta, imagenes, recargar }: { ruta: string; imagenes: Imagen
     {imagenes.length === 0 && <span className="text-xs">JPG o PNG. Será la foto principal.</span>}
     <input type="file" accept="image/*" className="sr-only" disabled={op.ocupado} onChange={e => { const archivo = e.target.files?.[0]; if (archivo) subir(archivo); e.target.value = '' }} />
    </label>
-  </div>
+  </div></ZonaEdicion>
   <div className="mt-3"><Aviso error={op.error} /></div>
  </Tarjeta>
 }
@@ -457,13 +474,13 @@ function ColeccionesProducto({ apiBase, idProducto, colecciones, asociadas, reca
  const op = useOperacion()
  return <Tarjeta titulo="Colecciones" descripcion="Toca una colección para agregar o quitar el producto.">
   {colecciones.length === 0 ? <p className="text-sm text-muted-foreground">Crea colecciones en la pestaña Colecciones del catálogo para asignarlas aquí.</p>
-  : <div className="flex flex-wrap gap-2">{colecciones.map(c => { const asignada = asociadas.some(a => a.idColeccion === c.idColeccion); return <button type="button" key={c.idColeccion} aria-pressed={asignada} disabled={op.ocupado} onClick={() => void op.ejecutar(async () => { const ruta = `${apiBase}/colecciones/${c.idColeccion}/productos/${idProducto}`; if (asignada) await api.eliminar(ruta); else await api.crear(ruta); recargar() })} className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition ${asignada ? 'border-primary bg-primary text-primary-foreground' : 'bg-background hover:border-primary/50'}`}>{asignada ? <Check className="size-3.5" strokeWidth={3} /> : <Plus className="size-3.5" />}{c.nombre}{!c.activa && <span className="opacity-70">(inactiva)</span>}</button> })}</div>}
+  : <ZonaEdicion className="flex flex-wrap gap-2">{colecciones.map(c => { const asignada = asociadas.some(a => a.idColeccion === c.idColeccion); return <button type="button" key={c.idColeccion} aria-pressed={asignada} disabled={op.ocupado} onClick={() => void op.ejecutar(async () => { const ruta = `${apiBase}/colecciones/${c.idColeccion}/productos/${idProducto}`; if (asignada) await api.eliminar(ruta); else await api.crear(ruta); recargar() })} className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition ${asignada ? 'border-primary bg-primary text-primary-foreground' : 'bg-background hover:border-primary/50'}`}>{asignada ? <Check className="size-3.5" strokeWidth={3} /> : <Plus className="size-3.5" />}{c.nombre}{!c.activa && <span className="opacity-70">(inactiva)</span>}</button> })}</ZonaEdicion>}
   <div className="mt-3"><Aviso error={op.error} /></div>
  </Tarjeta>
 }
 
 // Crea de una vez una presentación por cada combinación de valores elegidos (ej. S/M/L × Rojo/Negro).
-function GeneradorCombinaciones({ ruta, apiBase, variantes, presentaciones, alCerrar, alTerminar }: { ruta: string; apiBase: string; variantes: VarianteConValores[]; presentaciones: Presentacion[]; alCerrar: () => void; alTerminar: () => void }) {
+function GeneradorCombinaciones({ ruta, variantes, presentaciones, alCerrar, alTerminar }: { ruta: string; variantes: VarianteConValores[]; presentaciones: Presentacion[]; alCerrar: () => void; alTerminar: () => void }) {
  const [elegidos, setElegidos] = useState<Record<string, string[]>>({}); const [precio, setPrecio] = useState(''); const [stock, setStock] = useState(''); const [stockMinimo, setStockMinimo] = useState(''); const [prefijo, setPrefijo] = useState('PROD'); const [progreso, setProgreso] = useState(''); const op = useOperacion()
  const conValores = variantes.filter(v => (elegidos[v.idVariante] ?? []).length > 0)
  const combinaciones = conValores.reduce<Valor[][]>((acc, v) => acc.flatMap(c => v.valores.filter(x => elegidos[v.idVariante].includes(x.idValor)).map(x => [...c, x])), [[]]).filter(c => c.length > 0)
@@ -472,16 +489,16 @@ function GeneradorCombinaciones({ ruta, apiBase, variantes, presentaciones, alCe
  const alternar = (idVariante: string, idValor: string) => setElegidos(e => { const lista = e[idVariante] ?? []; return { ...e, [idVariante]: lista.includes(idValor) ? lista.filter(x => x !== idValor) : [...lista, idValor] } })
  const limpiarSku = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]+/g, '-').replace(/^-+|-+$/g, '')
  return <div className="space-y-4 rounded-xl border border-primary/30 bg-primary/5 p-4">
-  <div className="flex items-start justify-between gap-3"><div><p className="flex items-center gap-2 text-sm font-semibold"><Sparkles className="size-4 text-primary" />Generar combinaciones</p><p className="mt-0.5 text-xs text-muted-foreground">Marca los valores que vendes. Se creará una presentación por cada combinación (las que ya existen se omiten).</p></div><button type="button" aria-label="Cerrar" onClick={alCerrar} className="grid size-7 cursor-pointer place-items-center rounded-lg text-muted-foreground hover:bg-muted"><X className="size-4" /></button></div>
+  <div className="flex items-start justify-between gap-3"><div><p className="flex items-center gap-2 text-sm font-semibold"><Sparkles className="size-4 text-primary" />Generar combinaciones</p><p className="mt-0.5 text-xs text-muted-foreground">Marca los valores que vendes. Se creará una versión por cada combinación (las que ya existen se omiten).</p></div><button type="button" aria-label="Cerrar" onClick={alCerrar} className="grid size-7 cursor-pointer place-items-center rounded-lg text-muted-foreground hover:bg-muted"><X className="size-4" /></button></div>
   {variantes.filter(v => v.valores.length > 0).map(v => <div key={v.idVariante}>
    <p className="mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">{v.nombre}</p>
    <div className="flex flex-wrap gap-2">{v.valores.map(x => { const activo = (elegidos[v.idVariante] ?? []).includes(x.idValor); return <button type="button" key={x.idValor} aria-pressed={activo} onClick={() => alternar(v.idVariante, x.idValor)} className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition ${activo ? 'border-primary bg-primary text-primary-foreground' : 'bg-background hover:border-primary/50'}`}>{activo && <Check className="size-3.5" strokeWidth={3} />}{x.valor}</button> })}</div>
   </div>)}
   <div className="grid gap-3 sm:grid-cols-4">
-   <label className="grid gap-1.5 text-sm font-medium">Prefijo SKU<input className={claseEntrada} value={prefijo} onChange={e => setPrefijo(limpiarSku(e.target.value))} maxLength={30} /></label>
+   <label className="grid gap-1.5 text-sm font-medium">Prefijo del código interno<input className={claseEntrada} value={prefijo} onChange={e => setPrefijo(limpiarSku(e.target.value))} maxLength={30} /></label>
    <label className="grid gap-1.5 text-sm font-medium">Precio especial<input className={claseEntrada} type="number" min="0" step="0.01" value={precio} onChange={e => setPrecio(e.target.value)} placeholder="Precio base" /></label>
-   <label className="grid gap-1.5 text-sm font-medium">Stock c/u<input className={claseEntrada} type="number" min="0" step="1" value={stock} onChange={e => setStock(e.target.value)} placeholder="Ej. 10" /></label>
-   <label className="grid gap-1.5 text-sm font-medium">Stock mínimo<input className={claseEntrada} type="number" min="0" step="1" value={stockMinimo} onChange={e => setStockMinimo(e.target.value)} placeholder="Ej. 2" /></label>
+   <label className="grid gap-1.5 text-sm font-medium">Unidades c/u<input className={claseEntrada} type="number" min="0" step="1" value={stock} onChange={e => setStock(e.target.value)} placeholder="Ej. 10" /></label>
+   <label className="grid gap-1.5 text-sm font-medium">Avisarme cuando queden<input className={claseEntrada} type="number" min="0" step="1" value={stockMinimo} onChange={e => setStockMinimo(e.target.value)} placeholder="Ej. 2" /></label>
   </div>
   {nuevas.length > 0 && <div className="flex flex-wrap gap-1.5">{nuevas.slice(0, 24).map(c => <span key={c.map(x => x.idValor).join('-')} className="rounded-md bg-background px-2 py-1 font-mono text-[11px]">{prefijo || 'PROD'}-{c.map(x => limpiarSku(x.valor)).join('-')}</span>)}{nuevas.length > 24 && <span className="px-2 py-1 text-xs text-muted-foreground">y {nuevas.length - 24} más…</span>}</div>}
   <div className="flex flex-wrap items-center justify-between gap-3">
@@ -490,12 +507,11 @@ function GeneradorCombinaciones({ ruta, apiBase, variantes, presentaciones, alCe
     let hechas = 0
     for (const c of nuevas) {
      setProgreso(`Creando ${hechas + 1} de ${nuevas.length}...`)
-     const nueva = await api.crear<Presentacion>(`${ruta}/presentaciones`, { sku: `${prefijo || 'PROD'}-${c.map(x => limpiarSku(x.valor)).join('-')}`, precioOverride: precio === '' ? null : Number(precio), idsValores: c.map(x => x.idValor) })
-     if (stock !== '') await api.actualizar(`${apiBase}/inventario/${nueva.idPresentacion}`, { stockActual: Number(stock), stockMinimo: Number(stockMinimo || 0) })
+     await api.crear<Presentacion>(`${ruta}/presentaciones`, { sku: `${prefijo || 'PROD'}-${c.map(x => limpiarSku(x.valor)).join('-')}`, precioOverride: precio === '' ? null : Number(precio), idsValores: c.map(x => x.idValor), stockInicial: stock === '' ? undefined : Number(stock), stockMinimo: stockMinimo === '' ? undefined : Number(stockMinimo) })
      hechas++
     }
     setProgreso(''); alTerminar()
-   })}><Sparkles className="size-4" />{op.ocupado ? 'Creando...' : `Crear ${nuevas.length} presentaciones`}</Button>
+   })}><Sparkles className="size-4" />{op.ocupado ? 'Creando...' : `Crear ${nuevas.length} ${nuevas.length === 1 ? 'versión' : 'versiones'}`}</Button>
   </div>
   <Aviso error={op.error} />
  </div>
@@ -522,11 +538,11 @@ function ListaPresentaciones({ presentaciones, variantes, stock, fila }: { prese
  const alternar = (clave: string) => setCerrados(c => c.includes(clave) ? c.filter(x => x !== clave) : [...c, clave])
  return <div className="space-y-3">
   {presentaciones.length > 3 && <div className="flex flex-wrap items-center gap-2">
-   <label className="relative min-w-48 flex-1"><span className="sr-only">Buscar presentación</span><Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" /><input className="h-9 w-full rounded-lg border border-input bg-background pr-3 pl-9 text-sm outline-none focus:border-primary" placeholder="Buscar SKU, talla, color..." value={busqueda} onChange={e => setBusqueda(e.target.value)} /></label>
+   <label className="relative min-w-48 flex-1"><span className="sr-only">Buscar versión</span><Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" /><input className="h-9 w-full rounded-lg border border-input bg-background pr-3 pl-9 text-sm outline-none focus:border-primary" placeholder="Buscar código, talla, color..." value={busqueda} onChange={e => setBusqueda(e.target.value)} /></label>
    {usadas.length > 0 && <div className="flex items-center gap-1 rounded-lg border bg-background p-0.5 text-xs"><span className="px-2 text-muted-foreground">Agrupar:</span>{[...usadas.map(v => [v.idVariante, v.nombre.charAt(0) + v.nombre.slice(1).toLowerCase()] as const), ['', 'Ninguno'] as const].map(([id, nombre]) => <button key={id || 'ninguno'} type="button" aria-pressed={agrupar === id} onClick={() => setAgrupar(id)} className={`h-7 cursor-pointer rounded-md px-2.5 font-medium transition ${agrupar === id ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}>{nombre}</button>)}</div>}
    <span className="text-xs text-muted-foreground">{filtradas.length} de {presentaciones.length}</span>
   </div>}
-  {filtradas.length === 0 ? <p className="rounded-xl border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">Ninguna presentación coincide.</p>
+  {filtradas.length === 0 ? <p className="rounded-xl border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">Ninguna versión coincide.</p>
   : grupos.map(g => {
    const cerrado = cerrados.includes(g.clave)
    return <div key={g.clave} className="overflow-hidden rounded-xl border">
@@ -534,7 +550,7 @@ function ListaPresentaciones({ presentaciones, variantes, stock, fila }: { prese
      <ChevronDown className={`size-4 text-muted-foreground transition-transform ${cerrado ? '-rotate-90' : ''}`} />
      {muestra(g.titulo) && <span className="size-3.5 rounded-full border border-black/15" style={{ background: muestra(g.titulo) }} />}
      <span className="text-sm font-semibold">{variante ? `${variante.nombre.charAt(0) + variante.nombre.slice(1).toLowerCase()}: ` : ''}{g.titulo}</span>
-     <span className="ml-auto flex items-center gap-3 text-xs text-muted-foreground"><span>{g.lista.length} {g.lista.length === 1 ? 'variante' : 'variantes'}</span><span className="rounded-full bg-background px-2 py-0.5 font-semibold text-foreground">{unidades(g.lista)} unid.</span></span>
+     <span className="ml-auto flex items-center gap-3 text-xs text-muted-foreground"><span>{g.lista.length} {g.lista.length === 1 ? 'versión' : 'versiones'}</span><span className="rounded-full bg-background px-2 py-0.5 font-semibold text-foreground">{unidades(g.lista)} disponibles</span></span>
     </button>}
     {!cerrado && <div className="divide-y">{g.lista.map(p => fila(p, variante?.idVariante))}</div>}
    </div>

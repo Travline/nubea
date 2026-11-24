@@ -7,7 +7,7 @@ import type { ContextoTienda } from '@/paginas/panel'
 import { MiniaturaEnVivo, ModalVistaPrevia, PLANTILLAS_VISIBLES, infoPlantillas } from '@/components/plantillas/vista-plantillas'
 import { api } from './datos'
 import type { Banner, Configuracion, Plantilla } from './datos'
-import { Aviso, EstadoCarga, useCarga, useOperacion } from './comunes'
+import { Aviso, ErrorCampo, EstadoCarga, ZonaEdicion, conError, useCarga, useOperacion } from './comunes'
 
 const claseEntrada = 'h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm outline-none transition focus:border-primary focus:ring-3 focus:ring-primary/20'
 
@@ -31,15 +31,15 @@ export function Apariencia() {
   if (error || !datos) return <EstadoCarga error={error} recargar={recargar} />
   return <div className="space-y-6">
     <div><h2 className="text-xl font-semibold tracking-tight">Apariencia</h2><p className="text-sm text-muted-foreground">Elige el diseño de tu tienda, el texto de la portada y los banners del carrusel.</p></div>
-    <FormularioApariencia key={JSON.stringify(datos.configuracion)} configuracion={datos.configuracion} plantillas={datos.plantillas} apiBase={apiBase} recargar={recargar} alCambiarPlantilla={codigo => actualizarTienda({ ...tienda, plantilla: codigo })} />
-    <Banners banners={datos.banners} apiBase={apiBase} recargar={recargar} />
+    <ZonaEdicion className="block space-y-6"><FormularioApariencia key={JSON.stringify(datos.configuracion)} configuracion={datos.configuracion} plantillas={datos.plantillas} apiBase={apiBase} recargar={recargar} alCambiarPlantilla={codigo => actualizarTienda({ ...tienda, plantilla: codigo })} />
+    <Banners banners={datos.banners} apiBase={apiBase} recargar={recargar} /></ZonaEdicion>
   </div>
 }
 
-function FormularioApariencia({ configuracion, plantillas, apiBase, recargar, alCambiarPlantilla }: { configuracion: Configuracion; plantillas: Plantilla[]; apiBase: string; recargar: () => void; alCambiarPlantilla: (codigo: string) => void }) {
+function FormularioApariencia({ configuracion, plantillas: todas, apiBase, recargar, alCambiarPlantilla }: { configuracion: Configuracion; plantillas: Plantilla[]; apiBase: string; recargar: () => void; alCambiarPlantilla: (codigo: string) => void }) {
   // Solo las plantillas que la vitrina (apps/store) ya sabe dibujar.
-  plantillas = plantillas.filter(p => PLANTILLAS_VISIBLES.includes(p.codigo))
-  const [id, setId] = useState(configuracion.plantilla.idPlantilla); const [titulo, setTitulo] = useState(configuracion.tituloInicio ?? ''); const [descripcion, setDescripcion] = useState(configuracion.descripcionInicio ?? ''); const [carrusel, setCarrusel] = useState(configuracion.mostrarCarrusel); const op = useOperacion(); const [guardado, setGuardado] = useState(false)
+  const plantillas = todas.filter(p => PLANTILLAS_VISIBLES.includes(p.codigo))
+  const [id, setId] = useState(configuracion.plantilla.idPlantilla); const [titulo, setTitulo] = useState(configuracion.tituloInicio ?? ''); const [descripcion, setDescripcion] = useState(configuracion.descripcionInicio ?? ''); const [carrusel, setCarrusel] = useState(configuracion.mostrarCarrusel); const op = useOperacion(['tituloInicio', 'descripcionInicio']); const [guardado, setGuardado] = useState(false)
   const [vistaPrevia, setVistaPrevia] = useState<{ codigo: string; nombre: string } | null>(null)
   const noDisponible = !plantillas.some(p => p.idPlantilla === configuracion.plantilla.idPlantilla)
   const cambiado = id !== configuracion.plantilla.idPlantilla || titulo !== (configuracion.tituloInicio ?? '') || descripcion !== (configuracion.descripcionInicio ?? '') || carrusel !== configuracion.mostrarCarrusel
@@ -69,8 +69,8 @@ function FormularioApariencia({ configuracion, plantillas, apiBase, recargar, al
 
     <Seccion icono={<Type className="size-5" />} titulo="Portada" descripcion="El texto principal que ven tus clientes al entrar a tu tienda.">
       <div className="grid gap-5">
-        <label className="grid gap-1.5 text-sm font-medium"><span className="flex justify-between">Título de inicio<span className="font-normal text-muted-foreground">{titulo.length}/160</span></span><input className={claseEntrada} maxLength={160} value={titulo} onChange={e => { tocar(); setTitulo(e.target.value) }} placeholder="Ej. Lino para el verano" /></label>
-        <label className="grid gap-1.5 text-sm font-medium">Descripción<textarea className={`${claseEntrada} h-24 resize-y py-2.5`} value={descripcion} onChange={e => { tocar(); setDescripcion(e.target.value) }} placeholder="Una frase corta que invite a comprar." /></label>
+        <label className="grid gap-1.5 text-sm font-medium"><span className="flex justify-between">Título de inicio<span className="font-normal text-muted-foreground">{titulo.length}/160</span></span><input className={claseEntrada + conError(op.errorDe('tituloInicio'))} maxLength={160} value={titulo} onChange={e => { tocar(); setTitulo(e.target.value) }} placeholder="Ej. Lino para el verano" /><ErrorCampo mensaje={op.errorDe('tituloInicio')} /></label>
+        <label className="grid gap-1.5 text-sm font-medium">Descripción<textarea className={`${claseEntrada} h-24 resize-y py-2.5${conError(op.errorDe('descripcionInicio'))}`} value={descripcion} onChange={e => { tocar(); setDescripcion(e.target.value) }} placeholder="Una frase corta que invite a comprar." /><ErrorCampo mensaje={op.errorDe('descripcionInicio')} /></label>
         <div className="flex items-center justify-between gap-4 rounded-xl border bg-background px-4 py-3">
           <div><p className="text-sm font-medium">Mostrar carrusel de banners</p><p className="text-xs text-muted-foreground">Si está apagado, la portada muestra solo el título y la descripción.</p></div>
           <Interruptor activo={carrusel} alCambiar={v => { tocar(); setCarrusel(v) }} etiqueta="Mostrar carrusel" />
@@ -87,7 +87,7 @@ function FormularioApariencia({ configuracion, plantillas, apiBase, recargar, al
 }
 
 function Banners({ banners, apiBase, recargar }: { banners: Banner[]; apiBase: string; recargar: () => void }) {
-  const op = useOperacion(); const [archivo, setArchivo] = useState<File | null>(null); const [enlace, setEnlace] = useState('')
+  const op = useOperacion(['enlaceDestino']); const [archivo, setArchivo] = useState<File | null>(null); const [enlace, setEnlace] = useState('')
   const ordenados = [...banners].sort((a,b) => a.orden - b.orden)
   async function mover(indice: number, direccion: number) { const lista = [...ordenados]; const destino = indice + direccion; if (destino < 0 || destino >= lista.length) return; [lista[indice], lista[destino]] = [lista[destino], lista[indice]]; await op.ejecutar(async () => { await api.actualizar(`${apiBase}/banners/orden`, { banners: lista.map((b, i) => ({ idBanner: b.idBanner, orden: i + 1 })) }); recargar() }) }
   return <Seccion icono={<Images className="size-5" />} titulo="Banners" descripcion="Imágenes grandes que rotan en la portada. Recomendado: horizontal, 1600 × 900 px." accion={<span className="rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">{ordenados.filter(b => b.activo).length} activos de {ordenados.length}</span>}>
@@ -99,14 +99,14 @@ function Banners({ banners, apiBase, recargar }: { banners: Banner[]; apiBase: s
       <label className="relative"><span className="sr-only">Enlace HTTPS opcional</span><Link2 className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" /><input className={`${claseEntrada} pl-10`} type="url" value={enlace} onChange={e => setEnlace(e.target.value)} placeholder="Enlace al hacer clic (opcional)" /></label>
       <Button type="submit" className="h-11 rounded-xl px-5" disabled={op.ocupado || !archivo}><ImagePlus className="size-4" />{op.ocupado ? 'Subiendo...' : 'Añadir banner'}</Button>
     </form>
-    <div className="mt-3"><Aviso error={op.error} /></div>
+    <div className="mt-3 space-y-2"><ErrorCampo mensaje={op.errorDe('enlaceDestino')} /><Aviso error={op.error} /></div>
     {ordenados.length === 0 ? <p className="mt-4 rounded-xl border border-dashed px-5 py-10 text-center text-sm text-muted-foreground">Aún no tienes banners. Sube el primero para mostrarlo en la portada.</p>
     : <div className="mt-5 grid gap-4 md:grid-cols-2">{ordenados.map((b, i) => <BannerFila key={`${b.idBanner}-${b.enlaceDestino}-${b.activo}`} banner={b} indice={i} total={ordenados.length} apiBase={apiBase} recargar={recargar} mover={mover} />)}</div>}
   </Seccion>
 }
 
 function BannerFila({ banner, indice, total, apiBase, recargar, mover }: { banner: Banner; indice: number; total: number; apiBase: string; recargar: () => void; mover: (i: number, d: number) => Promise<void> }) {
- const [enlace, setEnlace] = useState(banner.enlaceDestino ?? ''); const [activo, setActivo] = useState(banner.activo); const op = useOperacion(); const ruta = `${apiBase}/banners/${banner.idBanner}`
+ const [enlace, setEnlace] = useState(banner.enlaceDestino ?? ''); const [activo, setActivo] = useState(banner.activo); const op = useOperacion(['enlaceDestino']); const ruta = `${apiBase}/banners/${banner.idBanner}`
  const cambiado = enlace !== (banner.enlaceDestino ?? '') || activo !== banner.activo
  const icono = 'grid size-8 cursor-pointer place-items-center rounded-lg bg-white/90 text-zinc-800 shadow transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-40'
  return <div className={`overflow-hidden rounded-2xl border bg-background transition ${activo ? '' : 'opacity-75'}`}>
@@ -127,7 +127,7 @@ function BannerFila({ banner, indice, total, apiBase, recargar, mover }: { banne
     <label className="flex items-center gap-2.5 text-sm"><Interruptor activo={activo} alCambiar={setActivo} etiqueta="Banner activo" />{activo ? 'Visible' : 'Oculto'}</label>
     <Button variant={cambiado ? 'default' : 'outline'} size="sm" className="rounded-lg" disabled={op.ocupado || !cambiado} onClick={() => void op.ejecutar(async () => { await api.modificar(ruta, { enlaceDestino: enlace || '', activo }); recargar() })}>Guardar</Button>
    </div>
-   <Aviso error={op.error} />
+   <ErrorCampo mensaje={op.errorDe('enlaceDestino')} /><Aviso error={op.error} />
   </div>
  </div>
 }

@@ -11,9 +11,12 @@ export interface Imagen { idImagen: string; url: string; orden: number; esPrinci
 export interface Plantilla { idPlantilla: number; codigo: string; nombre: string; previewUrl: string | null }
 export interface Configuracion { plantilla: Plantilla; tituloInicio: string; descripcionInicio: string | null; mostrarCarrusel: boolean }
 export interface Banner { idBanner: string; url: string; enlaceDestino: string | null; orden: number; activo: boolean }
-export interface Inventario { idPresentacion: string; nombreProducto: string; sku: string; estadoProducto: string; estadoPresentacion: string; stockActual: number | null; stockMinimo: number | null; sinRegistroInventario: boolean }
+export interface Inventario { idPresentacion: string; nombreProducto: string; sku: string; estadoProducto: string; estadoPresentacion: string; stockActual: number | null; stockMinimo: number | null; sinRegistroInventario: boolean; stockReservado?: number | null }
 export interface PaginaInventario { contenido: Inventario[]; page: number; totalPaginas: number; totalElementos: number }
-export interface CuentaPago { estado: string; proveedor: string; idCuentaExterna: string | null }
+export interface CuentaPago { estado: string; proveedor: string; idCuentaExterna: string | null; ambientePago?: 'PRUEBA' | 'PRODUCCION' | null }
+export interface RequisitosPublicacion { publicable: boolean; requisitos: { codigo: string; cumplido: boolean; mensaje: string }[] }
+/** Respuesta de POST …/inventario/{id}/ajustes. */
+export interface StockActual { idPresentacion: string; stockActual: number; stockMinimo: number; stockReservado: number }
 export const rutaTienda = (id: string) => `/api/tiendas/${encodeURIComponent(id)}`
 export const api = {
   leer: <T>(ruta: string) => solicitar<T>('GET', ruta),
