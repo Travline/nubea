@@ -31,7 +31,10 @@ export function MarcoTienda({ slug, nombre, plantilla, children }: { slug: strin
     window.addEventListener('tienda-sesion', actualizar); window.addEventListener('tienda-carrito', actualizar)
     return () => { window.removeEventListener('tienda-sesion', actualizar); window.removeEventListener('tienda-carrito', actualizar) }
   }, [])
+  // La vista previa de plantillas usa datos de ejemplo: no hay tienda real ni carrito que consultar.
+  const esVistaPrevia = slug.startsWith('vista-previa/')
   useEffect(() => {
+    if (esVistaPrevia) return
     let activo = true
     solicitar<Usuario>('/api/auth/me').then(async u => {
       if (!activo) return
@@ -40,7 +43,7 @@ export function MarcoTienda({ slug, nombre, plantilla, children }: { slug: strin
       catch { if (activo) setCantidad(0) }
     }).catch(() => { if (activo) { setUsuario(null); setCantidad(0) } })
     return () => { activo = false }
-  }, [slug, version, ubicacion.pathname])
+  }, [slug, version, ubicacion.pathname, esVistaPrevia])
   useEffect(() => {
     if (!usuario) return
     const vencer = () => {
