@@ -854,3 +854,48 @@ form.formulario-direccion > button:not([type=button]):hover:not(:disabled) { bac
   .plantilla-natural .productos { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .plantilla-natural .tarjeta { padding: .6rem .6rem 1rem; }
 }
+
+/* =====================================================================
+   Precio especial: precio base tachado + nuevo precio y % de descuento
+   (usa las variables de cada plantilla, así combina con todas)
+   ===================================================================== */
+.precio-grupo { display: inline-flex; align-items: baseline; flex-wrap: wrap; gap: .1rem .5rem; }
+.precio-anterior { color: var(--texto-tenue); font-weight: 400; font-size: .85em; text-decoration: line-through; text-decoration-thickness: 1px; }
+.catalogo .precio-anterior { color: var(--cat-tenue, var(--texto-tenue)); }
+.detalle-info .precio { display: flex; align-items: baseline; flex-wrap: wrap; gap: .35rem .75rem; }
+.detalle-info .precio .precio-anterior { font-size: .6em; font-family: inherit; }
+.insignia-descuento { align-self: center; padding: .2rem .55rem; border-radius: 999px; background: #d4372c; color: #fff; font-family: var(--sans); font-size: .8rem; font-weight: 700; letter-spacing: .02em; line-height: 1.4; }
+.insignia-oferta { position: absolute; top: .75rem; right: .75rem; z-index: 2; padding: .25rem .6rem; border-radius: 999px; background: #d4372c; color: #fff; font-size: .72rem; font-weight: 700; letter-spacing: .02em; box-shadow: 0 6px 16px -8px rgb(0 0 0 / 0.5); }
+.plantilla-boutique .insignia-oferta, .plantilla-boutique .insignia-descuento { background: #c9a96e; color: #0e0d0c; border-radius: 0; }
+.plantilla-audaz .insignia-oferta, .plantilla-audaz .insignia-descuento { background: linear-gradient(90deg, #00d8ff, #8b5cff); color: #07080b; font-family: var(--mono, inherit); }
+.plantilla-gourmet .insignia-oferta { top: auto; right: auto; bottom: .25rem; left: .25rem; font-size: .6rem; padding: .15rem .4rem; }
+.plantilla-gourmet .insignia-oferta, .plantilla-gourmet .insignia-descuento { background: #a88b5f; border-radius: 2px; }
+.plantilla-natural .insignia-oferta, .plantilla-natural .insignia-descuento { background: #22211e; border-radius: 2px; }
+.plantilla-natural .catalogo .tarjeta-pie strong { color: var(--cat-texto); }
+
+/* =====================================================================
+   Selector de variantes en el detalle (talla, color...)
+   ===================================================================== */
+.selector-variantes { display: grid; gap: 1.25rem; margin-bottom: 1.25rem; }
+.variante-titulo { margin: 0 0 .6rem; font-size: .72rem; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; color: var(--texto-suave); }
+.variante-titulo strong { color: var(--tinta); font-weight: 600; letter-spacing: .04em; text-transform: none; font-size: .9rem; margin-left: .2rem; }
+.variante-opciones { display: flex; flex-wrap: wrap; gap: .5rem; }
+.opcion-variante {
+  position: relative; display: inline-flex; align-items: center; gap: .5rem;
+  min-width: 3rem; min-height: 2.75rem; padding: .5rem 1rem; justify-content: center;
+  border: 1px solid var(--borde-fuerte); border-radius: var(--radio); background: var(--superficie); color: var(--tinta);
+  font: inherit; font-size: .9rem; font-weight: 500; cursor: pointer; transition: border-color .2s, background-color .2s, color .2s, box-shadow .2s;
+}
+.opcion-variante:hover { border-color: var(--tinta); }
+.opcion-variante.activo { border-color: var(--tinta); background: var(--tinta); color: var(--claro); box-shadow: 0 0 0 2px var(--fondo), 0 0 0 3px var(--tinta); }
+.opcion-variante.con-color.activo { background: var(--superficie); color: var(--tinta); }
+.opcion-variante.agotada { color: var(--texto-tenue); background: transparent; }
+.opcion-variante.agotada::after { content: ""; position: absolute; left: 10%; right: 10%; top: 50%; height: 1px; background: currentColor; transform: rotate(-12deg); opacity: .7; }
+.opcion-variante.agotada.activo { color: var(--claro); }
+.muestra-color { width: 1.1rem; height: 1.1rem; flex: none; border-radius: 50%; border: 1px solid rgb(0 0 0 / 0.18); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.25); }
+.plantilla-boutique .opcion-variante { border-radius: 0; letter-spacing: .08em; text-transform: uppercase; font-size: .78rem; }
+.plantilla-boutique .opcion-variante.activo { background: #c9a96e; border-color: #c9a96e; color: #0e0d0c; box-shadow: none; }
+.plantilla-audaz .opcion-variante { font-family: var(--mono, inherit); background: rgb(255 255 255 / 0.03); }
+.plantilla-audaz .opcion-variante.activo { background: linear-gradient(90deg, #00d8ff, #8b5cff); border-color: transparent; color: #07080b; box-shadow: 0 0 18px -4px rgb(0 216 255 / 0.6); }
+.plantilla-gourmet .opcion-variante.activo { background: #1c1a17; }
+.plantilla-natural .opcion-variante { border-radius: 2px; }

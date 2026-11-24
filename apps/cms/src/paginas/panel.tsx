@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
-import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate, useOutletContext, useParams } from 'react-router-dom'
+import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { ArrowRight, Boxes, House, LayoutTemplate, LifeBuoy, UserRound, CreditCard, ExternalLink, LayoutDashboard, LayoutGrid, List, LogOut, Package, Palette, Plus, Search, ShoppingCart, Store, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { AlternarTema } from '@/components/alternar-tema'
@@ -8,11 +8,10 @@ import { apiAutenticacion } from '@/autenticacion/api'
 import { useSesion } from '@/autenticacion/sesion'
 import { api, rutaTienda } from '@/comercio/datos'
 import type { Tienda } from '@/comercio/datos'
-import { Aviso, Bloque, EstadoCarga, useCarga, useOperacion } from '@/comercio/comunes'
+import { Aviso, EstadoCarga, useCarga, useOperacion } from '@/comercio/comunes'
 import { InicioVendedor } from '@/paginas/panel-secciones'
 
 const seccionesTienda = [
-  ['', 'Resumen', LayoutDashboard],
   ['/catalogo', 'Catálogo', Package],
   ['/inventario', 'Inventario', Boxes],
   ['/pedidos', 'Pedidos', ShoppingCart],
@@ -222,13 +221,24 @@ export function EspacioTienda() {
   const tienda = datos.find(t => t.idTienda === idTienda)
   if (!tienda) return <p role="alert">No tienes acceso a esta tienda. <Link className="underline" to="/panel/tiendas">Volver a tus tiendas</Link></p>
   const base = `/panel/tiendas/${idTienda}`
-  return <><div className="flex flex-wrap items-end justify-between gap-4"><div><Link className="text-sm text-muted-foreground hover:text-primary" to="/panel/tiendas">← Mis tiendas</Link><div className="mt-2 flex flex-wrap items-center gap-3"><h1 className="text-3xl font-semibold tracking-tight">{tienda.nombre}</h1><EstadoTienda estado={tienda.estado} /></div><p className="mt-1 text-sm text-muted-foreground">/tienda/{tienda.slug} · Plantilla {nombrePlantilla(tienda.plantilla)}</p></div><a href={`/tienda/${encodeURIComponent(tienda.slug)}`} target="_blank" rel="noreferrer" className="inline-flex h-10 items-center gap-2 rounded-xl border bg-card px-4 text-sm font-medium hover:border-primary/40"><ExternalLink className="size-4" />Ver tienda</a></div><Outlet context={{ tienda, base, apiBase: rutaTienda(idTienda), actualizarTienda: (actualizada: Tienda) => actualizarDatos(tiendas => tiendas.map(t => t.idTienda === actualizada.idTienda ? actualizada : t)) }} /></>
+  const actualizarTienda = (actualizada: Tienda) => actualizarDatos(tiendas => tiendas.map(t => t.idTienda === actualizada.idTienda ? actualizada : t))
+  return <><div className="flex flex-wrap items-end justify-between gap-4"><div><Link className="text-sm text-muted-foreground hover:text-primary" to="/panel/tiendas">← Mis tiendas</Link><div className="mt-2 flex flex-wrap items-center gap-3"><h1 className="text-3xl font-semibold tracking-tight">{tienda.nombre}</h1><EstadoTienda estado={tienda.estado} /></div><p className="mt-1 text-sm text-muted-foreground">/tienda/{tienda.slug} · Plantilla {nombrePlantilla(tienda.plantilla)}</p></div><a href={`/tienda/${encodeURIComponent(tienda.slug)}`} target="_blank" rel="noreferrer" className="inline-flex h-10 items-center gap-2 rounded-xl border bg-card px-4 text-sm font-medium hover:border-primary/40"><ExternalLink className="size-4" />Ver tienda</a></div><AvisoActivacion tienda={tienda} apiBase={rutaTienda(idTienda)} alActivar={actualizarTienda} /><Outlet context={{ tienda, base, apiBase: rutaTienda(idTienda), actualizarTienda }} /></>
 }
+// La ruta base de la tienda ya no tiene resumen: lleva directo al catálogo.
 export function ResumenTienda() {
-  const { tienda, apiBase, actualizarTienda } = useOutletContext<ContextoTienda>()
+  return <Navigate to="catalogo" replace />
+}
+
+// Aviso para activar una tienda en borrador (antes estaba en el resumen).
+function AvisoActivacion({ tienda, apiBase, alActivar }: { tienda: Tienda; apiBase: string; alActivar: (tienda: Tienda) => void }) {
   const operacion = useOperacion()
-  return <Bloque titulo="Tu espacio de trabajo"><p>Administra tus productos, consulta el inventario y configura la apariencia y los pagos desde el menú.</p>
-    {tienda.estado === 'BORRADOR' && <><p>Activa tu tienda cuando quieras para poder publicar productos que cumplan los requisitos del catálogo.</p><Aviso error={operacion.error} /><Button disabled={operacion.ocupado} onClick={() => void operacion.ejecutar(async () => { const actualizada = await api.crear<Tienda>(`${apiBase}/activacion`); actualizarTienda(actualizada) })}>{operacion.ocupado ? 'Activando...' : 'Activar tienda'}</Button></>}
-    <a className="text-sm text-primary underline" href={`/tienda/${encodeURIComponent(tienda.slug)}`}>Ver tienda pública</a></Bloque>
+  if (tienda.estado !== 'BORRADOR') return null
+  return <section className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-5 py-4">
+    <div><p className="font-semibold">Tu tienda está en borrador</p><p className="text-sm text-muted-foreground">Actívala cuando quieras para poder publicar productos que cumplan los requisitos del catálogo.</p></div>
+    <div className="flex flex-col items-end gap-2">
+      <Button disabled={operacion.ocupado} onClick={() => void operacion.ejecutar(async () => { const actualizada = await api.crear<Tienda>(`${apiBase}/activacion`); alActivar(actualizada) })}>{operacion.ocupado ? 'Activando...' : 'Activar tienda'}</Button>
+      <Aviso error={operacion.error} />
+    </div>
+  </section>
 }
 export interface ContextoTienda { tienda: Tienda; base: string; apiBase: string; actualizarTienda: (tienda: Tienda) => void }

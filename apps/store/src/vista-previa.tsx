@@ -13,7 +13,7 @@ import { plantillaDisponible } from './plantillas'
  * Reproduce el mismo marcado que la vitrina real para que los estilos de cada plantilla se vean igual.
  */
 
-type ProductoDemo = { img: string; nombre: string; categoria: string; precios: number[]; agotado?: boolean; emoji: string; foto: string; icono?: LucideIcon }
+type ProductoDemo = { antes?: number; img: string; nombre: string; categoria: string; precios: number[]; agotado?: boolean; emoji: string; foto: string; icono?: LucideIcon }
 type Demo = { nombre: string; titulo: string; descripcion: string; colores: [string, string]; tinta: string; portada: [string, string]; fotos: [string, string]; banners: { foto: string; emoji: string }[]; categorias: string[]; productos: ProductoDemo[] }
 
 const demos: Record<string, Demo> = {
@@ -23,7 +23,7 @@ const demos: Record<string, Demo> = {
     categorias: ['Ropa', 'Accesorios'],
     productos: [
       { img: '1740711152088-88a009e877bb', nombre: 'Camisa de lino', categoria: 'Ropa', precios: [89, 99], emoji: '👕', icono: Shirt, foto: 'linen,shirt' },
-      { img: '1747396206869-75ea57b325ce', nombre: 'Vestido midi', categoria: 'Ropa', precios: [139], emoji: '👗', icono: Shirt, foto: 'dress' },
+      { img: '1747396206869-75ea57b325ce', nombre: 'Vestido midi', antes: 179, categoria: 'Ropa', precios: [139], emoji: '👗', icono: Shirt, foto: 'dress' },
       { img: '1780396378407-07411c56389c', nombre: 'Pantalón wide leg', categoria: 'Ropa', precios: [119], emoji: '👖', icono: Shirt, foto: 'trousers' },
       { img: '1524679813234-66a389fe1a42', nombre: 'Bolso de yute', categoria: 'Accesorios', precios: [75], emoji: '👜', icono: ShoppingBag, foto: 'handbag' },
       { img: '1583238619747-27950824e04d', nombre: 'Sombrero de paja', categoria: 'Accesorios', precios: [59], agotado: true, emoji: '👒', icono: Sparkles, foto: 'straw,hat' },
@@ -36,7 +36,7 @@ const demos: Record<string, Demo> = {
     categorias: ['Joyería', 'Moda'],
     productos: [
       { img: '1783541507490-edb026e2a961', nombre: 'Collar Aurora', categoria: 'Joyería', precios: [249], emoji: '📿', icono: Gem, foto: 'necklace' },
-      { img: '1790467351603-34e6d95739b5', nombre: 'Anillo de perla', categoria: 'Joyería', precios: [189, 219], emoji: '💍', icono: Gem, foto: 'ring,jewelry' },
+      { img: '1790467351603-34e6d95739b5', nombre: 'Anillo de perla', antes: 249, categoria: 'Joyería', precios: [189, 219], emoji: '💍', icono: Gem, foto: 'ring,jewelry' },
       { img: '1722410180687-b05b50922362', nombre: 'Set collar y aretes', categoria: 'Joyería', precios: [129], emoji: '✨', icono: Sparkles, foto: 'earrings' },
       { img: '1592343516109-362f7bd871aa', nombre: 'Blazer negro', categoria: 'Moda', precios: [329], emoji: '🧥', icono: Shirt, foto: 'blazer' },
       { img: '1761646238176-b480909e6ba6', nombre: 'Bolso plisado', categoria: 'Moda', precios: [279], agotado: true, emoji: '👛', icono: ShoppingBag, foto: 'clutch,bag' },
@@ -48,7 +48,7 @@ const demos: Record<string, Demo> = {
     banners: [{ foto: 'headphones', emoji: '🎧' }, { foto: 'gadgets,technology', emoji: '⌚' }],
     categorias: ['Audio', 'Accesorios', 'Wearables'],
     productos: [
-      { img: '1505740420928-5e560c06d30e', nombre: 'Audífonos inalámbricos', categoria: 'Audio', precios: [259, 299], emoji: '🎧', icono: Headphones, foto: 'headphones' },
+      { img: '1505740420928-5e560c06d30e', nombre: 'Audífonos inalámbricos', antes: 349, categoria: 'Audio', precios: [259, 299], emoji: '🎧', icono: Headphones, foto: 'headphones' },
       { img: '1608043152269-423dbba4e7e1', nombre: 'Parlante bluetooth', categoria: 'Audio', precios: [189], emoji: '🔊', icono: Speaker, foto: 'speaker,bluetooth' },
       { img: '1579586337278-3befd40fd17a', nombre: 'Smartwatch Pulse', categoria: 'Wearables', precios: [399], emoji: '⌚', icono: Watch, foto: 'smartwatch' },
       { img: '1618384887929-16ec33fab9ef', nombre: 'Teclado mecánico', categoria: 'Accesorios', precios: [229], emoji: '⌨️', icono: Keyboard, foto: 'keyboard,mechanical' },
@@ -64,7 +64,7 @@ const demos: Record<string, Demo> = {
       { img: '1514432324607-a09d9b4aefdd', nombre: 'Café americano', categoria: 'Cafetería', precios: [9, 12], emoji: '☕', icono: Coffee, foto: 'coffee,cup' },
       { img: '1593443320739-77f74939d0da', nombre: 'Capuchino', categoria: 'Cafetería', precios: [12, 14], emoji: '☕', icono: Coffee, foto: 'cappuccino' },
       { img: '1769138886135-93d1dd8ac06a', nombre: 'Croissant de mantequilla', categoria: 'Pastelería', precios: [8], emoji: '🥐', icono: Croissant, foto: 'croissant' },
-      { img: '1714237831514-9b6f07422879', nombre: 'Cheesecake de maracuyá', categoria: 'Pastelería', precios: [16], emoji: '🍰', icono: CakeSlice, foto: 'cheesecake' },
+      { img: '1714237831514-9b6f07422879', nombre: 'Cheesecake de maracuyá', antes: 20, categoria: 'Pastelería', precios: [16], emoji: '🍰', icono: CakeSlice, foto: 'cheesecake' },
       { img: '1553909489-cd47e0907980', nombre: 'Sándwich de pollo', categoria: 'Salados', precios: [18], emoji: '🥪', icono: Sandwich, foto: 'sandwich' },
       { img: '1769254870299-338bfd99aabd', nombre: 'Empanada de carne', categoria: 'Salados', precios: [9], agotado: true, emoji: '🥟', icono: Croissant, foto: 'empanada' },
     ],
@@ -75,7 +75,7 @@ const demos: Record<string, Demo> = {
     categorias: ['Rostro', 'Cuerpo', 'Hogar'],
     productos: [
       { img: '1515377905703-c4788e51af15', nombre: 'Aceite facial de rosa mosqueta', categoria: 'Rostro', precios: [65], emoji: '💧', icono: Droplet, foto: 'serum,bottle' },
-      { img: '1619451427882-6aaaded0cc61', nombre: 'Crema de karité', categoria: 'Cuerpo', precios: [48, 72], emoji: '🧴', icono: Flower2, foto: 'cream,jar' },
+      { img: '1619451427882-6aaaded0cc61', nombre: 'Crema de karité', antes: 59, categoria: 'Cuerpo', precios: [48, 72], emoji: '🧴', icono: Flower2, foto: 'cream,jar' },
       { img: '1775210603565-37cc9269326f', nombre: 'Jabón de avena y miel', categoria: 'Cuerpo', precios: [18], emoji: '🧼', icono: Leaf, foto: 'handmade,soap' },
       { img: '1768235146463-328c98e7234d', nombre: 'Bálsamo de manteca', categoria: 'Rostro', precios: [15], emoji: '💄', icono: Sparkles, foto: 'lip,balm' },
       { img: '1603905179139-db12ab535ca9', nombre: 'Vela de soya lavanda', categoria: 'Hogar', precios: [39], emoji: '🕯️', icono: Flame, foto: 'candle' },
@@ -138,8 +138,8 @@ export function VistaPrevia() {
         <div className="productos">{productos.map(p => {
           const indice = demo.productos.indexOf(p) + 1
           return <a className="tarjeta" href="#" key={p.nombre}>
-            <div className="tarjeta-media"><ImagenDemo className="foto" fuentes={[fotoLocal(clave, `producto-${indice}`), unsplash(p.img, 700, 875)]} alt={p.nombre} respaldo={<FotoSimulada demo={demo} icono={p.icono} />} />{p.agotado && <span className="insignia">Agotado</span>}</div>
-            <div className="tarjeta-contenido"><p className="tarjeta-categoria">{p.categoria}</p><h3>{p.nombre}</h3><div className="tarjeta-pie"><strong>{p.agotado ? 'Agotado' : `${p.precios.length > 1 ? 'Desde ' : ''}${precio(Math.min(...p.precios))}`}</strong><ArrowRight size={17} aria-hidden="true" /></div></div>
+            <div className="tarjeta-media"><ImagenDemo className="foto" fuentes={[fotoLocal(clave, `producto-${indice}`), unsplash(p.img, 700, 875)]} alt={p.nombre} respaldo={<FotoSimulada demo={demo} icono={p.icono} />} />{p.agotado && <span className="insignia">Agotado</span>}{!p.agotado && p.antes && <span className="insignia-oferta">-{Math.round((1 - Math.min(...p.precios) / p.antes) * 100)}%</span>}</div>
+            <div className="tarjeta-contenido"><p className="tarjeta-categoria">{p.categoria}</p><h3>{p.nombre}</h3><div className="tarjeta-pie"><span className="precio-grupo">{!p.agotado && p.antes && <s className="precio-anterior">{precio(p.antes)}</s>}<strong>{p.agotado ? 'Agotado' : `${p.precios.length > 1 ? 'Desde ' : ''}${precio(Math.min(...p.precios))}`}</strong></span><ArrowRight size={17} aria-hidden="true" /></div></div>
           </a>
         })}</div>
       </section>
