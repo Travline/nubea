@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ArrowRight, ChevronLeft, ChevronRight, ImageOff, ShoppingBag } from 'lucide-react'
-import { agregarAlCarrito, enlaceSesion, ErrorSolicitud } from './api'
+import { agregarAlCarrito, enlaceSesion, ErrorSolicitud, esTiendaNoDisponible, mensajeDeError } from './api'
+import { TIENDA_NO_DISPONIBLE, claseDisponibilidad, textoDisponibilidad, type Disponibilidad } from './estados'
 import { MarcoTienda, Volver } from './diseno'
 import { precio } from './api'
 import { plantillaDisponible } from './plantillas'
 
-type Presentacion = { id: string; precio: number; precioAnterior?: number | null; disponible: boolean; opciones: { nombre: string; valor: string }[] }
+type Presentacion = { id: string; precio: number; precioAnterior?: number | null; disponible: boolean; opciones: { nombre: string; valor: string }[]; disponibilidad?: Disponibilidad; unidadesRestantes?: number }
 // Porcentaje de descuento cuando la presentación tiene precio especial menor al precio base.
 const descuento = (p?: Presentacion) => p?.precioAnterior && p.precioAnterior > p.precio ? Math.round((1 - p.precio / p.precioAnterior) * 100) : 0
 type Producto = { id: string; categoriaId: string; nombre: string; descripcion: string | null; imagenes: string[]; presentaciones: Presentacion[] }
@@ -17,6 +18,7 @@ export function Vitrina() {
   const { slug = '', idProducto } = useParams()
   const [datos, setDatos] = useState<Datos | null>(null)
   const [error, setError] = useState('')
+  const [noDisponible, setNoDisponible] = useState(false)
   const [intento, setIntento] = useState(0)
   const [banner, setBanner] = useState(0)
   const [categoria, setCategoria] = useState('')
@@ -25,12 +27,18 @@ export function Vitrina() {
   const [orden, setOrden] = useState('nombre')
   useEffect(() => {
     const controlador = new AbortController()
-    void Promise.resolve().then(() => { if (!controlador.signal.aborted) { setDatos(null); setError(''); setBanner(0); setCategoria(''); setColeccion(''); setBusqueda(''); setOrden('nombre') } })
+    void Promise.resolve().then(() => { if (!controlador.signal.aborted) { setDatos(null); setError(''); setNoDisponible(false); setBanner(0); setCategoria(''); setColeccion(''); setBusqueda(''); setOrden('nombre') } })
     fetch(`${api}/api/publico/tiendas/${encodeURIComponent(slug)}`, { signal: controlador.signal })
-      .then(res => { if (!res.ok) throw new Error(res.status === 404 ? 'Esta tienda no existe o no está disponible.' : 'No se pudo cargar la tienda.'); return res.json() as Promise<Datos> })
-      .then(setDatos).catch(e => { if (e.name !== 'AbortError') setError(e.message === 'Failed to fetch' ? 'No se pudo conectar con la tienda.' : e.message) })
+      .then(async res => {
+        if (res.ok) return res.json() as Promise<Datos>
+        const cuerpo = await res.json().catch(() => null) as { error?: string } | null
+        if (cuerpo?.error === 'TIENDA_NO_DISPONIBLE') { setNoDisponible(true); return null }
+        throw new Error(res.status === 404 ? 'Esta tienda no existe.' : 'No se pudo cargar la tienda.')
+      })
+      .then(d => { if (d) setDatos(d) }).catch(e => { if (e.name !== 'AbortError') setError(e.message === 'Failed to fetch' ? 'No se pudo conectar con la tienda.' : e.message) })
     return () => controlador.abort()
   }, [slug, intento])
+  if (noDisponible) return <TiendaNoDisponible slug={slug} />
   if (error) return <MarcoTienda slug={slug}><div className="estado"><h1>Tienda no disponible</h1><p role="alert">{error}</p><button className="boton boton-primario" onClick={() => setIntento(i => i + 1)}>Intentar nuevamente</button></div></MarcoTienda>
   if (!datos) return <main className="contenedor estado" role="status">Cargando tienda...</main>
   if (!plantillaDisponible(datos.plantilla)) return <MarcoTienda slug={slug} nombre={datos.nombre}><div className="estado"><h1>{datos.nombre}</h1><p>La plantilla de esta tienda no está disponible.</p></div></MarcoTienda>
@@ -54,10 +62,22 @@ export function Vitrina() {
       const disponibles = p.presentaciones.filter(v => v.disponible)
       const categoriaNombre = datos.categorias.find(c => c.id === p.categoriaId)?.nombre
       const oferta = disponibles.length ? disponibles.reduce((a, b) => b.precio < a.precio ? b : a) : undefined
-      return <Link className="tarjeta" to={`/${slug}/productos/${p.id}`} key={p.id}><div className="tarjeta-media"><Foto producto={p} />{p.imagenes[1] && <img className="foto foto-alterna" src={p.imagenes[1]} alt="" />}{p.presentaciones.length > 0 && !disponibles.length && <span className="insignia">Agotado</span>}{oferta && descuento(oferta) > 0 && <span className="insignia-oferta">-{descuento(oferta)}%</span>}</div><div className="tarjeta-contenido">{categoriaNombre && <p className="tarjeta-categoria">{categoriaNombre}</p>}<h3>{p.nombre}</h3><div className="tarjeta-pie"><span className="precio-grupo">{oferta && descuento(oferta) > 0 && <s className="precio-anterior">{precio(oferta.precioAnterior!)}</s>}<strong>{disponibles.length ? `${disponibles.length > 1 ? 'Desde ' : ''}${precio(Math.min(...disponibles.map(v => v.precio)))}` : p.presentaciones.length ? 'Agotado' : 'Sin presentaciones'}</strong></span><ArrowRight size={17} aria-hidden="true" /></div></div></Link>
+      return <Link className="tarjeta" to={`/${slug}/productos/${p.id}`} key={p.id}><div className="tarjeta-media"><Foto producto={p} />{p.imagenes[1] && <img className="foto foto-alterna" src={p.imagenes[1]} alt="" />}{p.presentaciones.length > 0 && !disponibles.length && <span className="insignia">Agotado</span>}{insigniaUltimas(disponibles) && <span className="insignia insignia-ultimas">{insigniaUltimas(disponibles)}</span>}{oferta && descuento(oferta) > 0 && <span className="insignia-oferta">-{descuento(oferta)}%</span>}</div><div className="tarjeta-contenido">{categoriaNombre && <p className="tarjeta-categoria">{categoriaNombre}</p>}<h3>{p.nombre}</h3><div className="tarjeta-pie"><span className="precio-grupo">{oferta && descuento(oferta) > 0 && <s className="precio-anterior">{precio(oferta.precioAnterior!)}</s>}<strong>{disponibles.length ? `${disponibles.length > 1 ? 'Desde ' : ''}${precio(Math.min(...disponibles.map(v => v.precio)))}` : p.presentaciones.length ? 'Agotado' : 'No disponible'}</strong></span><ArrowRight size={17} aria-hidden="true" /></div></div></Link>
     })}</div>}</section>
   </>}</MarcoTienda>
 }
+/** "¡Últimas N unidades!" en la tarjeta si todo lo que queda está en últimas unidades. */
+function insigniaUltimas(disponibles: Presentacion[]) {
+  if (!disponibles.length || !disponibles.every(v => v.disponibilidad === 'ULTIMAS_UNIDADES')) return ''
+  const total = disponibles.reduce((suma, v) => suma + (v.unidadesRestantes ?? 0), 0)
+  return textoDisponibilidad('ULTIMAS_UNIDADES', total || null)
+}
+
+/** La tienda existe pero no está activa: sin catálogo. Los pedidos propios siguen visibles. */
+export function TiendaNoDisponible({ slug }: { slug: string }) {
+  return <MarcoTienda slug={slug}><div className="estado"><ShoppingBag size={28} aria-hidden="true" /><h1>{TIENDA_NO_DISPONIBLE}</h1><p>Vuelve a intentarlo más tarde. Si compraste aquí, tus pedidos siguen disponibles.</p><Link className="boton boton-primario" to={`/${slug}/pedidos`}>Ver mis pedidos</Link></div></MarcoTienda>
+}
+
 function Foto({ producto, indice = 0 }: { producto: Producto; indice?: number }) { return producto.imagenes[indice] ? <img className="foto" src={producto.imagenes[indice]} alt={producto.nombre} /> : <div className="foto sin-foto"><ImageOff size={28} /><span>Sin imagen</span></div> }
 function Detalle({ producto, slug, categoria }: { producto: Producto; slug: string; categoria?: string }) {
   const [seleccion, setSeleccion] = useState(producto.presentaciones.find(p => p.disponible)?.id ?? producto.presentaciones[0]?.id ?? '')
@@ -66,9 +86,9 @@ function Detalle({ producto, slug, categoria }: { producto: Producto; slug: stri
   const [ocupado, setOcupado] = useState(false)
   const [necesitaSesion, setNecesitaSesion] = useState(false)
   const presentacion = producto.presentaciones.find(p => p.id === seleccion)
-  // Si todas las presentaciones tienen opciones (talla, color...), se eligen con botones por variante.
-  const usaVariantes = producto.presentaciones.length > 0 && producto.presentaciones.every(p => p.opciones.length > 0)
-  return <section className="pagina-detalle"><Volver to={`/${slug}`}>Volver a la tienda</Volver><div className="detalle"><div><Foto producto={producto} indice={imagen} />{producto.imagenes.length > 1 && <div className="miniaturas" aria-label="Imágenes del producto">{producto.imagenes.map((url, i) => <button key={`${url}-${i}`} className={imagen === i ? 'activo' : ''} aria-label={`Ver imagen ${i + 1}`} aria-pressed={imagen === i} onClick={() => setImagen(i)}><img src={url} alt="" /></button>)}</div>}</div><div className="detalle-info">{categoria && <p className="etiqueta">{categoria}</p>}<h1>{producto.nombre}</h1>{producto.descripcion && <p className="descripcion">{producto.descripcion}</p>}{producto.presentaciones.length > 0 ? <>{usaVariantes ? <SelectorVariantes presentaciones={producto.presentaciones} seleccion={seleccion} alElegir={setSeleccion} /> : producto.presentaciones.length > 1 && <><label htmlFor="presentacion">Presentación</label><select id="presentacion" value={seleccion} onChange={e => setSeleccion(e.target.value)}>{producto.presentaciones.map(p => <option key={p.id} value={p.id}>{p.opciones.map(o => `${o.nombre}: ${o.valor}`).join(' · ') || 'Única'} — {precio(p.precio)}{descuento(p) > 0 ? ` (antes ${precio(p.precioAnterior!)})` : ''}{!p.disponible ? ' · Agotado' : ''}</option>)}</select></>}<p className="precio">{presentacion && descuento(presentacion) > 0 && <s className="precio-anterior">{precio(presentacion.precioAnterior!)}</s>}{presentacion && precio(presentacion.precio)}{presentacion && descuento(presentacion) > 0 && <span className="insignia-descuento">-{descuento(presentacion)}%</span>}</p><p className={`disponibilidad ${presentacion?.disponible ? '' : 'agotado'}`}>{presentacion?.disponible ? 'Disponible' : 'Agotado'}</p><button className="boton boton-primario boton-compra" disabled={!presentacion?.disponible || ocupado} onClick={() => { setOcupado(true); setMensaje(''); setNecesitaSesion(false); void agregarAlCarrito(slug, seleccion).then(() => setMensaje('Producto agregado al carrito.')).catch((e: unknown) => { if (e instanceof ErrorSolicitud && e.estado === 401) { setNecesitaSesion(true); setMensaje('Inicia sesión para usar el carrito.') } else setMensaje(e instanceof Error ? e.message : 'No se pudo agregar al carrito.') }).finally(() => setOcupado(false)) }}><ShoppingBag size={18} />{ocupado ? 'Agregando...' : 'Agregar al carrito'}</button>{mensaje && <p className="aviso" role="status">{mensaje} {necesitaSesion && <Link to={enlaceSesion(slug)}>Iniciar sesión</Link>} <Link to={`/${slug}/carrito`}>Ver carrito</Link></p>}</> : <p>Sin presentaciones disponibles.</p>}</div></div></section>
+  // Un selector por opción (Color, Talla…). Un producto sin opciones tiene una sola versión (RN-M2-11): no hay selector.
+  const usaVariantes = producto.presentaciones.some(p => p.opciones.length > 0)
+  return <section className="pagina-detalle"><Volver to={`/${slug}`}>Volver a la tienda</Volver><div className="detalle"><div><Foto producto={producto} indice={imagen} />{producto.imagenes.length > 1 && <div className="miniaturas" aria-label="Imágenes del producto">{producto.imagenes.map((url, i) => <button key={`${url}-${i}`} className={imagen === i ? 'activo' : ''} aria-label={`Ver imagen ${i + 1}`} aria-pressed={imagen === i} onClick={() => setImagen(i)}><img src={url} alt="" /></button>)}</div>}</div><div className="detalle-info">{categoria && <p className="etiqueta">{categoria}</p>}<h1>{producto.nombre}</h1>{producto.descripcion && <p className="descripcion">{producto.descripcion}</p>}{producto.presentaciones.length > 0 ? <>{usaVariantes && <SelectorVariantes presentaciones={producto.presentaciones} seleccion={seleccion} alElegir={setSeleccion} />}<p className="precio">{presentacion && descuento(presentacion) > 0 && <s className="precio-anterior">{precio(presentacion.precioAnterior!)}</s>}{presentacion && precio(presentacion.precio)}{presentacion && descuento(presentacion) > 0 && <span className="insignia-descuento">-{descuento(presentacion)}%</span>}</p><p className={`disponibilidad ${claseDisponibilidad(presentacion?.disponibilidad, presentacion?.disponible)}`}>{textoDisponibilidad(presentacion?.disponibilidad, presentacion?.unidadesRestantes, presentacion?.disponible)}</p><button className="boton boton-primario boton-compra" disabled={!presentacion?.disponible || ocupado} onClick={() => { setOcupado(true); setMensaje(''); setNecesitaSesion(false); void agregarAlCarrito(slug, seleccion).then(() => setMensaje('Producto agregado al carrito.')).catch((e: unknown) => { if (e instanceof ErrorSolicitud && e.estado === 401) { setNecesitaSesion(true); setMensaje('Inicia sesión para usar el carrito.') } else setMensaje(esTiendaNoDisponible(e) ? TIENDA_NO_DISPONIBLE : mensajeDeError(e, 'No se pudo agregar al carrito.')) }).finally(() => setOcupado(false)) }}><ShoppingBag size={18} />{ocupado ? 'Agregando...' : presentacion?.disponible ? 'Agregar al carrito' : 'Agotado'}</button>{mensaje && <p className="aviso" role="status">{mensaje} {necesitaSesion && <Link to={enlaceSesion(slug)}>Iniciar sesión</Link>} <Link to={`/${slug}/carrito`}>Ver carrito</Link></p>}</> : <p>Este producto no está disponible por ahora.</p>}</div></div></section>
 }
 
 // ---------- Selector de variantes (talla, color, etc.) ----------

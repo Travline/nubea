@@ -899,3 +899,22 @@ form.formulario-direccion > button:not([type=button]):hover:not(:disabled) { bac
 .plantilla-audaz .opcion-variante.activo { background: linear-gradient(90deg, #00d8ff, #8b5cff); border-color: transparent; color: #07080b; box-shadow: 0 0 18px -4px rgb(0 216 255 / 0.6); }
 .plantilla-gourmet .opcion-variante.activo { background: #1c1a17; }
 .plantilla-natural .opcion-variante { border-radius: 2px; }
+
+/* ---------- Compra (Parte 1): disponibilidad, carrito parcial, confirmación y estados ---------- */
+.disponibilidad.ultimas { color: var(--dorado); }
+.insignia-ultimas { background: var(--dorado); color: var(--claro); }
+.linea-no-disponible { opacity: .6; }
+.linea-no-disponible .linea-subtotal s { color: var(--texto-tenue); font-weight: 400; }
+.error-campo { display: block; margin-top: .3rem; color: var(--alerta); font-size: .8rem; font-weight: 500; }
+.formulario-direccion input[aria-invalid="true"] { border-color: var(--alerta); }
+.plazo-pago { font-weight: 600; }
+.etiqueta-estado { display: inline-block; padding: .15rem .55rem; border-radius: 999px; font-size: .75rem; font-weight: 600; vertical-align: middle; border: 1px solid currentColor; }
+.etiqueta-estado.pendiente { color: var(--dorado); }
+.etiqueta-estado.confirmado { color: var(--exito); }
+.etiqueta-estado.cancelado { color: var(--texto-tenue); }
+.confirmacion-fondo { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 1rem; background: rgb(0 0 0 / .45); }
+.confirmacion-compra { width: min(100%, 32rem); max-height: 90vh; overflow: auto; background: var(--superficie); box-shadow: var(--sombra); }
+.confirmacion-lista { list-style: none; margin: 0 0 1rem; padding: 0; display: grid; gap: .5rem; }
+.confirmacion-lista li { display: flex; justify-content: space-between; gap: 1rem; font-size: .9rem; }
+.confirmacion-direccion { font-size: .9rem; margin: 0 0 1rem; }
+.confirmacion-acciones { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .75rem; margin-top: 1rem; }

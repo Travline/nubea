@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { ErrorSolicitud, solicitar } from './api'
+import { plazoParaPagar, textoEstadoPago } from './estados'
 
-export type EstadoPago = { idPedido: string; estado: string; estadoPago: string | null; checkoutUrl: string | null; ambiente: string; incidencia: string | null; referencia: string | null; vencimiento: string }
+export type EstadoPago = { idPedido: string; estado: string; estadoPago: string | null; checkoutUrl: string | null; ambiente: string; incidencia: string | null; referencia: string | null; vencimiento: string; numero?: number; productosApartados?: number | null }
 export function PagoPedido({ slug, pedido }: { slug: string; pedido: string }) {
   const [pago, setPago] = useState<EstadoPago | null>(null)
   const [error, setError] = useState('')
@@ -24,9 +25,10 @@ export function PagoPedido({ slug, pedido }: { slug: string; pedido: string }) {
   }, [slug, pedido])
   return <section aria-live="polite">{error && <p role="alert">{error}</p>}{pago && <>
     {pago.ambiente === 'PRUEBA' && <p>Compra de prueba: no mueve dinero real.</p>}
-    <p>Pedido: {pago.estado} · Pago: {pago.estadoPago || 'En preparación'}</p>
+    <p>Pago: <strong>{textoEstadoPago(pago.estadoPago)}</strong></p>
+    {pago.estado === 'PENDIENTE_PAGO' && pago.vencimiento && <p className="plazo-pago">Tienes {plazoParaPagar(pago.vencimiento)} para pagar. Si no se completa el pago, el pedido se cancela y los productos vuelven a tu carrito.</p>}
     {pago.estado === 'PENDIENTE_PAGO' && <p>Estamos esperando la confirmación de Mercado Pago. Puedes cerrar esta página y consultar el pedido después.</p>}
-    {pago.checkoutUrl && <a className="boton" href={pago.checkoutUrl}>Continuar en Mercado Pago</a>}
+    {pago.checkoutUrl && <a className="boton boton-primario" href={pago.checkoutUrl}>Pagar ahora en Mercado Pago</a>}
     {pago.incidencia && <p>La confirmación está demorada. El pedido está registrado; no necesitas crear otra compra.</p>}
   </>}</section>
 }

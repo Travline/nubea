@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
-import { actualizarSesion, ErrorSolicitud, solicitar } from './api'
+import { actualizarSesion, ErrorSolicitud, solicitar, mensajeDeError } from './api'
 import { MarcoTienda, Volver } from './diseno'
 
 export function Autenticacion({ registro = false }: { registro?: boolean }) {
@@ -35,7 +35,7 @@ export function Autenticacion({ registro = false }: { registro?: boolean }) {
         if (registro) setAviso('Tu cuenta fue creada. Inicia sesión para continuar.')
         else setError(err instanceof ErrorSolicitud && err.estado === 401 ? 'El correo o la contraseña son incorrectos.' : err instanceof Error ? err.message : 'No se pudo iniciar sesión.')
       }
-    } catch (err) { setError(err instanceof Error ? err.message : 'No se pudo crear la cuenta.') }
+    } catch (err) { setError(mensajeDeError(err, 'No se pudo crear la cuenta.')) }
     finally { setOcupado(false) }
   }
   const alterna = `/${slug}/${registro ? 'iniciar-sesion' : 'registro'}?retorno=${encodeURIComponent(retorno)}`

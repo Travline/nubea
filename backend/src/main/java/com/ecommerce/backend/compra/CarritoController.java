@@ -24,7 +24,14 @@ import org.springframework.web.bind.annotation.*;
 public class CarritoController {
     private final JdbcTemplate jdbc;
     private final CurrentUserProvider usuarioActual;
-    public record Linea(UUID idPresentacion, UUID idProducto, String producto, String opciones, int cantidad, BigDecimal precio, boolean disponible, boolean valida) {}
+    /**
+     * {@code unidadesDisponibles}: solo cuando la versión sigue a la venta pero el stock no alcanza para la cantidad
+     * pedida (mismo criterio que la vitrina: el stock exacto no se expone en los demás casos).
+     */
+    public record Linea(UUID idPresentacion, UUID idProducto, String producto, String opciones, int cantidad, BigDecimal precio,
+                        boolean disponible, boolean valida,
+                        @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+                        Integer unidadesDisponibles) {}
     /**
      * {@code total}: suma de todas las líneas (como antes). Nuevos, solo líneas disponibles y válidas
      * (lo que se cobrará en el checkout, con el mismo cálculo): {@code subtotal} sin IGV, {@code igv},
@@ -85,14 +92,18 @@ public class CarritoController {
               COALESCE((SELECT string_agg(v.nombre || ': ' || vv.valor, ', ' ORDER BY v.nombre) FROM presentacion_valor pv
                 JOIN variante v ON v.id_variante=pv.id_variante JOIN valor_variante vv ON vv.id_valor=pv.id_valor WHERE pv.id_presentacion=pr.id_presentacion),''),
               ci.cantidad,COALESCE(pr.precio_override,p.precio_base),COALESCE(i.stock_actual,0)>=ci.cantidad,
-              (pr.estado='ACTIVA' AND p.estado='PUBLICADO' AND c.activa=true)
+              (pr.estado='ACTIVA' AND p.estado='PUBLICADO' AND c.activa=true),GREATEST(COALESCE(i.stock_actual,0),0)
             FROM carrito ca JOIN carrito_item ci ON ci.id_carrito=ca.id_carrito
               JOIN presentacion_producto pr ON pr.id_presentacion=ci.id_presentacion AND pr.id_tienda=ca.id_tienda
               JOIN producto p ON p.id_producto=pr.id_producto AND p.id_tienda=pr.id_tienda
               JOIN categoria c ON c.id_categoria=p.id_categoria AND c.id_tienda=p.id_tienda
               LEFT JOIN inventario i ON i.id_presentacion=pr.id_presentacion
             WHERE ca.id_usuario=? AND ca.id_tienda=? AND ca.estado='ACTIVO' ORDER BY ci.fecha_agregado,pr.id_presentacion
-            """,(r,n)->new Linea(r.getObject(1,UUID.class),r.getObject(2,UUID.class),r.getString(3),r.getString(4),r.getInt(5),r.getBigDecimal(6),r.getBoolean(7),r.getBoolean(8)),usuario,tienda);
+            """,(r,n)->{
+                boolean disponible=r.getBoolean(7), valida=r.getBoolean(8);
+                Integer unidades=valida && !disponible ? r.getInt(9) : null;
+                return new Linea(r.getObject(1,UUID.class),r.getObject(2,UUID.class),r.getString(3),r.getString(4),r.getInt(5),r.getBigDecimal(6),disponible,valida,unidades);
+            },usuario,tienda);
         BigDecimal total=items.stream().map(i->i.precio().multiply(BigDecimal.valueOf(i.cantidad()))).reduce(BigDecimal.ZERO,BigDecimal::add);
         var comprables=items.stream().filter(i->i.disponible() && i.valida()).toList();
         var impuesto=CalculoImportes.impuestoVigente(jdbc);

@@ -68,6 +68,27 @@ class CheckoutParcialIntegracionTest {
     }
 
     @Test
+    void unidadesDisponiblesSoloCuandoElStockNoAlcanza() throws Exception {
+        String cuerpo = mvc.perform(get("/api/compra/tiendas/" + f.slug + "/carrito").with(authentication(comprador)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        java.util.List<java.util.Map<String, Object>> items = com.jayway.jsonpath.JsonPath.read(cuerpo, "$.items[*]");
+        java.util.Map<String, java.util.Map<String, Object>> porId = new java.util.HashMap<>();
+        items.forEach(i -> porId.put((String) i.get("idPresentacion"), i));
+
+        // Stock 1 para 3 pedidas: se informa cuántas quedan.
+        assertEquals(1, porId.get(sinStock.toString()).get("unidadesDisponibles"));
+        // Disponible, versión inactiva o producto no publicado: el stock no se expone.
+        assertFalse(porId.get(disponible.toString()).containsKey("unidadesDisponibles"));
+        assertFalse(porId.get(inactiva.toString()).containsKey("unidadesDisponibles"));
+        assertFalse(porId.get(noPublicada.toString()).containsKey("unidadesDisponibles"));
+
+        // Agotada (stock 0) y a la venta: 0 unidades.
+        jdbc.update("UPDATE inventario SET stock_actual=0 WHERE id_presentacion=?", sinStock);
+        mvc.perform(get("/api/compra/tiendas/" + f.slug + "/carrito").with(authentication(comprador)))
+                .andExpect(jsonPath("$.items[?(@.idPresentacion=='" + sinStock + "')].unidadesDisponibles").value(org.hamcrest.Matchers.contains(0)));
+    }
+
+    @Test
     void compraSoloLosDisponiblesYApartaElRestoEnUnCarritoNuevo() {
         UUID carritoOriginal = f.carritoActivo();
         var resultado = checkout.reservarIdempotente(f.comprador, f.slug, f.direccion, clave(), importe("23.60"));
