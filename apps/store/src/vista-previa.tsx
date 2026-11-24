@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { MouseEvent, ReactNode } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
-import { ArrowRight, CakeSlice, ChevronLeft, ChevronRight, Coffee, Croissant, Droplet, Eye, Flame, Flower2, Footprints, Gem, Glasses, Headphones, Keyboard, Leaf, Mouse, Plug, Sandwich, Shirt, ShoppingBag, Sparkles, Speaker, Sprout, Watch } from 'lucide-react'
+import { ArrowRight, CakeSlice, ChevronLeft, ChevronRight, Coffee, Croissant, Droplet, Eye, Flame, Flower2, Footprints, Gem, Headphones, Keyboard, Leaf, Mouse, Plug, Sandwich, Shirt, ShoppingBag, Sparkles, Speaker, Sprout, Watch } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { MarcoTienda } from './diseno'
 import { precio } from './api'
@@ -115,7 +115,6 @@ export function VistaPrevia() {
   const productos = demo.productos
     .filter(p => (!categoria || p.categoria === categoria) && p.nombre.toLocaleLowerCase('es').includes(busqueda.trim().toLocaleLowerCase('es')))
     .sort((a, b) => orden === 'nombre' ? a.nombre.localeCompare(b.nombre, 'es') : orden === 'precio-asc' ? Math.min(...a.precios) - Math.min(...b.precios) : Math.min(...b.precios) - Math.min(...a.precios))
-  const actual = demo.banners[banner]
 
   // En la vista previa los enlaces no navegan (solo "Productos" baja al catálogo).
   function bloquearEnlaces(e: MouseEvent<HTMLDivElement>) {

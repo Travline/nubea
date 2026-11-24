@@ -204,7 +204,8 @@ export function PlantillasVendedor() {
 /* =====================================================================
    AYUDA: guía y preguntas frecuentes
    ===================================================================== */
-const temasAyuda = [
+type TemaAyuda = { id: string; titulo: string; icono: typeof Sparkles; preguntas: [string, string][] }
+const temasAyuda: TemaAyuda[] = [
   { id: 'primeros-pasos', titulo: 'Primeros pasos', icono: Sparkles, preguntas: [
     ['¿Cómo creo mi tienda?', 'Entra a Mis tiendas y pulsa "Crear tienda". Solo necesitas un nombre; con él se genera el enlace de tu tienda (por ejemplo /tienda/mi-tienda). La tienda empieza en borrador.'],
     ['¿Cómo activo mi tienda?', 'Abre tu tienda y, en Resumen, pulsa "Activar tienda". Una tienda activa puede publicar productos que cumplan los requisitos del catálogo.'],
@@ -231,7 +232,7 @@ const temasAyuda = [
     ['¿Cómo recibo pagos?', 'En Pagos conecta tu cuenta de Mercado Pago. Serás redirigido para autorizar la conexión y, al volver, verás el estado de tu cuenta.'],
     ['¿Puedo desconectar mi cuenta?', 'Sí, desde la misma sección Pagos puedes gestionar la cuenta conectada.'],
   ] },
-] as const
+]
 
 export function AyudaVendedor() {
   const [busqueda, establecerBusqueda] = useState('')
