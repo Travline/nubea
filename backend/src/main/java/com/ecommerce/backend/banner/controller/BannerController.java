@@ -33,7 +33,7 @@ public class BannerController {
     private final BannerService bannerService;
 
     @GetMapping
-    @PreAuthorize("@tiendaAuthorizationService.puedeVer(#idTienda, authentication)")
+    @PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.puedeVer(#idTienda, authentication)")
     public ResponseEntity<List<BannerResponse>> listarBanners(@PathVariable UUID idTienda) {
         return ResponseEntity.ok(bannerService.listarBanners(idTienda));
     }

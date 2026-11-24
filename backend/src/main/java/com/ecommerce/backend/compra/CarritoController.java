@@ -1,5 +1,7 @@
 package com.ecommerce.backend.compra;
 
+import com.ecommerce.backend.shared.tienda.TiendasPublicas;
+
 import com.ecommerce.backend.shared.exception.RecursoNoEncontradoException;
 import com.ecommerce.backend.shared.exception.ReglaNegocioException;
 import com.ecommerce.backend.shared.security.CurrentUserProvider;
@@ -27,9 +29,7 @@ public class CarritoController {
     public record Cantidad(@NotNull @Min(1) @Max(999) Integer cantidad) {}
     private UUID usuario() { return usuarioActual.getCurrentUserId().orElseThrow(() -> new AccessDeniedException("Acceso denegado")); }
     private UUID tienda(String slug) {
-        var filas = jdbc.query("SELECT id_tienda FROM tienda WHERE slug=? AND estado='ACTIVA'",(rs,n)->rs.getObject(1,UUID.class),slug);
-        if (filas.isEmpty()) throw new RecursoNoEncontradoException("Tienda no disponible");
-        return filas.getFirst();
+        return TiendasPublicas.activa(jdbc, slug);
     }
     @GetMapping
     @Transactional(readOnly=true)

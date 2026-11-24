@@ -38,7 +38,7 @@ Una sola cuenta global por persona; los roles indican el tipo de usuario y la ti
 | **RN-M1-10** | Si un ADMIN_GENERAL retira el rol DUENO_TIENDA, el usuario no puede crear tiendas nuevas y sus tiendas pasan a SUSPENDIDA. | Backend | Servicio de administración, misma transacción |
 | **RN-M1-11** | Una tienda tiene un único propietario; un propietario puede tener varias tiendas. | BD | FK `tienda.id_propietario`, sin `UNIQUE` |
 | **RN-M1-12** | El slug de la tienda es único y solo usa minúsculas, números y guiones. | BD | `UNIQUE(slug)` + `chk_tienda_slug` |
-| **RN-M1-13** | Solo el propietario de una tienda (o un ADMIN_GENERAL) la administra; el rol DUENO_TIENDA no da acceso a tiendas ajenas. | Backend | `@PreAuthorize("@tiendaAuth.esPropietario(#idTienda)")` contra `tienda.id_propietario` |
+| **RN-M1-13** | Solo el propietario de una tienda la administra (edita su contenido), siempre que conserve el rol DUENO_TIENDA y la tienda esté ACTIVA o en BORRADOR; el rol DUENO_TIENDA no da acceso a tiendas ajenas. Un ADMIN_GENERAL no edita el contenido de tiendas ajenas: solo consulta catálogo, apariencia, banners, inventario y el estado de la cuenta de pago (no pedidos ni pagos, que contienen datos del comprador), y puede suspender o reactivar la tienda; al reactivarla queda en BORRADOR y el dueño decide cuándo activarla. | Backend | `@PreAuthorize`: escrituras `@tiendaAuthorizationService.puedeEditar`; lecturas `hasRole('ADMIN_GENERAL') or puedeVer` (pedidos y pagos solo `puedeVer`); `PATCH /api/admin/tiendas/{id}/estado` (`TiendaService.cambiarEstadoAdministracion`) |
 | **RN-M1-14** | Un cliente puede comprar en varias tiendas con una sola cuenta; la relación con cada tienda no se duplica. | BD | PK compuesta de `tienda_cliente` |
 | **RN-M1-15** | La relación cliente-tienda se crea al primer "agregar al carrito" o al asociarse expresamente. | BD + Backend | FK de carrito a `tienda_cliente`; el servicio de carrito la crea si no existe |
 | **RN-M1-16** | El cliente ve sus pedidos solo dentro de la tienda que visita; el id_usuario sale del token, nunca del request. | Backend | Filtro por usuario autenticado + tienda del contexto |
@@ -65,12 +65,12 @@ Todo el catálogo pertenece a una tienda y la BD impide mezclar datos entre tien
 | **RN-M2-10** | No hay dos presentaciones con la misma combinación de valores en un producto. | BD + Backend | `uq_presentacion_combinacion (id_producto, firma_valores)`; el backend calcula la firma (ids de valor ordenados) |
 | **RN-M2-11** | Un producto sin opciones tiene una sola presentación, sin valores. | BD | Firma vacía `''` + `uq_presentacion_combinacion` |
 | **RN-M2-12** | Todas las presentaciones de un producto usan el mismo conjunto de variantes (máximo 3). | Backend | Servicio de catálogo |
-| **RN-M2-13** | Para publicar un producto: tienda ACTIVA, categoría activa, al menos una presentación ACTIVA con inventario. | Backend | Servicio de publicación |
+| **RN-M2-13** | Para publicar un producto: tienda ACTIVA, categoría activa y al menos una versión (presentación) ACTIVA con unidades disponibles (`stock_actual > 0`) en esa misma versión; no basta con que exista el registro de inventario, y una versión inactiva con stock no cuenta. Si falla, se informa el primer requisito incumplido en lenguaje de usuario (por ejemplo: "Para publicar, al menos una versión necesita unidades disponibles"). | Backend | `ProductoService.validarPublicable` (422 `REGLA_NEGOCIO` con `campos.estado`) |
 | **RN-M2-14** | Las imágenes se guardan fuera de PostgreSQL (Cloudflare R2); la BD guarda solo la clave de almacenamiento, única. | BD + Backend | `UNIQUE(storage_key)`; el backend sube a R2 y limpia archivos huérfanos |
 | **RN-M2-15** | Un producto tiene como máximo una imagen principal. | BD | `uq_imagen_principal_producto` (índice parcial) |
 | **RN-M2-16** | Una imagen solo se asigna a presentaciones de su mismo producto. | BD | `trg_presentacion_imagen_producto` |
 | **RN-M2-17** | Un producto puede estar en varias colecciones, pero solo de su misma tienda. | BD | PK de `coleccion_producto` + `trg_coleccion_producto_tienda` |
-| **RN-M2-18** | Solo el propietario de la tienda modifica su catálogo. | Backend | Spring Security + verificación de `id_propietario` |
+| **RN-M2-18** | Solo el propietario de la tienda modifica su catálogo; el ADMIN_GENERAL solo lo consulta (ver RN-M1-13). | Backend | Spring Security (`puedeEditar`) + verificación de `id_propietario` en `ImagenProductoService` |
 
 ---
 
@@ -92,6 +92,7 @@ Cada tienda tiene una sola configuración visual y una sola cuenta de Mercado Pa
 | **RN-M3-10** | Cada presentación vendible tiene un único registro de inventario, creado junto con ella. | BD + Backend | PK/FK `inventario.id_presentacion`; el servicio lo crea en la misma transacción |
 | **RN-M3-11** | El stock actual y el stock mínimo nunca son negativos. | BD | `chk_inventario_stock`, `chk_inventario_minimo` |
 | **RN-M3-12** | El stock se reserva (descuenta) solo al confirmar el checkout, nunca al agregar al carrito. | Backend | `UPDATE inventario … WHERE stock_actual >= :cantidad`, verificando 1 fila afectada |
+| **RN-M3-14** | `stock_actual` guarda las unidades **disponibles para vender**. Las unidades **apartadas** son las de pedidos pendientes de pago (reserva ACTIVA): se descuentan en el checkout y, si el pedido se cancela, `trg_pedido_transicion` las devuelve una sola vez. **Mientras no exista el módulo de envíos, un pedido PAGADO se considera entregado; las unidades apartadas son solo las de pedidos pendientes de pago.** El vendedor ajusta el stock de dos formas: (a) ajuste relativo (+/−) del día a día, que nunca deja el stock en negativo; (b) "fijar stock" tras un conteo, donde indica las unidades en mano y se guardan como disponibles `unidades en mano − apartadas` (si el conteo es menor que las apartadas, se rechaza). Ambas bloquean la fila de inventario y "fijar" acepta un `stockEsperado` opcional para detectar cambios simultáneos (409). | Backend | `AjusteInventarioService` (`POST …/inventario/{id}/ajustes`, `PUT …/inventario/{id}`) con `SELECT … FOR UPDATE` |
 | **RN-M3-13** | Si dos clientes compran la última unidad a la vez, solo uno la obtiene. | BD | Bloqueo de fila del `UPDATE` condicional (verificado en simulación) |
 
 ---

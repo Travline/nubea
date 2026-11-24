@@ -18,7 +18,7 @@ public class CuentaPagoController {
     private final com.ecommerce.backend.cuentapago.service.CuentaPagoDesconexionService desconexionService;
 
     @GetMapping
-    @PreAuthorize("@tiendaAuthorizationService.puedeVer(#idTienda, authentication)")
+    @PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.puedeVer(#idTienda, authentication)")
     public CuentaPagoResponse consultar(@PathVariable UUID idTienda) {
         return service.consultar(idTienda);
     }

@@ -24,4 +24,34 @@ public final class MensajesUsuario {
     public static final String POSICION_BANNER_OCUPADA = "Ya hay una imagen destacada en esa posición";
     public static final String EMAIL_DUPLICADO = "Ya existe una cuenta con ese email";
     public static final String DOCUMENTO_DUPLICADO = "Ese documento ya está registrado";
+
+    // Administración de tiendas
+    public static final String DUENO_SIN_PERMISO_VENDEDOR =
+            "El dueño de esta tienda ya no tiene permiso de vendedor. Devuélveselo antes de reactivarla";
+    public static final String TIENDA_CERRADA_SIN_CAMBIOS = "Una tienda cerrada no se puede suspender ni reactivar";
+    public static final String SOLO_SE_REACTIVA_SUSPENDIDA = "Solo se puede reactivar una tienda suspendida";
+    public static final String ESTADO_ADMIN_INVALIDO = "El estado debe ser SUSPENDIDA o ACTIVA";
+
+    // Vitrina
+    public static final String TIENDA_NO_DISPONIBLE = "Esta tienda no está disponible en este momento";
+
+    // Inventario
+    public static final String AJUSTE_CERO = "Indica cuántas unidades sumar o quitar (distinto de cero)";
+    public static final String STOCK_CAMBIO =
+            "El stock cambió mientras lo editabas (alguien compró o lo ajustó). Revisa el valor actual";
+
+    // Publicación de productos (RN-M2-13)
+    public static final String PUBLICAR_TIENDA_INACTIVA = "Para publicar, tu tienda debe estar activa";
+    public static final String PUBLICAR_CATEGORIA_INACTIVA = "Para publicar, la categoría del producto debe estar activa";
+    public static final String PUBLICAR_SIN_VERSION_ACTIVA = "Para publicar, el producto necesita al menos una versión activa";
+    public static final String PUBLICAR_SIN_UNIDADES = "Para publicar, al menos una versión necesita unidades disponibles";
+
+    public static String soloQuedanUnidades(int unidades) {
+        return unidades == 1 ? "Solo queda 1 unidad disponible" : "Solo quedan " + unidades + " unidades disponibles";
+    }
+
+    public static String unidadesApartadas(int apartadas) {
+        return "Hay " + apartadas + (apartadas == 1 ? " unidad apartada" : " unidades apartadas")
+                + " en pedidos pendientes de pago; el conteo no puede ser menor";
+    }
 }

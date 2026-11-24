@@ -24,7 +24,7 @@ public class PresentacionImagenController {
     }
 
     // Asociar una imagen a una presentación.
-    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.puedeEditar(#idTienda, authentication)")
+    @org.springframework.security.access.prepost.PreAuthorize("@tiendaAuthorizationService.puedeEditar(#idTienda, authentication)")
     @PostMapping("/presentaciones/{idPresentacion}/imagenes/{idImagen}")
     public ResponseEntity<Void> asociarImagen(
             @PathVariable UUID idTienda,
@@ -62,7 +62,7 @@ public class PresentacionImagenController {
     }
 
     // Desasociar una imagen de una presentación.
-    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.puedeEditar(#idTienda, authentication)")
+    @org.springframework.security.access.prepost.PreAuthorize("@tiendaAuthorizationService.puedeEditar(#idTienda, authentication)")
     @DeleteMapping("/presentaciones/{idPresentacion}/imagenes/{idImagen}")
     public ResponseEntity<Void> desasociarImagen(
             @PathVariable UUID idTienda,

@@ -8,6 +8,9 @@ import com.ecommerce.backend.identidad.repository.RolRepository;
 import com.ecommerce.backend.identidad.repository.UsuarioPlataformaRepository;
 import com.ecommerce.backend.shared.exception.RecursoNoEncontradoException;
 import com.ecommerce.backend.shared.exception.ReglaNegocioException;
+import com.ecommerce.backend.shared.exception.ConflictoCampoException;
+import com.ecommerce.backend.shared.exception.MensajesUsuario;
+import com.ecommerce.backend.shared.exception.ValidacionCampoException;
 import com.ecommerce.backend.shared.utils.SlugUtil;
 import com.ecommerce.backend.tienda.dto.CrearTiendaRequest;
 import com.ecommerce.backend.tienda.dto.TiendaResponse;
@@ -131,6 +134,52 @@ public class TiendaService {
             throw new TiendaNoModificableException("Solo se puede activar una tienda en borrador");
         }
         tienda.setEstado(EstadoTienda.ACTIVA);
+        return toResponse(tienda);
+    }
+
+    // ========== ADMINISTRACIÓN (ADMIN_GENERAL ve, suspende y reactiva; no edita contenido) ==========
+    /**
+     * Suspende (ACTIVA/BORRADOR → SUSPENDIDA) o reactiva (SUSPENDIDA → BORRADOR) una tienda.
+     * Reactivar deja la tienda en BORRADOR: el dueño decide cuándo volver a abrirla con la activación normal.
+     * Bloquea primero al dueño y luego la tienda, el mismo orden que activarTienda y retirarDueno.
+     */
+    @Transactional
+    public TiendaResponse cambiarEstadoAdministracion(UUID idTienda, String estadoSolicitado) {
+        String destino = estadoSolicitado == null ? "" : estadoSolicitado.trim().toUpperCase(java.util.Locale.ROOT);
+        if (!destino.equals("SUSPENDIDA") && !destino.equals("ACTIVA")) {
+            throw new ValidacionCampoException("estado", MensajesUsuario.ESTADO_ADMIN_INVALIDO);
+        }
+        UUID propietario = jdbcTemplate.query("SELECT id_propietario FROM tienda WHERE id_tienda = ?",
+                        (rs, n) -> rs.getObject(1, UUID.class), idTienda)
+                .stream().findFirst()
+                .orElseThrow(() -> new RecursoNoEncontradoException("La tienda no existe"));
+        jdbcTemplate.queryForList("SELECT id_usuario FROM usuario_plataforma WHERE id_usuario = ? FOR UPDATE", propietario);
+
+        Tienda tienda = tiendaRepository.findById(idTienda)
+                .orElseThrow(() -> new RecursoNoEncontradoException("La tienda no existe"));
+        entityManager.refresh(tienda, LockModeType.PESSIMISTIC_WRITE);
+        EstadoTienda actual = tienda.getEstado();
+        if (actual == EstadoTienda.CERRADA) {
+            throw new ConflictoCampoException("estado", MensajesUsuario.TIENDA_CERRADA_SIN_CAMBIOS);
+        }
+
+        if (destino.equals("SUSPENDIDA")) {
+            if (actual != EstadoTienda.SUSPENDIDA) tienda.setEstado(EstadoTienda.SUSPENDIDA); // idempotente
+            return toResponse(tienda);
+        }
+
+        // Reactivar
+        if (actual != EstadoTienda.SUSPENDIDA) {
+            throw new ConflictoCampoException("estado", MensajesUsuario.SOLO_SE_REACTIVA_SUSPENDIDA);
+        }
+        Integer conRol = jdbcTemplate.queryForObject("""
+                SELECT count(*) FROM usuario_rol ur JOIN rol r ON r.id_rol = ur.id_rol
+                WHERE ur.id_usuario = ? AND r.nombre = 'DUENO_TIENDA'
+                """, Integer.class, propietario);
+        if (conRol == null || conRol == 0) {
+            throw new ConflictoCampoException("estado", MensajesUsuario.DUENO_SIN_PERMISO_VENDEDOR);
+        }
+        tienda.setEstado(EstadoTienda.BORRADOR);
         return toResponse(tienda);
     }
 

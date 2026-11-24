@@ -58,8 +58,21 @@ public ResponseEntity<ErrorResponse> jsonInvalido(HttpMessageNotReadableExceptio
 
     @ExceptionHandler (ReglaNegocioException.class)
     public ResponseEntity<ErrorResponse>reglaNegocio(ReglaNegocioException ex){
+      Map<String, String> campos = ex.getCampo() == null ? null : Map.of(ex.getCampo(), ex.getMessage());
       return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT)
-      .body(ErrorResponse.of(422,"REGLA_NEGOCIO", ex.getMessage()));
+      .body(ErrorResponse.of(422,"REGLA_NEGOCIO", ex.getMessage(), campos));
+    }
+
+    @ExceptionHandler(ConflictoCampoException.class)
+    public ResponseEntity<ErrorResponse> conflictoCampo(ConflictoCampoException ex) {
+      return ResponseEntity.status(HttpStatus.CONFLICT)
+      .body(ErrorResponse.of(409, "CONFLICTO", ex.getMessage(), Map.of(ex.getCampo(), ex.getMessage())));
+    }
+
+    @ExceptionHandler(TiendaNoDisponibleException.class)
+    public ResponseEntity<ErrorResponse> tiendaNoDisponible(TiendaNoDisponibleException ex) {
+      return ResponseEntity.status(HttpStatus.NOT_FOUND)
+      .body(ErrorResponse.of(404, "TIENDA_NO_DISPONIBLE", ex.getMessage()));
     }
 
     // La BD rechazó algo (UNIQUE → 409, CHECK → 400). Es la "última barrera".

@@ -24,7 +24,7 @@ public class ConfiguracionTiendaController {
     private final ConfiguracionTiendaService configuracionTiendaService;
 
     @GetMapping
-    @PreAuthorize("@tiendaAuthorizationService.puedeVer(#idTienda, authentication)")
+    @PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.puedeVer(#idTienda, authentication)")
     public ResponseEntity<ConfiguracionTiendaResponse> obtenerConfiguracion(@PathVariable UUID idTienda) {
         return ResponseEntity.ok(configuracionTiendaService.obtenerConfiguracion(idTienda));
     }

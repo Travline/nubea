@@ -1,5 +1,7 @@
 package com.ecommerce.backend.compra;
 
+import com.ecommerce.backend.shared.tienda.TiendasPublicas;
+
 import com.ecommerce.backend.shared.exception.RecursoNoEncontradoException;
 import com.ecommerce.backend.shared.exception.ReglaNegocioException;
 import java.math.BigDecimal;
@@ -60,7 +62,7 @@ public class CheckoutService {
     private Resultado reservar(UUID usuario, String slug, UUID idDireccion, BigDecimal totalEsperado) {
         jdbc.queryForObject("SELECT id_usuario FROM usuario_plataforma WHERE id_usuario=? FOR UPDATE",UUID.class,usuario);
         var tiendas=jdbc.query("SELECT id_tienda FROM tienda WHERE slug=? AND estado='ACTIVA' FOR UPDATE",(r,n)->r.getObject(1,UUID.class),slug);
-        if (tiendas.isEmpty()) throw new RecursoNoEncontradoException("Tienda no disponible");
+        if (tiendas.isEmpty()) throw TiendasPublicas.noActiva(jdbc, slug);
         UUID tienda=tiendas.getFirst();
         var cuentas=jdbc.query("SELECT estado FROM cuenta_pago_tienda WHERE id_tienda=? FOR UPDATE",(r,n)->r.getString(1),tienda);
         if (cuentas.isEmpty() || !"ACTIVA".equals(cuentas.getFirst())) throw new ReglaNegocioException("La tienda no tiene una cuenta de pago activa");

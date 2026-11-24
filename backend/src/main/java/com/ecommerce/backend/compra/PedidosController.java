@@ -1,5 +1,7 @@
 package com.ecommerce.backend.compra;
 
+import com.ecommerce.backend.shared.tienda.TiendasPublicas;
+
 import com.ecommerce.backend.shared.exception.RecursoNoEncontradoException;
 import com.ecommerce.backend.shared.security.CurrentUserProvider;
 import java.math.BigDecimal;
@@ -24,9 +26,8 @@ public class PedidosController {
                           String departamento, String provincia, String distrito, String placeId, List<Linea> items) {}
     private UUID usuario() { return actual.getCurrentUserId().orElseThrow(() -> new AccessDeniedException("Acceso denegado")); }
     private UUID tienda(String slug) {
-        var filas=jdbc.query("SELECT id_tienda FROM tienda WHERE slug=? AND estado='ACTIVA'",(r,n)->r.getObject(1,UUID.class),slug);
-        if (filas.isEmpty()) throw new RecursoNoEncontradoException("Tienda no disponible");
-        return filas.getFirst();
+        // El comprador consulta sus pedidos aunque la tienda ya no esté disponible (suspendida, cerrada...).
+        return TiendasPublicas.existente(jdbc, slug);
     }
     @GetMapping("/api/compra/tiendas/{slug}/pedidos")
     @Transactional(readOnly=true)

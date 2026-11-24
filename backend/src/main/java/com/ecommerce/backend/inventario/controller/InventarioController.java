@@ -18,7 +18,7 @@ public class InventarioController {
     private final InventarioConsultaService service;
 
     @GetMapping
-    @PreAuthorize("@tiendaAuthorizationService.puedeVer(#idTienda, authentication)")
+    @PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.puedeVer(#idTienda, authentication)")
     public InventarioPage consultar(@PathVariable UUID idTienda,
             @RequestParam(required = false) String texto,
             @RequestParam(required = false) String estadoProducto,
