@@ -47,6 +47,28 @@
   --color-sidebar-ring: var(--sidebar-ring);
   --font-heading: var(--font-sans);
   --font-sans: 'DM Sans Variable', sans-serif;
+  --font-display: 'Instrument Serif', serif;
+}
+
+/* Paleta de la portada (Medianoche, azul y petróleo) */
+@theme {
+  --color-nubea-fondo: #07090F;
+  --color-nubea-fondo-alt: #0A0E17;
+  --color-nubea-superficie: #101624;
+  --color-nubea-superficie-2: #172033;
+  --color-nubea-texto: #EEF3FA;
+  --color-nubea-texto-suave: #8D99AE;
+  --color-nubea-acento: #6C9BFF;
+  --color-nubea-sobre-acento: #06101F;
+  --color-nubea-petroleo: #0E5A63;
+  --color-nubea-petroleo-claro: #3CBFB1;
+
+  --animate-marquesina: marquesina 45s linear infinite;
+
+  @keyframes marquesina {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
 }
 
 :root {
