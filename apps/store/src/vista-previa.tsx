@@ -84,9 +84,7 @@ const demos: Record<string, Demo> = {
   },
 }
 
-// Fotos de ejemplo locales (opcionales): apps/store/public/demo/<plantilla>/portada-1.jpg, portada-2.jpg, producto-1.jpg … producto-6.jpg.
-// Si no existen, se dibuja un fondo neutro con un icono del producto.
-const fotoLocal = (codigo: string, archivo: string) => `${import.meta.env.BASE_URL}demo/${codigo}/${archivo}.jpg`
+// Si una foto no carga, se dibuja un fondo neutro con un icono del producto.
 // Fotos de ejemplo de Unsplash (uso libre); se cargan desde su CDN.
 const unsplash = (id: string, ancho: number, alto?: number) => `https://images.unsplash.com/photo-${id}?auto=format&fit=crop&w=${ancho}${alto ? `&h=${alto}` : ''}&q=75`
 
@@ -127,7 +125,7 @@ export function VistaPrevia() {
   return <div onClickCapture={bloquearEnlaces}>
     <MarcoTienda slug={`vista-previa/${clave}`} nombre={demo.nombre} plantilla={clave}>
       <section className="portada-tienda con-imagen" aria-label="Novedades">
-        <div className="portada-fondo"><ImagenDemo key={banner} fuentes={[fotoLocal(clave, `portada-${banner + 1}`), unsplash(demo.fotos[banner], 1800)]} alt={`Banner ${banner + 1} de ${demo.banners.length}`} respaldo={<div style={{ position: 'absolute', inset: 0, background: banner === 0 ? `radial-gradient(ellipse at 70% 30%, rgb(255 255 255 / 0.18), transparent 55%), linear-gradient(135deg, ${demo.portada[0]}, ${demo.portada[1]})` : `radial-gradient(ellipse at 25% 70%, rgb(255 255 255 / 0.14), transparent 55%), linear-gradient(200deg, ${demo.portada[0]}, ${demo.portada[1]})` }} />} /></div>
+        <div className="portada-fondo"><ImagenDemo key={banner} fuentes={[unsplash(demo.fotos[banner], 1800)]} alt={`Banner ${banner + 1} de ${demo.banners.length}`} respaldo={<div style={{ position: 'absolute', inset: 0, background: banner === 0 ? `radial-gradient(ellipse at 70% 30%, rgb(255 255 255 / 0.18), transparent 55%), linear-gradient(135deg, ${demo.portada[0]}, ${demo.portada[1]})` : `radial-gradient(ellipse at 25% 70%, rgb(255 255 255 / 0.14), transparent 55%), linear-gradient(200deg, ${demo.portada[0]}, ${demo.portada[1]})` }} />} /></div>
         <div className="portada-contenido"><p className="etiqueta">Bienvenido a {demo.nombre}</p><h1>{demo.titulo}</h1><p className="introduccion-texto">{demo.descripcion}</p><a className="enlace-flecha" href="#productos">Explorar productos <ArrowRight size={17} /></a></div>
         <div className="controles"><button className="boton-icono" aria-label="Banner anterior" onClick={() => setBanner((banner + demo.banners.length - 1) % demo.banners.length)}><ChevronLeft size={19} /></button><span aria-live="polite">{banner + 1} / {demo.banners.length}</span><button className="boton-icono" aria-label="Banner siguiente" onClick={() => setBanner((banner + 1) % demo.banners.length)}><ChevronRight size={19} /></button></div>
       </section>
@@ -136,9 +134,8 @@ export function VistaPrevia() {
         <div className="herramientas-catalogo"><label>Buscar productos<input type="search" value={busqueda} onChange={e => setBusqueda(e.target.value)} placeholder="Buscar por nombre" /></label><label>Ordenar por<select value={orden} onChange={e => setOrden(e.target.value)}><option value="nombre">Nombre</option><option value="precio-asc">Menor precio</option><option value="precio-desc">Mayor precio</option></select></label>{(categoria || busqueda || orden !== 'nombre') && <button onClick={() => { setCategoria(''); setBusqueda(''); setOrden('nombre') }}>Limpiar filtros</button>}</div>
         <div className="filtros" aria-label="Filtrar por categoría"><button className={!categoria ? 'activo' : ''} aria-pressed={!categoria} onClick={() => setCategoria('')}>Todos</button>{demo.categorias.map(c => <button key={c} className={categoria === c ? 'activo' : ''} aria-pressed={categoria === c} onClick={() => setCategoria(c)}>{c}</button>)}</div>
         <div className="productos">{productos.map(p => {
-          const indice = demo.productos.indexOf(p) + 1
           return <a className="tarjeta" href="#" key={p.nombre}>
-            <div className="tarjeta-media"><ImagenDemo className="foto" fuentes={[fotoLocal(clave, `producto-${indice}`), unsplash(p.img, 700, 875)]} alt={p.nombre} respaldo={<FotoSimulada demo={demo} icono={p.icono} />} />{p.agotado && <span className="insignia">Agotado</span>}{!p.agotado && p.antes && <span className="insignia-oferta">-{Math.round((1 - Math.min(...p.precios) / p.antes) * 100)}%</span>}</div>
+            <div className="tarjeta-media"><ImagenDemo className="foto" fuentes={[unsplash(p.img, 700, 875)]} alt={p.nombre} respaldo={<FotoSimulada demo={demo} icono={p.icono} />} />{p.agotado && <span className="insignia">Agotado</span>}{!p.agotado && p.antes && <span className="insignia-oferta">-{Math.round((1 - Math.min(...p.precios) / p.antes) * 100)}%</span>}</div>
             <div className="tarjeta-contenido"><p className="tarjeta-categoria">{p.categoria}</p><h3>{p.nombre}</h3><div className="tarjeta-pie"><span className="precio-grupo">{!p.agotado && p.antes && <s className="precio-anterior">{precio(p.antes)}</s>}<strong>{p.agotado ? 'Agotado' : `${p.precios.length > 1 ? 'Desde ' : ''}${precio(Math.min(...p.precios))}`}</strong></span><ArrowRight size={17} aria-hidden="true" /></div></div>
           </a>
         })}</div>
