@@ -24,13 +24,13 @@ public class ConfiguracionTiendaController {
     private final ConfiguracionTiendaService configuracionTiendaService;
 
     @GetMapping
-    @PreAuthorize("@tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
+    @PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.puedeVer(#idTienda, authentication)")
     public ResponseEntity<ConfiguracionTiendaResponse> obtenerConfiguracion(@PathVariable UUID idTienda) {
         return ResponseEntity.ok(configuracionTiendaService.obtenerConfiguracion(idTienda));
     }
 
     @PatchMapping
-    @PreAuthorize("@tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
+    @PreAuthorize("@tiendaAuthorizationService.puedeEditar(#idTienda, authentication)")
     public ResponseEntity<ConfiguracionTiendaResponse> actualizarConfiguracion(
             @PathVariable UUID idTienda,
             @RequestBody @Valid ActualizarConfiguracionRequest request) {

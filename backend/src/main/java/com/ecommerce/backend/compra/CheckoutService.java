@@ -1,9 +1,11 @@
 package com.ecommerce.backend.compra;
 
+import com.ecommerce.backend.shared.tienda.TiendasPublicas;
+
 import com.ecommerce.backend.shared.exception.RecursoNoEncontradoException;
 import com.ecommerce.backend.shared.exception.ReglaNegocioException;
+import com.ecommerce.backend.shared.exception.MensajesUsuario;
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -16,12 +18,14 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class CheckoutService {
     private final JdbcTemplate jdbc;
-    public record Resultado(UUID idPedido, BigDecimal total) {}
+    /** {@code productosApartados}: líneas no disponibles que pasaron a un carrito ACTIVO nuevo (0 al repetir la clave). */
+    public record Resultado(UUID idPedido, BigDecimal total, int productosApartados) {
+        public Resultado(UUID idPedido, BigDecimal total) { this(idPedido, total, 0); }
+    }
     private record Direccion(String receptor, String telefono, String direccion, String referencia, String codigo,
                              String departamento, String provincia, String distrito, String placeId) {}
-    private record Impuesto(short id, BigDecimal tasa) {}
     private record Item(UUID id, String nombre, String opciones, int cantidad, BigDecimal precio, boolean valida) {}
-    private record Importe(Item item, BigDecimal subtotal, BigDecimal impuesto, BigDecimal total) {}
+    private record Importe(Item item, CalculoImportes.Linea importe) {}
 
     /** La clave identifica la solicitud completa dentro del contexto de comprador y tienda. */
     @Transactional
@@ -60,7 +64,7 @@ public class CheckoutService {
     private Resultado reservar(UUID usuario, String slug, UUID idDireccion, BigDecimal totalEsperado) {
         jdbc.queryForObject("SELECT id_usuario FROM usuario_plataforma WHERE id_usuario=? FOR UPDATE",UUID.class,usuario);
         var tiendas=jdbc.query("SELECT id_tienda FROM tienda WHERE slug=? AND estado='ACTIVA' FOR UPDATE",(r,n)->r.getObject(1,UUID.class),slug);
-        if (tiendas.isEmpty()) throw new RecursoNoEncontradoException("Tienda no disponible");
+        if (tiendas.isEmpty()) throw TiendasPublicas.noActiva(jdbc, slug);
         UUID tienda=tiendas.getFirst();
         var cuentas=jdbc.query("SELECT estado FROM cuenta_pago_tienda WHERE id_tienda=? FOR UPDATE",(r,n)->r.getString(1),tienda);
         if (cuentas.isEmpty() || !"ACTIVA".equals(cuentas.getFirst())) throw new ReglaNegocioException("La tienda no tiene una cuenta de pago activa");
@@ -73,10 +77,8 @@ public class CheckoutService {
             WHERE d.id_direccion=? AND d.id_usuario=?
             """,(r,n)->new Direccion(r.getString(1),r.getString(2),r.getString(3),r.getString(4),r.getString(5),r.getString(6),r.getString(7),r.getString(8),r.getString(9)),idDireccion,usuario);
         if (direcciones.isEmpty()) throw new RecursoNoEncontradoException("Dirección no encontrada");
-        var impuestos=jdbc.query("SELECT id_impuesto,tasa_porcentaje FROM configuracion_impuesto WHERE codigo='IGV_GENERAL' AND fecha_inicio<=CURRENT_DATE AND (fecha_fin IS NULL OR fecha_fin>CURRENT_DATE)",
-                (r,n)->new Impuesto(r.getShort(1),r.getBigDecimal(2)));
-        if (impuestos.size()!=1) throw new ReglaNegocioException("No hay una tasa de impuesto vigente");
-        var impuesto=impuestos.getFirst();
+        var impuesto=CalculoImportes.impuestoVigente(jdbc)
+                .orElseThrow(() -> new ReglaNegocioException("No hay una tasa de impuesto vigente"));
         var items=jdbc.query("""
             SELECT pr.id_presentacion,p.nombre,
                 COALESCE((SELECT string_agg(v.nombre || ': ' || vv.valor, ', ' ORDER BY v.nombre) FROM presentacion_valor pv
@@ -89,32 +91,46 @@ public class CheckoutService {
             WHERE ci.id_carrito=? ORDER BY pr.id_presentacion FOR UPDATE OF pr,p,c
             """,(r,n)->new Item(r.getObject(1,UUID.class),r.getString(2),r.getString(3),r.getInt(4),r.getBigDecimal(5),r.getBoolean(6)),tienda,carrito);
         if (items.isEmpty()) throw new ReglaNegocioException("El carrito está vacío");
-        if (items.stream().anyMatch(i -> !i.valida())) throw new ReglaNegocioException("El carrito contiene productos no disponibles");
-        BigDecimal factor=BigDecimal.ONE.add(impuesto.tasa().divide(BigDecimal.valueOf(100)));
-        List<Importe> importes=items.stream().map(i->{
-            BigDecimal total=i.precio().multiply(BigDecimal.valueOf(i.cantidad())).setScale(2,RoundingMode.UNNECESSARY);
-            BigDecimal subtotal=total.divide(factor,2,RoundingMode.HALF_UP);
-            return new Importe(i,subtotal,total.subtract(subtotal),total);
-        }).toList();
-        BigDecimal total=importes.stream().map(Importe::total).reduce(BigDecimal.ZERO,BigDecimal::add);
+
+        // Bloquear el inventario en orden de id: la disponibilidad no puede cambiar hasta confirmar.
+        java.util.Map<UUID,Integer> stock=new java.util.HashMap<>();
+        jdbc.query("SELECT id_presentacion,stock_actual FROM inventario WHERE id_presentacion = ANY(?) ORDER BY id_presentacion FOR UPDATE",
+                (java.sql.ResultSet r) -> { stock.put(r.getObject(1,UUID.class), r.getInt(2)); },
+                (Object) items.stream().map(Item::id).toArray(UUID[]::new));
+        // Checkout parcial (decisión del equipo): se compran solo las líneas disponibles; una línea con cantidad
+        // mayor que el stock se aparta ENTERA. Las apartadas pasan a un carrito ACTIVO nuevo.
+        List<Item> comprables=items.stream().filter(i -> i.valida() && stock.getOrDefault(i.id(),0) >= i.cantidad()).toList();
+        List<Item> apartados=items.stream().filter(i -> !comprables.contains(i)).toList();
+        if (comprables.isEmpty()) throw new ReglaNegocioException("items", MensajesUsuario.NINGUN_PRODUCTO_DISPONIBLE);
+
+        List<Importe> importes=comprables.stream()
+                .map(i->new Importe(i,CalculoImportes.linea(i.precio(),i.cantidad(),impuesto.tasa()))).toList();
+        var totales=CalculoImportes.sumar(importes.stream().map(Importe::importe).toList());
+        BigDecimal total=totales.total();
         if (total.signum()<=0) throw new ReglaNegocioException("No se puede finalizar un pedido de total cero");
         if (totalEsperado != null && total.compareTo(totalEsperado) != 0)
             throw new ReglaNegocioException("El total del carrito cambió; revisa los importes antes de continuar");
-        BigDecimal subtotal=importes.stream().map(Importe::subtotal).reduce(BigDecimal.ZERO,BigDecimal::add);
-        BigDecimal montoImpuesto=importes.stream().map(Importe::impuesto).reduce(BigDecimal.ZERO,BigDecimal::add);
-        for (Item item:items) if (jdbc.update("UPDATE inventario SET stock_actual=stock_actual-?,fecha_actualizacion=now() WHERE id_presentacion=? AND stock_actual>=?",item.cantidad(),item.id(),item.cantidad())!=1)
+        for (Item item:comprables) if (jdbc.update("UPDATE inventario SET stock_actual=stock_actual-?,fecha_actualizacion=now() WHERE id_presentacion=? AND stock_actual>=?",item.cantidad(),item.id(),item.cantidad())!=1)
             throw new ReglaNegocioException("No hay suficiente stock para " + item.nombre());
         UUID pedido=UUID.randomUUID(); Direccion d=direcciones.getFirst();
+        // El número corto (#1001…) lo asigna trg_pedido_numero con el contador de la tienda, ya bloqueada arriba.
         jdbc.update("""
             INSERT INTO pedido(id_pedido,id_usuario,id_tienda,id_carrito,id_impuesto,fecha_expiracion_reserva,subtotal,tasa_impuesto,monto_impuesto,total,
                 nombre_receptor,telefono_receptor,direccion_entrega,referencia_entrega,ubigeo_entrega,departamento_entrega,provincia_entrega,distrito_entrega,place_id_entrega)
             VALUES (?,?,?,?,?,now()+interval '30 minutes',?,?,?,?,?,?,?,?,?,?,?,?,?)
-            """,pedido,usuario,tienda,carrito,impuesto.id(),subtotal,impuesto.tasa(),montoImpuesto,total,d.receptor(),d.telefono(),d.direccion(),d.referencia(),d.codigo(),d.departamento(),d.provincia(),d.distrito(),d.placeId());
+            """,pedido,usuario,tienda,carrito,impuesto.id(),totales.subtotal(),impuesto.tasa(),totales.impuesto(),total,d.receptor(),d.telefono(),d.direccion(),d.referencia(),d.codigo(),d.departamento(),d.provincia(),d.distrito(),d.placeId());
         for (Importe i:importes) jdbc.update("""
             INSERT INTO pedido_item(id_pedido_item,id_pedido,id_presentacion,nombre_producto,descripcion_presentacion,cantidad,precio_unitario,subtotal,monto_impuesto,total_linea)
             VALUES (?,?,?,?,?,?,?,?,?,?)
-            """,UUID.randomUUID(),pedido,i.item().id(),i.item().nombre(),i.item().opciones(),i.item().cantidad(),i.item().precio(),i.subtotal(),i.impuesto(),i.total());
+            """,UUID.randomUUID(),pedido,i.item().id(),i.item().nombre(),i.item().opciones(),i.item().cantidad(),i.item().precio(),i.importe().subtotal(),i.importe().impuesto(),i.importe().total());
+        // Cerrar primero el carrito de origen (uq_carrito_activo_usuario_tienda) y luego mover lo apartado a uno nuevo.
         jdbc.update("UPDATE carrito SET estado='CERRADO',fecha_actualizacion=now() WHERE id_carrito=?",carrito);
-        return new Resultado(pedido,total);
+        if (!apartados.isEmpty()) {
+            UUID nuevo=UUID.randomUUID();
+            jdbc.update("INSERT INTO carrito(id_carrito,id_usuario,id_tienda) VALUES (?,?,?)",nuevo,usuario,tienda);
+            jdbc.update("UPDATE carrito_item SET id_carrito=? WHERE id_carrito=? AND id_presentacion = ANY(?)",
+                    nuevo,carrito,(Object) apartados.stream().map(Item::id).toArray(UUID[]::new));
+        }
+        return new Resultado(pedido,total,apartados.size());
     }
 }

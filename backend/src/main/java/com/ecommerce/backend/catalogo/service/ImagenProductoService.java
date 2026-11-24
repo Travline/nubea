@@ -99,7 +99,8 @@ public class ImagenProductoService {
     }
     private void bloquearProducto(UUID producto, UUID tienda) {
         var propietarios = jdbc.queryForList("SELECT id_propietario FROM tienda WHERE id_tienda=? FOR UPDATE", tienda);
-        if (propietarios.isEmpty() || (!currentUser.hasRole("ADMIN_GENERAL") && currentUser.getCurrentUserId().filter(propietarios.get(0).get("id_propietario")::equals).isEmpty()))
+        // Solo el propietario: el ADMIN_GENERAL no edita contenido de tiendas ajenas (RN-M1-13, RN-M2-18).
+        if (propietarios.isEmpty() || currentUser.getCurrentUserId().filter(propietarios.get(0).get("id_propietario")::equals).isEmpty())
             throw new AccessDeniedException("Acceso denegado");
         var filas = jdbc.queryForList("SELECT id_producto FROM producto WHERE id_producto=? AND id_tienda=? FOR UPDATE", producto, tienda);
         if (filas.isEmpty()) throw new IllegalArgumentException("El producto no existe en esta tienda");

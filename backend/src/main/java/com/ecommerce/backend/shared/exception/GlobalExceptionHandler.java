@@ -38,8 +38,16 @@ public ResponseEntity<ErrorResponse> jsonInvalido(HttpMessageNotReadableExceptio
     
     @ExceptionHandler (RecursosDuplicadosException.class)
     public ResponseEntity<ErrorResponse>duplicado(RecursosDuplicadosException ex){
+      Map<String, String> campos = ex.getCampo() == null ? null : Map.of(ex.getCampo(), ex.getMessage());
       return ResponseEntity.status(HttpStatus.CONFLICT)
-      .body(ErrorResponse.of(409,"DUPLICADO", ex.getMessage()));
+      .body(ErrorResponse.of(409,"DUPLICADO", ex.getMessage(), campos));
+    }
+
+    // 400 ligado a un campo concreto (más específico que el IllegalArgumentException de Modulo3ExceptionHandler)
+    @ExceptionHandler(ValidacionCampoException.class)
+    public ResponseEntity<ErrorResponse> validacionCampo(ValidacionCampoException ex) {
+      return ResponseEntity.badRequest()
+      .body(ErrorResponse.of(400, "DATOS_INVALIDOS", ex.getMessage(), Map.of(ex.getCampo(), ex.getMessage())));
     }
 
     @ExceptionHandler (RecursoNoEncontradoException.class)
@@ -50,19 +58,49 @@ public ResponseEntity<ErrorResponse> jsonInvalido(HttpMessageNotReadableExceptio
 
     @ExceptionHandler (ReglaNegocioException.class)
     public ResponseEntity<ErrorResponse>reglaNegocio(ReglaNegocioException ex){
+      Map<String, String> campos = ex.getCampo() == null ? null : Map.of(ex.getCampo(), ex.getMessage());
       return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT)
-      .body(ErrorResponse.of(422,"REGLA_NEGOCIO", ex.getMessage()));
+      .body(ErrorResponse.of(422,"REGLA_NEGOCIO", ex.getMessage(), campos));
     }
 
-     // 409: la BD rechazó algo (UNIQUE, CHECK). Es la "última barrera"
+    @ExceptionHandler(ConflictoCampoException.class)
+    public ResponseEntity<ErrorResponse> conflictoCampo(ConflictoCampoException ex) {
+      return ResponseEntity.status(HttpStatus.CONFLICT)
+      .body(ErrorResponse.of(409, "CONFLICTO", ex.getMessage(), Map.of(ex.getCampo(), ex.getMessage())));
+    }
+
+    @ExceptionHandler(com.ecommerce.backend.identidad.google.GoogleTokenInvalidoException.class)
+    public ResponseEntity<ErrorResponse> googleTokenInvalido(RuntimeException ex) {
+      return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+      .body(ErrorResponse.of(401, "GOOGLE_TOKEN_INVALIDO", ex.getMessage()));
+    }
+
+    @ExceptionHandler(com.ecommerce.backend.identidad.google.GoogleNoDisponibleException.class)
+    public ResponseEntity<ErrorResponse> googleNoDisponible(RuntimeException ex) {
+      return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+      .body(ErrorResponse.of(503, "GOOGLE_NO_DISPONIBLE", ex.getMessage()));
+    }
+
+    @ExceptionHandler(TiendaNoDisponibleException.class)
+    public ResponseEntity<ErrorResponse> tiendaNoDisponible(TiendaNoDisponibleException ex) {
+      return ResponseEntity.status(HttpStatus.NOT_FOUND)
+      .body(ErrorResponse.of(404, "TIENDA_NO_DISPONIBLE", ex.getMessage()));
+    }
+
+    // La BD rechazó algo (UNIQUE → 409, CHECK → 400). Es la "última barrera".
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ErrorResponse> integridad(DataIntegrityViolationException ex) {
-        String detalle = String.valueOf(ex.getMostSpecificCause().getMessage());
-        String mensaje = "Los datos no cumplen las reglas de la base de datos";
-        if (detalle.contains("usuario_plataforma_email_key")) mensaje = "Ya existe una cuenta con ese email";
-        else if (detalle.contains("uq_usuario_documento"))    mensaje = "Ese documento ya está registrado";
-        else if (detalle.contains("tienda_slug_key"))         mensaje = "Ese nombre de tienda ya está en uso";
-        return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(ErrorResponse.of(409, "INTEGRIDAD", mensaje));
+        RestriccionesBd.Violacion violacion = RestriccionesBd.detectar(ex);
+        var traduccion = RestriccionesBd.traducir(violacion.restriccion());
+        if (traduccion.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(ErrorResponse.of(409, "INTEGRIDAD", "Los datos no cumplen las reglas de la base de datos"));
+        }
+        var t = traduccion.get();
+        Map<String, String> campos = Map.of(t.campo(), t.mensaje());
+        if (violacion.tipo() == RestriccionesBd.Tipo.CHECK) {
+            return ResponseEntity.badRequest().body(ErrorResponse.of(400, "DATOS_INVALIDOS", t.mensaje(), campos));
+        }
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(ErrorResponse.of(409, "DUPLICADO", t.mensaje(), campos));
     }
 }

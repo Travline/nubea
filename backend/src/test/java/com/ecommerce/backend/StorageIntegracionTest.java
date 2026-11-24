@@ -97,6 +97,7 @@ class StorageIntegracionTest {
         UUID categoria = UUID.randomUUID(), producto = UUID.randomUUID();
         jdbc.update("INSERT INTO usuario_plataforma(id_usuario,nombres,email) VALUES (?, 'Test', ?), (?, 'Ajeno', ?)", usuario, usuario + "@example.test", ajeno, ajeno + "@example.test");
         jdbc.update("INSERT INTO tienda(id_tienda,id_propietario,nombre,slug) VALUES (?,?,'Tienda',?)", tienda, usuario, "t-" + tienda);
+        jdbc.update("INSERT INTO usuario_rol(id_usuario,id_rol) SELECT ?,id_rol FROM rol WHERE nombre='DUENO_TIENDA'", usuario);
         jdbc.update("INSERT INTO categoria(id_categoria,id_tienda,nombre,slug) VALUES (?,?,'Categoria','categoria')", categoria, tienda);
         jdbc.update("INSERT INTO producto(id_producto,id_categoria,id_tienda,nombre,precio_base) VALUES (?,?,?,'Producto',10)", producto, categoria, tienda);
         var owner = UsernamePasswordAuthenticationToken.authenticated(usuario, null, List.of());
@@ -137,6 +138,7 @@ class StorageIntegracionTest {
             jdbc.update("DELETE FROM producto WHERE id_producto=?", producto);
             jdbc.update("DELETE FROM categoria WHERE id_categoria=?", categoria);
             jdbc.update("DELETE FROM tienda WHERE id_tienda=?", tienda);
+            jdbc.update("DELETE FROM usuario_rol WHERE id_usuario=?", usuario);
             jdbc.update("DELETE FROM usuario_plataforma WHERE id_usuario IN (?,?)", usuario, ajeno);
         }
     }

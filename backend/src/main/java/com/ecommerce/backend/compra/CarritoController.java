@@ -1,5 +1,7 @@
 package com.ecommerce.backend.compra;
 
+import com.ecommerce.backend.shared.tienda.TiendasPublicas;
+
 import com.ecommerce.backend.shared.exception.RecursoNoEncontradoException;
 import com.ecommerce.backend.shared.exception.ReglaNegocioException;
 import com.ecommerce.backend.shared.security.CurrentUserProvider;
@@ -23,13 +25,17 @@ public class CarritoController {
     private final JdbcTemplate jdbc;
     private final CurrentUserProvider usuarioActual;
     public record Linea(UUID idPresentacion, UUID idProducto, String producto, String opciones, int cantidad, BigDecimal precio, boolean disponible, boolean valida) {}
-    public record Carrito(List<Linea> items, BigDecimal total) {}
+    /**
+     * {@code total}: suma de todas las líneas (como antes). Nuevos, solo líneas disponibles y válidas
+     * (lo que se cobrará en el checkout, con el mismo cálculo): {@code subtotal} sin IGV, {@code igv},
+     * {@code tasaIgv} (null si no hay tasa vigente) y {@code totalAPagar}.
+     */
+    public record Carrito(List<Linea> items, BigDecimal total, BigDecimal subtotal, BigDecimal igv,
+                          BigDecimal tasaIgv, BigDecimal totalAPagar) {}
     public record Cantidad(@NotNull @Min(1) @Max(999) Integer cantidad) {}
     private UUID usuario() { return usuarioActual.getCurrentUserId().orElseThrow(() -> new AccessDeniedException("Acceso denegado")); }
     private UUID tienda(String slug) {
-        var filas = jdbc.query("SELECT id_tienda FROM tienda WHERE slug=? AND estado='ACTIVA'",(rs,n)->rs.getObject(1,UUID.class),slug);
-        if (filas.isEmpty()) throw new RecursoNoEncontradoException("Tienda no disponible");
-        return filas.getFirst();
+        return TiendasPublicas.activa(jdbc, slug);
     }
     @GetMapping
     @Transactional(readOnly=true)
@@ -87,6 +93,15 @@ public class CarritoController {
               LEFT JOIN inventario i ON i.id_presentacion=pr.id_presentacion
             WHERE ca.id_usuario=? AND ca.id_tienda=? AND ca.estado='ACTIVO' ORDER BY ci.fecha_agregado,pr.id_presentacion
             """,(r,n)->new Linea(r.getObject(1,UUID.class),r.getObject(2,UUID.class),r.getString(3),r.getString(4),r.getInt(5),r.getBigDecimal(6),r.getBoolean(7),r.getBoolean(8)),usuario,tienda);
-        return new Carrito(items,items.stream().map(i->i.precio().multiply(BigDecimal.valueOf(i.cantidad()))).reduce(BigDecimal.ZERO,BigDecimal::add));
+        BigDecimal total=items.stream().map(i->i.precio().multiply(BigDecimal.valueOf(i.cantidad()))).reduce(BigDecimal.ZERO,BigDecimal::add);
+        var comprables=items.stream().filter(i->i.disponible() && i.valida()).toList();
+        var impuesto=CalculoImportes.impuestoVigente(jdbc);
+        if (impuesto.isEmpty()) {
+            BigDecimal aPagar=comprables.stream().map(i->i.precio().multiply(BigDecimal.valueOf(i.cantidad()))).reduce(BigDecimal.ZERO,BigDecimal::add);
+            return new Carrito(items,total,null,null,null,aPagar);
+        }
+        var totales=CalculoImportes.sumar(comprables.stream()
+                .map(i->CalculoImportes.linea(i.precio(),i.cantidad(),impuesto.get().tasa())).toList());
+        return new Carrito(items,total,totales.subtotal(),totales.impuesto(),impuesto.get().tasa(),totales.total());
     }
 }

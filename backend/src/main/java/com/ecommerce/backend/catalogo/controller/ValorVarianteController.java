@@ -26,7 +26,7 @@ public class ValorVarianteController {
     }
 
     // Crear valor de variante.
-    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
+    @org.springframework.security.access.prepost.PreAuthorize("@tiendaAuthorizationService.puedeEditar(#idTienda, authentication)")
     @PostMapping
     public ResponseEntity<ValorVarianteResponse> crearValorVariante(
             @PathVariable UUID idTienda,
@@ -41,7 +41,7 @@ public class ValorVarianteController {
     }
 
     // Listar valores de una variante.
-    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.puedeVer(#idTienda, authentication)")
     @GetMapping
     public ResponseEntity<List<ValorVarianteResponse>> listarValores(
             @PathVariable UUID idTienda,
@@ -55,7 +55,7 @@ public class ValorVarianteController {
     }
 
     // Obtener un valor por ID.
-    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.puedeVer(#idTienda, authentication)")
     @GetMapping("/{idValor}")
     public ResponseEntity<ValorVarianteResponse> obtenerValorPorId(
             @PathVariable UUID idTienda,
@@ -70,7 +70,7 @@ public class ValorVarianteController {
     }
 
     // Actualizar un valor.
-    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
+    @org.springframework.security.access.prepost.PreAuthorize("@tiendaAuthorizationService.puedeEditar(#idTienda, authentication)")
     @PutMapping("/{idValor}")
     public ResponseEntity<ValorVarianteResponse> actualizarValor(
             @PathVariable UUID idTienda,

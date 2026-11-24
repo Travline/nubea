@@ -27,7 +27,9 @@ public class InventarioConsultaRepository {
         if (estadoPresentacion != null) from.append(" AND pp.estado = :estadoPresentacion");
         if (alerta != null) from.append(alerta ? " AND i.stock_actual <= i.stock_minimo" : " AND i.stock_actual > i.stock_minimo");
         Query count = entityManager.createNativeQuery("SELECT count(*) " + from);
-        Query rows = entityManager.createNativeQuery("SELECT p.id_producto, p.nombre, p.estado, pp.id_presentacion, pp.sku, pp.estado, i.stock_actual, i.stock_minimo, i.fecha_actualizacion " + from + " ORDER BY p.nombre, pp.sku, pp.id_presentacion");
+        Query rows = entityManager.createNativeQuery("SELECT p.id_producto, p.nombre, p.estado, pp.id_presentacion, pp.sku, pp.estado, i.stock_actual, i.stock_minimo, i.fecha_actualizacion, "
+                + "(SELECT COALESCE(sum(pi.cantidad), 0) FROM pedido_item pi JOIN pedido pe ON pe.id_pedido = pi.id_pedido "
+                + "WHERE pi.id_presentacion = pp.id_presentacion AND pe.estado_reserva = 'ACTIVA') " + from + " ORDER BY p.nombre, pp.sku, pp.id_presentacion");
         for (Query query : List.of(count, rows)) {
             query.setParameter("tienda", tienda);
             if (texto != null) query.setParameter("texto", "%" + texto.toLowerCase(java.util.Locale.ROOT).replace("!", "!!").replace("%", "!%").replace("_", "!_") + "%");
@@ -41,7 +43,7 @@ public class InventarioConsultaRepository {
         List<Object[]> results = rows.getResultList();
         List<InventarioResponse> contenido = results.stream().map(r -> new InventarioResponse(
                 (UUID) r[0], (String) r[1], (String) r[2], (UUID) r[3], (String) r[4], (String) r[5],
-                (Integer) r[6], (Integer) r[7], r[8] == null ? null : ((java.time.Instant) r[8]).atOffset(java.time.ZoneOffset.UTC), r[6] == null)).toList();
+                (Integer) r[6], (Integer) r[7], r[8] == null ? null : ((java.time.Instant) r[8]).atOffset(java.time.ZoneOffset.UTC), r[6] == null, ((Number) r[9]).intValue())).toList();
         return new InventarioPage(contenido, page, size, total, (int) Math.min(Integer.MAX_VALUE, (total + size - 1) / size));
     }
 }

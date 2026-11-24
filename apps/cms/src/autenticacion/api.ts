@@ -52,4 +52,7 @@ export const apiAutenticacion = {
   iniciarSesion: (correo: string, contrasena: string, recordarme = false) => solicitar<void>('POST', '/api/auth/login', { email: correo, password: contrasena, recordarme }),
   registrar: (nombres: string, correoElectronico: string, contrasena: string) => solicitar<Usuario>('POST', '/api/auth/registro', { nombres, correoElectronico, password: contrasena }),
   cerrarSesion: () => solicitar<void>('POST', '/logout'),
+  // 201 = cuenta nueva (devuelve el usuario); 204 = cuenta existente (sin cuerpo). Ver docs/revision/google-login-frontend.md
+  continuarConGoogle: (idToken: string, recordarme = false) => solicitar<Usuario | ''>('POST', '/api/auth/google', { idToken, recordarme }),
+  vincularGoogle: (idToken: string) => solicitar<void>('POST', '/api/auth/google/vinculacion', { idToken }),
 }

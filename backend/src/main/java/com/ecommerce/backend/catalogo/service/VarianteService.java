@@ -7,6 +7,9 @@ import com.ecommerce.backend.catalogo.mapper.VarianteMapper;
 import com.ecommerce.backend.catalogo.model.Variante;
 import com.ecommerce.backend.catalogo.repository.VarianteRepository;
 
+import com.ecommerce.backend.shared.exception.MensajesUsuario;
+import com.ecommerce.backend.shared.exception.RecursosDuplicadosException;
+import com.ecommerce.backend.shared.exception.ValidacionCampoException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,8 +36,8 @@ public class VarianteService {
         if (varianteRepository.existsByIdTiendaAndNombreIgnoreCase(
                 idTienda, nombre)) {
 
-            throw new IllegalArgumentException(
-                    "Ya existe una variante con ese nombre en la tienda");
+            throw new RecursosDuplicadosException(
+                    "nombre", MensajesUsuario.OPCION_DUPLICADA);
         }
 
         Variante variante = new Variante();
@@ -80,8 +83,8 @@ public class VarianteService {
                 && varianteRepository.existsByIdTiendaAndNombreIgnoreCase(
                         idTienda, nombre)) {
 
-            throw new IllegalArgumentException(
-                    "Ya existe una variante con ese nombre en la tienda");
+            throw new RecursosDuplicadosException(
+                    "nombre", MensajesUsuario.OPCION_DUPLICADA);
         }
 
         variante.setNombre(nombre);
@@ -98,29 +101,29 @@ public class VarianteService {
         return varianteRepository
                 .findByIdVarianteAndIdTienda(idVariante, idTienda)
                 .orElseThrow(() -> new IllegalArgumentException(
-                        "La variante no existe en esta tienda"));
+                        "La opción no existe en tu tienda"));
     }
 
     private String validarNombre(VarianteRequest request) {
 
         if (request == null) {
             throw new IllegalArgumentException(
-                    "La solicitud de variante no puede estar vacía");
+                    "La solicitud no puede estar vacía");
         }
 
         if (request.getNombre() == null
                 || request.getNombre().isBlank()) {
 
             throw new IllegalArgumentException(
-                    "El nombre de la variante es obligatorio");
+                    "El nombre de la opción es obligatorio");
         }
 
         String nombre = request.getNombre().trim();
 
-        // Ajustar este límite al definido en el SQL maestro.
-        if (nombre.length() > 100) {
-            throw new IllegalArgumentException(
-                    "El nombre de la variante no puede superar los 100 caracteres");
+        // Mismo límite que la BD: variante.nombre VARCHAR(80).
+        if (nombre.length() > 80) {
+            throw new ValidacionCampoException("nombre",
+                    "El nombre no puede superar los 80 caracteres");
         }
 
         return nombre;

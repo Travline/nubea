@@ -1,5 +1,7 @@
 package com.ecommerce.backend.compra;
 
+import com.ecommerce.backend.shared.tienda.TiendasPublicas;
+
 import com.ecommerce.backend.cuentapago.oauth.CredencialesVendedorService;
 import com.ecommerce.backend.shared.exception.RecursoNoEncontradoException;
 import com.ecommerce.backend.shared.exception.ReglaNegocioException;
@@ -45,8 +47,7 @@ public class PagosController {
     @PostMapping("/api/compra/tiendas/{slug}/checkout")
     public PagosStore.Estado comprar(@PathVariable String slug,@Valid @RequestBody Compra compra) {
         UUID usuario=usuario();
-        UUID tienda=jdbc.query("SELECT id_tienda FROM tienda WHERE slug=? AND estado='ACTIVA'",(r,n)->r.getObject(1,UUID.class),slug)
-                .stream().findFirst().orElseThrow(()->new RecursoNoEncontradoException("Tienda no disponible"));
+        UUID tienda=TiendasPublicas.activa(jdbc, slug);
         var anteriores=jdbc.query("""
             SELECT id_pedido,id_direccion,total_esperado FROM checkout_idempotencia
             WHERE id_usuario=? AND id_tienda=? AND clave=?
@@ -63,9 +64,9 @@ public class PagosController {
         var token=credenciales.obtener(tienda);
         if (!ambiente.equals(mercado.verificarCuenta(token.access(),token.cuenta())))
             throw new ReglaNegocioException("La cuenta del vendedor no corresponde al ambiente configurado");
-        UUID pedido=store.preparar(usuario,slug,compra.idDireccion(),compra.clave(),compra.totalEsperado(),token.cuenta(),ambiente,mercado.tiposExcluidos(token.access()));
-        procesador.procesar(pedido);
-        return store.estado(pedido);
+        var preparado=store.prepararCompra(usuario,slug,compra.idDireccion(),compra.clave(),compra.totalEsperado(),token.cuenta(),ambiente,mercado.tiposExcluidos(token.access()));
+        procesador.procesar(preparado.pedido());
+        return store.estado(preparado.pedido()).conApartados(preparado.productosApartados());
     }
     @GetMapping("/api/compra/tiendas/{slug}/pedidos/{pedido}/pago")
     public PagosStore.Estado consultar(@PathVariable String slug,@PathVariable UUID pedido) {
@@ -75,12 +76,12 @@ public class PagosController {
         return store.estado(pedido);
     }
     @GetMapping("/api/tiendas/{idTienda}/pedidos/{pedido}/pago")
-    @PreAuthorize("@tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
+    @PreAuthorize("@tiendaAuthorizationService.puedeVer(#idTienda, authentication)")
     public PagosStore.Estado consultarVendedor(@PathVariable UUID idTienda,@PathVariable UUID pedido) {
         verificarTienda(idTienda,pedido); verificarIntento(pedido); return store.estado(pedido);
     }
     @PostMapping("/api/tiendas/{idTienda}/pedidos/{pedido}/reembolsos")
-    @PreAuthorize("@tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
+    @PreAuthorize("@tiendaAuthorizationService.puedeVer(#idTienda, authentication)")
     public PagosStore.Estado reembolsar(@PathVariable UUID idTienda,@PathVariable UUID pedido,@Valid @RequestBody Devolucion cuerpo) {
         store.solicitarReembolso(idTienda,pedido,usuario(),cuerpo.clave(),cuerpo.reponerStock());
         procesador.procesar(pedido);

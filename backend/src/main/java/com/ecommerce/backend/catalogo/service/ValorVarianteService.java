@@ -11,6 +11,8 @@ import com.ecommerce.backend.catalogo.repository.VarianteRepository;
 import java.util.List;
 import java.util.UUID;
 
+import com.ecommerce.backend.shared.exception.MensajesUsuario;
+import com.ecommerce.backend.shared.exception.RecursosDuplicadosException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -76,7 +78,7 @@ public class ValorVarianteService {
         ValorVariante valor = valorVarianteRepository
                 .findByIdValorAndIdVariante(idValor, idVariante)
                 .orElseThrow(() -> new IllegalArgumentException(
-                        "El valor no existe en esta variante"));
+                        "Ese valor no existe en esta opción"));
 
         return ValorVarianteMapper.toResponse(valor);
     }
@@ -95,7 +97,7 @@ public class ValorVarianteService {
         ValorVariante valorExistente = valorVarianteRepository
                 .findByIdValorAndIdVariante(idValor, idVariante)
                 .orElseThrow(() -> new IllegalArgumentException(
-                        "El valor no existe en esta variante"));
+                        "Ese valor no existe en esta opción"));
 
         if (!valorExistente.getValor().equalsIgnoreCase(nuevoValor)) {
             validarValorDuplicado(idVariante, nuevoValor);
@@ -116,7 +118,7 @@ public class ValorVarianteService {
         varianteRepository
                 .findByIdVarianteAndIdTienda(idVariante, idTienda)
                 .orElseThrow(() -> new IllegalArgumentException(
-                        "La variante no existe en esta tienda"));
+                        "La opción no existe en tu tienda"));
     }
 
     private void validarValorDuplicado(
@@ -127,8 +129,8 @@ public class ValorVarianteService {
                 .existsByIdVarianteAndValorIgnoreCase(
                         idVariante, valor)) {
 
-            throw new IllegalArgumentException(
-                    "Este valor ya existe para la variante");
+            throw new RecursosDuplicadosException(
+                    "valor", MensajesUsuario.VALOR_DUPLICADO);
         }
     }
 
@@ -143,7 +145,7 @@ public class ValorVarianteService {
                 || request.getValor().isBlank()) {
 
             throw new IllegalArgumentException(
-                    "El valor de la variante es obligatorio");
+                    "El valor es obligatorio");
         }
 
         String valor = request.getValor().trim();

@@ -10,8 +10,8 @@ public class CategoriaRequest {
     @Size(max = 100, message = "El nombre no puede superar los 100 caracteres")
     private String nombre;
 
-    @NotBlank(message = "El slug es obligatorio")
-    @Size(max = 120, message = "El slug no puede superar los 120 caracteres")
+    // Opcional: si llega vacío se genera desde el nombre (al crear) o se conserva (al editar).
+    @Size(max = 120, message = "La dirección web no puede superar los 120 caracteres")
     private String slug;
 
     public CategoriaRequest() {

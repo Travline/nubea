@@ -65,7 +65,8 @@ class VitrinaIntegracionTest {
         assertFalse(p.presentaciones().getFirst().disponible());
         jdbc.update("UPDATE inventario SET stock_actual=2 WHERE id_presentacion=?", presentacion);
         assertTrue(vitrina.obtener(slug).productos().getFirst().presentaciones().getFirst().disponible());
-        assertThrows(RecursoNoEncontradoException.class, () -> vitrina.obtener("t-" + otra));
+        // Tienda existente pero no ACTIVA: "no disponible" (Bloque 2, punto 3)
+        assertThrows(com.ecommerce.backend.shared.exception.TiendaNoDisponibleException.class, () -> vitrina.obtener("t-" + otra));
         assertThrows(RecursoNoEncontradoException.class, () -> vitrina.obtener("inexistente"));
     }
 }

@@ -5,7 +5,9 @@ import { DisenoPublico } from "./disenos/publico";
 import { PaginaInicioSesion } from "./paginas/inicio-sesion";
 import { PaginaRegistro } from "./paginas/registro";
 import { RutaProtegida } from "@/autenticacion/ruta-protegida";
-import { Panel, InicioPanel, EspacioTienda, ResumenTienda } from "@/paginas/panel";
+import { Panel, InicioPanel, MisTiendas, EspacioTienda, ResumenTienda } from "@/paginas/panel";
+import { PlantillasVendedor, AyudaVendedor } from "@/paginas/panel-secciones";
+import { PerfilUsuario } from "@/paginas/perfil";
 
 import { InventarioTienda } from '@/comercio/inventario'
 import { PedidosTienda } from '@/comercio/pedidos'
@@ -27,6 +29,10 @@ export const enrutador = createBrowserRouter([
     element: <RutaProtegida />,
     children: [{ path: "/panel", element: <Panel />, children: [
       { index: true, element: <InicioPanel /> },
+      { path: "tiendas", element: <MisTiendas /> },
+      { path: "plantillas", element: <PlantillasVendedor /> },
+      { path: "ayuda", element: <AyudaVendedor /> },
+      { path: "perfil", element: <PerfilUsuario /> },
       { path: "administracion", element: <Administracion />, children: [
         { index: true, element: <ResumenAdministracion /> },
         { path: "usuarios", element: <UsuariosAdministracion /> },
