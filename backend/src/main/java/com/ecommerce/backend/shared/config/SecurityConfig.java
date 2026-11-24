@@ -49,6 +49,8 @@ public class SecurityConfig {
                 .requestMatchers("/swagger-ui/**","/swagger-ui.html","/v3/api-docs/**").permitAll()
                 .requestMatchers("/error", "/health").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/publico/mercadopago/notificaciones").permitAll()
+                // Vincular Google exige sesión: debe ir antes de la regla pública de /api/auth/**.
+                .requestMatchers(HttpMethod.POST, "/api/auth/google/vinculacion").authenticated()
                 .requestMatchers("/api/auth/**", "/api/integraciones/mercado-pago/oauth/callback").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/tiendas/{slug}", "/api/publico/tiendas/{slug}").permitAll()
                 .anyRequest().authenticated()

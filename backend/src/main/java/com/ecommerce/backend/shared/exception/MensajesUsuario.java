@@ -57,4 +57,13 @@ public final class MensajesUsuario {
 
     // Checkout
     public static final String NINGUN_PRODUCTO_DISPONIBLE = "Ninguno de los productos de tu carrito está disponible en este momento";
+
+    // Inicio de sesión con Google (RN-M1-05)
+    public static final String GOOGLE_NO_DISPONIBLE = "El inicio de sesión con Google no está disponible en este momento";
+    public static final String GOOGLE_TOKEN_INVALIDO = "No pudimos verificar tu cuenta de Google. Inténtalo de nuevo.";
+    public static final String GOOGLE_CORREO_NO_VERIFICADO = "Tu correo de Google no está verificado";
+    public static final String GOOGLE_CORREO_YA_REGISTRADO =
+            "Ya tienes una cuenta con este correo. Inicia sesión con tu contraseña y vincula Google desde tu cuenta.";
+    public static final String GOOGLE_DE_OTRO_USUARIO = "Esta cuenta de Google ya está vinculada a otro usuario de Nubea.";
+    public static final String GOOGLE_YA_VINCULADO_OTRA = "Tu cuenta ya tiene vinculada otra cuenta de Google.";
 }

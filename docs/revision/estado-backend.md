@@ -12,14 +12,16 @@
 >
 > **Bloque 4 (cierre):** `.env.example` completo, `.env.render.example`, `pagos-operacion.md` y `modulo-4.md` corregidos, y DTOs en `PresentacionImagenController`.
 >
-> **Suite de tests:** 127 tests (tras el Bloque 4), 0 fallos, 4 omitidos (almacenamiento S3, que requiere `STORAGE_IT`), ejecutados contra `nubea_test` con `OAUTH_PG_TEST`, `CUENTA_PAGO_PG_TEST` e `INVENTARIO_PG_TEST`.
+> **Bloque 5 (inicio de sesión con Google):** `POST /api/auth/google` y `POST /api/auth/google/vinculacion`; guía para el frontend en [google-login-frontend.md](google-login-frontend.md).
+>
+> **Suite de tests:** 139 tests (tras el Bloque 5), 0 fallos, 4 omitidos (almacenamiento S3, que requiere `STORAGE_IT`), ejecutados contra `nubea_test` con `OAUTH_PG_TEST`, `CUENTA_PAGO_PG_TEST` e `INVENTARIO_PG_TEST`.
 
 ---
 
 ## 1. Resumen
 
 **El backend está listo para la entrega en cuanto a código.**
-- Todas las reglas de negocio de M2, M3 y M4 se cumplen. En M1 solo quedan fuera el login con Google (RN-M1-05, parcial) y el cierre de tienda o cuenta (RN-M1-18, no implementado), que estaban previstos como backlog.
+- Todas las reglas de negocio de M2, M3 y M4 se cumplen. En M1 solo queda fuera el cierre de tienda o cuenta (RN-M1-18, no implementado, previsto como backlog); el login con Google (RN-M1-05) se completó en el Bloque 5.
 - Los siete problemas críticos de la auditoría están resueltos o mitigados.
 - El frontend nuevo tiene los endpoints que pidió para la entrega.
 
@@ -50,7 +52,7 @@ Leyenda: **CUMPLE** · **PARCIAL** · **NO IMPLEMENTADA**. Las notas "(Bn)" indi
 | RN-M1-02 Varios roles sin repetir | CUMPLE | V1 PK `usuario_rol` |
 | RN-M1-03 Documento opcional, conjunto y único | CUMPLE | V1 `chk_documento_conjunto`, `uq_usuario_documento`; `AuthService.aplicarDocumento` |
 | RN-M1-04 Formato según tipo de documento | CUMPLE | `AuthService.aplicarDocumento` |
-| RN-M1-05 Google solo tras acreditar titularidad | **PARCIAL** | Solo la BD (`uq_usuario_identidad_oidc`, `chk_identidad_modalidad`); no hay flujo OIDC (backlog) |
+| RN-M1-05 Google solo tras acreditar titularidad | CUMPLE (B5) | V1 `uq_usuario_identidad_oidc`, `uq_usuario_identidad_proveedor`; `GoogleIdTokenVerifier` (RS256 con el JWKS de Google, `iss`, `aud`, `exp`, `iat`, `email_verified`); `AuthService.autenticarConGoogle`/`vincularGoogle`. Sin vinculación por correo: si el correo ya existe → 409 |
 | RN-M1-06 LOCAL con contraseña cifrada | CUMPLE | V1 `chk_identidad_modalidad`; Argon2 en `SecurityConfig` |
 | RN-M1-07 Rol CLIENTE al registrarse | CUMPLE | `AuthService.registrar` |
 | RN-M1-08 Rol DUENO_TIENDA con la primera tienda | CUMPLE | `TiendaService.crearTienda` |
@@ -146,7 +148,7 @@ Leyenda: **CUMPLE** · **PARCIAL** · **NO IMPLEMENTADA**. Las notas "(Bn)" indi
 | RN-M4-23 Carrito y pedido no se reasignan | CUMPLE | V1 `trg_carrito_no_reasignar`, `trg_pedido_no_reasignar` |
 | RN-M4-24 Número corto de pedido por tienda | CUMPLE (B3) | V14 `trg_pedido_numero`, `uq_pedido_numero_tienda`, `trg_pedido_numero_fijo` |
 
-**Total:** 74 reglas y 10 HU. Las reglas quedan en 72 CUMPLE, 1 PARCIAL (RN-M1-05) y 1 NO IMPLEMENTADA (RN-M1-18). De las HU, 3 son PARCIALES por detalles que no afectan al flujo (HU-M3-03, HU-M3-04 y HU-M3-10).
+**Total:** 74 reglas y 10 HU. Las reglas quedan en 73 CUMPLE y 1 NO IMPLEMENTADA (RN-M1-18). De las HU, 3 son PARCIALES por detalles que no afectan al flujo (HU-M3-03, HU-M3-04 y HU-M3-10).
 
 ---
 
@@ -267,8 +269,8 @@ Leyenda: **CUMPLE** · **PARCIAL** · **NO IMPLEMENTADA**. Las notas "(Bn)" indi
 
 | Tarea | Origen |
 | --- | --- |
-| Verificación de correo (código de 6 dígitos) | Hallazgos §7; riesgo con `APP_BOOTSTRAP_ADMIN_EMAIL` |
-| Login con Google (RN-M1-05) | Hallazgos §7 |
+| 🔺 **PRIORIDAD ALTA — Verificación de correo** (código de 6 dígitos al registrarse) | **Riesgo concreto desde el Bloque 5:** el registro con contraseña no verifica el correo, así que alguien puede registrar el correo de otra persona y **bloquearle el alta con Google** (recibe el 409 "Ya tienes una cuenta con este correo…" y no puede entrar con Google ni recuperar esa cuenta). No permite suplantarla, pero sí bloquearla. Además: riesgo con `APP_BOOTSTRAP_ADMIN_EMAIL` (hallazgos §7). Requiere un servicio de envío de correos |
+| ~~Login con Google (RN-M1-05)~~ | ✅ Bloque 5. Pendiente en el frontend (rediseño) según `google-login-frontend.md`. Backlog: añadir contraseña a cuentas creadas con Google y desvincular Google |
 | "Continuar como…" estilo Shop / reconocimiento entre tiendas | Hallazgos §6–7 |
 | Mi perfil (editar datos y cambiar contraseña) | Análisis del frontend, E10 |
 | Configuración de la tienda (renombrar, dirección web) | E11 |
@@ -311,6 +313,7 @@ Leyenda: **CUMPLE** · **PARCIAL** · **NO IMPLEMENTADA**. Las notas "(Bn)" indi
 
 **Variables nuevas o pendientes**
 - [ ] `RESERVAS_VENCIMIENTO_DELAY_MS` y `RESERVAS_VENCIMIENTO_GRACIA_MINUTOS` (opcionales, con valor por defecto).
+- [ ] `GOOGLE_CLIENT_ID` en Render y `VITE_GOOGLE_CLIENT_ID` en Vercel (Bloque 5; el mismo valor, no es secreto). Configurar en Google Cloud los orígenes JavaScript autorizados y, en modo prueba, los usuarios de prueba. Vacío = Google deshabilitado (503).
 - [ ] Las de Mercado Pago de §4.2, si se activa el cobro.
 - [ ] Revisar `APP_BOOTSTRAP_ADMIN_EMAIL` (dejarla vacía hasta tener verificación de correo), `SESSION_COOKIE_*` y `APP_CORS_ALLOWED_ORIGINS`.
 

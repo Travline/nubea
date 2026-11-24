@@ -69,6 +69,18 @@ public ResponseEntity<ErrorResponse> jsonInvalido(HttpMessageNotReadableExceptio
       .body(ErrorResponse.of(409, "CONFLICTO", ex.getMessage(), Map.of(ex.getCampo(), ex.getMessage())));
     }
 
+    @ExceptionHandler(com.ecommerce.backend.identidad.google.GoogleTokenInvalidoException.class)
+    public ResponseEntity<ErrorResponse> googleTokenInvalido(RuntimeException ex) {
+      return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+      .body(ErrorResponse.of(401, "GOOGLE_TOKEN_INVALIDO", ex.getMessage()));
+    }
+
+    @ExceptionHandler(com.ecommerce.backend.identidad.google.GoogleNoDisponibleException.class)
+    public ResponseEntity<ErrorResponse> googleNoDisponible(RuntimeException ex) {
+      return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+      .body(ErrorResponse.of(503, "GOOGLE_NO_DISPONIBLE", ex.getMessage()));
+    }
+
     @ExceptionHandler(TiendaNoDisponibleException.class)
     public ResponseEntity<ErrorResponse> tiendaNoDisponible(TiendaNoDisponibleException ex) {
       return ResponseEntity.status(HttpStatus.NOT_FOUND)

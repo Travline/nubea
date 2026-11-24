@@ -51,7 +51,9 @@ public final class RestriccionesBd {
             Map.entry("uq_imagen_principal_producto", new Traduccion("esPrincipal", FOTO_PRINCIPAL_DUPLICADA)),
             Map.entry("uq_banner_tienda_orden", new Traduccion("orden", POSICION_BANNER_OCUPADA)),
             Map.entry("usuario_plataforma_email_key", new Traduccion("correoElectronico", EMAIL_DUPLICADO)),
-            Map.entry("uq_usuario_documento", new Traduccion("numeroDocumento", DOCUMENTO_DUPLICADO)));
+            Map.entry("uq_usuario_documento", new Traduccion("numeroDocumento", DOCUMENTO_DUPLICADO)),
+            Map.entry("uq_usuario_identidad_oidc", new Traduccion("idToken", GOOGLE_DE_OTRO_USUARIO)),
+            Map.entry("uq_usuario_identidad_proveedor", new Traduccion("idToken", GOOGLE_YA_VINCULADO_OTRA)));
 
     private RestriccionesBd() {
     }
