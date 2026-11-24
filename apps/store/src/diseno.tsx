@@ -2,12 +2,14 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { ArrowLeft, ShoppingBag, Store, UserRound } from 'lucide-react'
 import { actualizarSesion, enlaceSesion, solicitar } from './api'
+import { plantillaDisponible } from './plantillas'
 
 const api = import.meta.env.VITE_API_URL?.trim() || (import.meta.env.DEV ? 'http://localhost:8080' : '')
 type Usuario = { nombres: string }
 type Carrito = { items: { cantidad: number }[] }
-export function MarcoTienda({ slug, nombre, children }: { slug: string; nombre?: string; children: ReactNode }) {
+export function MarcoTienda({ slug, nombre, plantilla, children }: { slug: string; nombre?: string; plantilla?: string; children: ReactNode }) {
   const [nombreCargado, setNombreCargado] = useState('')
+  const [plantillaCargada, setPlantillaCargada] = useState('')
   const [usuario, setUsuario] = useState<Usuario | null>(null)
   const [cantidad, setCantidad] = useState(0)
   const [menu, setMenu] = useState(false)
@@ -19,8 +21,8 @@ export function MarcoTienda({ slug, nombre, children }: { slug: string; nombre?:
     if (nombre) return
     const controller = new AbortController()
     fetch(`${api}/api/publico/tiendas/${encodeURIComponent(slug)}`, { signal: controller.signal })
-      .then(res => res.ok ? res.json() as Promise<{ nombre: string }> : null)
-      .then(datos => setNombreCargado(datos?.nombre || ''))
+      .then(res => res.ok ? res.json() as Promise<{ nombre: string; plantilla?: string }> : null)
+      .then(datos => { setNombreCargado(datos?.nombre || ''); setPlantillaCargada(datos?.plantilla || '') })
       .catch(() => {})
     return () => controller.abort()
   }, [slug, nombre])
@@ -54,7 +56,9 @@ export function MarcoTienda({ slug, nombre, children }: { slug: string; nombre?:
     catch (e) { setError(e instanceof Error ? e.message : 'No se pudo cerrar sesión.') }
   }
   const nombreVisible = nombre || nombreCargado || 'Tienda'
-  return <div className="sitio">
+  const codigoPlantilla = plantilla || plantillaCargada
+  const clasePlantilla = plantillaDisponible(codigoPlantilla) ? codigoPlantilla : 'minimal'
+  return <div className={`sitio plantilla-${clasePlantilla}`}>
     <div className="barra-anuncio"><span>{nombreVisible}</span><span aria-hidden="true">·</span><span>Tienda en línea</span></div>
     <header className="cabecera-sitio"><div className="contenedor cabecera">
       <nav className="navegacion-secundaria" aria-label="Secciones de la tienda"><Link to={`/${slug}`}>Inicio</Link><a href={`${import.meta.env.BASE_URL}${slug}#productos`}>Productos</a></nav>

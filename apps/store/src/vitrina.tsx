@@ -4,6 +4,7 @@ import { ArrowRight, ChevronLeft, ChevronRight, ImageOff, ShoppingBag } from 'lu
 import { agregarAlCarrito, enlaceSesion, ErrorSolicitud } from './api'
 import { MarcoTienda, Volver } from './diseno'
 import { precio } from './api'
+import { plantillaDisponible } from './plantillas'
 
 type Presentacion = { id: string; precio: number; disponible: boolean; opciones: { nombre: string; valor: string }[] }
 type Producto = { id: string; categoriaId: string; nombre: string; descripcion: string | null; imagenes: string[]; presentaciones: Presentacion[] }
@@ -30,7 +31,7 @@ export function Vitrina() {
   }, [slug, intento])
   if (error) return <MarcoTienda slug={slug}><div className="estado"><h1>Tienda no disponible</h1><p role="alert">{error}</p><button className="boton boton-primario" onClick={() => setIntento(i => i + 1)}>Intentar nuevamente</button></div></MarcoTienda>
   if (!datos) return <main className="contenedor estado" role="status">Cargando tienda...</main>
-  if (datos.plantilla !== 'minimal') return <MarcoTienda slug={slug} nombre={datos.nombre}><div className="estado"><h1>{datos.nombre}</h1><p>La plantilla de esta tienda no está disponible.</p></div></MarcoTienda>
+  if (!plantillaDisponible(datos.plantilla)) return <MarcoTienda slug={slug} nombre={datos.nombre}><div className="estado"><h1>{datos.nombre}</h1><p>La plantilla de esta tienda no está disponible.</p></div></MarcoTienda>
   const producto = datos.productos.find(p => p.id === idProducto)
   const actual = datos.banners[banner]
   const seleccionColeccion = (datos.colecciones || []).find(c => c.id === coleccion)
@@ -41,7 +42,7 @@ export function Vitrina() {
     if (!Number.isFinite(pa) || !Number.isFinite(pb)) return Number.isFinite(pa) ? -1 : Number.isFinite(pb) ? 1 : a.nombre.localeCompare(b.nombre, 'es')
     return (orden === 'precio-asc' ? pa - pb : pb - pa) || a.nombre.localeCompare(b.nombre, 'es')
   })
-  return <MarcoTienda slug={slug} nombre={datos.nombre}>{idProducto ? producto ? <Detalle key={producto.id} producto={producto} slug={slug} categoria={datos.categorias.find(c => c.id === producto.categoriaId)?.nombre} /> : <div className="estado"><h1>Producto no encontrado</h1><Volver to={`/${slug}`}>Volver a la tienda</Volver></div> : <>
+  return <MarcoTienda slug={slug} nombre={datos.nombre} plantilla={datos.plantilla}>{idProducto ? producto ? <Detalle key={producto.id} producto={producto} slug={slug} categoria={datos.categorias.find(c => c.id === producto.categoriaId)?.nombre} /> : <div className="estado"><h1>Producto no encontrado</h1><Volver to={`/${slug}`}>Volver a la tienda</Volver></div> : <>
     <section className={`portada-tienda ${datos.mostrarCarrusel && actual ? 'con-imagen' : 'sin-imagen'}`} aria-label="Novedades">
       {datos.mostrarCarrusel && actual && <div className="portada-fondo">{actual.enlace ? <a href={actual.enlace}><img src={actual.url} alt={`Banner ${banner + 1} de ${datos.banners.length}`} /></a> : <img src={actual.url} alt={`Banner ${banner + 1} de ${datos.banners.length}`} />}</div>}
       <div className="portada-contenido"><p className="etiqueta">Bienvenido a {datos.nombre}</p><h1>{datos.titulo || datos.nombre}</h1>{datos.descripcion && <p className="introduccion-texto">{datos.descripcion}</p>}<a className="enlace-flecha" href="#productos">Explorar productos <ArrowRight size={17} /></a></div>
