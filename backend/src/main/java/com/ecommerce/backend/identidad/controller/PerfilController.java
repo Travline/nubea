@@ -16,7 +16,10 @@ import com.ecommerce.backend.identidad.dto.CambiarContrasenaRequest;
 import com.ecommerce.backend.identidad.dto.PerfilResponse;
 import com.ecommerce.backend.identidad.service.PerfilService;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import org.springframework.session.FindByIndexNameSessionRepository;
+import org.springframework.session.Session;
 import lombok.RequiredArgsConstructor;
 
 /** Perfil del usuario con sesión iniciada (no recibe ids: siempre actúa sobre la propia cuenta). */
@@ -25,6 +28,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class PerfilController {
     private final PerfilService perfil;
+    private final FindByIndexNameSessionRepository<? extends Session> sesiones;
 
     @GetMapping
     public ResponseEntity<PerfilResponse> obtener(Authentication authentication) {
@@ -38,11 +42,22 @@ public class PerfilController {
         return id == null ? ResponseEntity.status(HttpStatus.UNAUTHORIZED).build() : ResponseEntity.ok(perfil.actualizar(id, req));
     }
 
+    /**
+     * Cambia la contraseña. Después cierra las demás sesiones del usuario (otros dispositivos) y rota el id de la
+     * sesión actual, que sigue iniciada (la respuesta trae la nueva cookie SESSION).
+     */
     @PutMapping("/contrasena")
-    public ResponseEntity<Void> cambiarContrasena(Authentication authentication, @Valid @RequestBody CambiarContrasenaRequest req) {
+    public ResponseEntity<Void> cambiarContrasena(Authentication authentication, @Valid @RequestBody CambiarContrasenaRequest req,
+                                                  HttpServletRequest request) {
         UUID id = usuario(authentication);
         if (id == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         perfil.cambiarContrasena(id, req);
+        var actual = request.getSession(false);
+        String idSesionActual = actual == null ? null : actual.getId();
+        sesiones.findByPrincipalName(id.toString()).keySet().stream()
+                .filter(idSesion -> !idSesion.equals(idSesionActual))
+                .forEach(sesiones::deleteById);
+        if (actual != null) request.changeSessionId();
         return ResponseEntity.noContent().build();
     }
 

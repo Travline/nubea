@@ -4,7 +4,7 @@ import { useOutletContext } from 'react-router-dom'
 import { ArrowDown, ArrowUp, Check, Eye, ImagePlus, Images, LayoutTemplate, Link2, RefreshCw, Trash2, Type } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { ContextoTienda } from '@/paginas/panel'
-import { MiniaturaEnVivo, ModalVistaPrevia, infoPlantillas } from '@/components/plantillas/vista-plantillas'
+import { MiniaturaEnVivo, ModalVistaPrevia, PLANTILLAS_VISIBLES, infoPlantillas } from '@/components/plantillas/vista-plantillas'
 import { api } from './datos'
 import type { Banner, Configuracion, Plantilla } from './datos'
 import { Aviso, EstadoCarga, useCarga, useOperacion } from './comunes'
@@ -38,7 +38,7 @@ export function Apariencia() {
 
 function FormularioApariencia({ configuracion, plantillas, apiBase, recargar, alCambiarPlantilla }: { configuracion: Configuracion; plantillas: Plantilla[]; apiBase: string; recargar: () => void; alCambiarPlantilla: (codigo: string) => void }) {
   // Solo las plantillas que la vitrina (apps/store) ya sabe dibujar.
-  plantillas = plantillas.filter(p => ["minimal", "boutique", "audaz", "gourmet", "natural"].includes(p.codigo))
+  plantillas = plantillas.filter(p => PLANTILLAS_VISIBLES.includes(p.codigo))
   const [id, setId] = useState(configuracion.plantilla.idPlantilla); const [titulo, setTitulo] = useState(configuracion.tituloInicio ?? ''); const [descripcion, setDescripcion] = useState(configuracion.descripcionInicio ?? ''); const [carrusel, setCarrusel] = useState(configuracion.mostrarCarrusel); const op = useOperacion(); const [guardado, setGuardado] = useState(false)
   const [vistaPrevia, setVistaPrevia] = useState<{ codigo: string; nombre: string } | null>(null)
   const noDisponible = !plantillas.some(p => p.idPlantilla === configuracion.plantilla.idPlantilla)

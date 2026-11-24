@@ -66,4 +66,17 @@ public final class MensajesUsuario {
             "Ya tienes una cuenta con este correo. Inicia sesión con tu contraseña y vincula Google desde tu cuenta.";
     public static final String GOOGLE_DE_OTRO_USUARIO = "Esta cuenta de Google ya está vinculada a otro usuario de Nubea.";
     public static final String GOOGLE_YA_VINCULADO_OTRA = "Tu cuenta ya tiene vinculada otra cuenta de Google.";
+
+    // Documento de identidad (registro y perfil)
+    public static final String DOCUMENTO_TIPO_Y_NUMERO = "El tipo y el número de documento van juntos";
+    public static final String DOCUMENTO_TIPO_INVALIDO = "Elige un tipo de documento válido (DNI, carné de extranjería o pasaporte)";
+    public static final String DNI_INVALIDO = "El DNI debe tener 8 dígitos";
+    public static final String CARNE_EXTRANJERIA_INVALIDO = "El carné de extranjería debe tener entre 9 y 12 letras o números";
+    public static final String PASAPORTE_INVALIDO = "El pasaporte debe tener entre 6 y 12 letras o números";
+    public static final String PAIS_EMISOR_REQUERIDO = "Para el pasaporte indica el país emisor (por ejemplo, CO)";
+
+    // Perfil y contraseña
+    public static final String CONTRASENA_ACTUAL_INCORRECTA = "La contraseña actual no es correcta";
+    public static final String CONTRASENA_NUEVA_IGUAL = "La nueva contraseña debe ser distinta de la actual";
+    public static final String CUENTA_SIN_CONTRASENA = "Tu cuenta entra con Google y todavía no tiene contraseña.";
 }

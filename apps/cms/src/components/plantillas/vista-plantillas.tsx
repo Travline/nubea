@@ -8,6 +8,10 @@ export const URL_TIENDA = (import.meta.env.VITE_TIENDA_URL as string | undefined
 
 const iconoAzul = 'bg-primary/10 text-primary dark:bg-[#4d7cff]/15 dark:text-[#8fb3ff]'
 
+/**
+ * Única lista de plantillas del cms: las que la vitrina (apps/store, PLANTILLAS_DISPONIBLES) sabe dibujar.
+ * Deben existir en la tabla `plantilla` (V1 + V15). El código 'audaz' se muestra como "Tech".
+ */
 export const PLANTILLAS_VISIBLES = ['minimal', 'boutique', 'audaz', 'gourmet', 'natural']
 export const infoPlantillas: Record<string, { descripcion: string; ideal: string }> = {
   minimal: { descripcion: 'Editorial y cálida, con portada a pantalla completa y catálogo en tonos arena.', ideal: 'Ropa y accesorios' },

@@ -4,6 +4,7 @@ import java.time.OffsetDateTime;
 import java.util.Set;
 import java.util.UUID;
 
+/** {@code tieneContrasena}: tiene identidad LOCAL. {@code tieneGoogle}: tiene Google vinculado (para "Vincular Google"). */
 public record PerfilResponse(
     UUID idUsuario,
     String nombres,
@@ -16,5 +17,6 @@ public record PerfilResponse(
     String paisEmisorDocumento,
     Set<String> roles,
     OffsetDateTime fechaCreacion,
-    boolean tieneContrasena
+    boolean tieneContrasena,
+    boolean tieneGoogle
 ) {}

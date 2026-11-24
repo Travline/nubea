@@ -28,6 +28,6 @@ public record RegistroUsuarioRequest(
     String tipoDocumento,
     @Size(max = 30) String numeroDocumento,
     //Despues creamos nuestra validacion personalizada para el tipo de documento y el numero de documento
-    @Pattern(regexp = "^[A-Z]{2}$", message = "El tipo de documento debe ser un codigo de dos Letras (por ejemplo, 'DNI', 'PAS', 'RUC')")
+    @Pattern(regexp = "^[A-Za-z]{2}$", message = "El país emisor debe ser un código de dos letras (por ejemplo, CO)")
     String paisEmisorDocumento 
 ) {}

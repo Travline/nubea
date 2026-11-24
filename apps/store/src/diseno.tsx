@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { ArrowLeft, ShoppingBag, Store, UserRound } from 'lucide-react'
 import { actualizarSesion, enlaceSesion, solicitar } from './api'
-import { plantillaDisponible } from './plantillas'
+import { PLANTILLA_POR_DEFECTO, plantillaDisponible } from './plantillas'
 
 const api = import.meta.env.VITE_API_URL?.trim() || (import.meta.env.DEV ? 'http://localhost:8080' : '')
 type Usuario = { nombres: string }
@@ -57,7 +57,7 @@ export function MarcoTienda({ slug, nombre, plantilla, children }: { slug: strin
   }
   const nombreVisible = nombre || nombreCargado || 'Tienda'
   const codigoPlantilla = plantilla || plantillaCargada
-  const clasePlantilla = plantillaDisponible(codigoPlantilla) ? codigoPlantilla : 'minimal'
+  const clasePlantilla = plantillaDisponible(codigoPlantilla) ? codigoPlantilla : PLANTILLA_POR_DEFECTO
   return <div className={`sitio plantilla-${clasePlantilla}`}>
     <div className="barra-anuncio"><span>{nombreVisible}</span><span aria-hidden="true">·</span><span>Tienda en línea</span></div>
     <header className="cabecera-sitio"><div className="contenedor cabecera">

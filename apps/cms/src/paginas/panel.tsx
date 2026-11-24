@@ -10,6 +10,7 @@ import { api, rutaTienda } from '@/comercio/datos'
 import type { Tienda } from '@/comercio/datos'
 import { Aviso, EstadoCarga, useCarga, useOperacion } from '@/comercio/comunes'
 import { InicioVendedor } from '@/paginas/panel-secciones'
+import { nombresPlantilla } from '@/components/plantillas/vista-plantillas'
 
 const seccionesTienda = [
   ['/catalogo', 'Catálogo', Package],
@@ -19,7 +20,6 @@ const seccionesTienda = [
   ['/pagos', 'Pagos', CreditCard],
 ] as const
 
-const nombresPlantilla: Record<string, string> = { minimal: 'Minimalista', boutique: 'Boutique', audaz: 'Tech', gourmet: 'Gourmet', natural: 'Natural' }
 const nombrePlantilla = (codigo: string | null | undefined) => (codigo && nombresPlantilla[codigo]) || codigo || 'Sin plantilla'
 
 const estilosEstado: Record<string, { texto: string; clase: string; punto: string }> = {
@@ -61,7 +61,7 @@ export function Panel() {
     </div>
     {idTiendaActual && <div className="space-y-1">
       <p className="truncate px-3 pb-1 text-[11px] font-semibold tracking-[0.14em] text-muted-foreground/80 uppercase">{tiendaActual?.nombre ?? 'Tienda'}</p>
-      {seccionesTienda.map(([ruta, nombre, Icono]) => <NavLink key={ruta} end={ruta === ''} to={`/panel/tiendas/${idTiendaActual}${ruta}`} className={claseEnlaceMenu}><Icono className="size-[18px]" />{nombre}</NavLink>)}
+      {seccionesTienda.map(([ruta, nombre, Icono]) => <NavLink key={ruta} to={`/panel/tiendas/${idTiendaActual}${ruta}`} className={claseEnlaceMenu}><Icono className="size-[18px]" />{nombre}</NavLink>)}
       {tiendaActual && <a href={`/tienda/${encodeURIComponent(tiendaActual.slug)}`} target="_blank" rel="noreferrer" className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"><ExternalLink className="size-[18px]" />Ver tienda pública</a>}
     </div>}
   </nav>
@@ -92,7 +92,7 @@ export function Panel() {
         {/* Menú en móvil */}
         <div className="flex gap-1 overflow-x-auto border-t px-3 py-2 lg:hidden">
           {esAdmin ? <NavLink to="/panel/administracion" className={claseEnlaceMenu}>Administración</NavLink> : ([['/panel', 'Inicio'], ['/panel/tiendas', 'Mis tiendas'], ['/panel/plantillas', 'Plantillas'], ['/panel/ayuda', 'Ayuda'], ['/panel/perfil', 'Mi perfil']] as const).map(([ruta, nombre]) => <NavLink key={ruta} to={ruta} end className={claseEnlaceMenu}><span className="whitespace-nowrap">{nombre}</span></NavLink>)}
-          {idTiendaActual && seccionesTienda.map(([ruta, nombre]) => <NavLink key={ruta} end={ruta === ''} to={`/panel/tiendas/${idTiendaActual}${ruta}`} className={claseEnlaceMenu}><span className="whitespace-nowrap">{nombre}</span></NavLink>)}
+          {idTiendaActual && seccionesTienda.map(([ruta, nombre]) => <NavLink key={ruta} to={`/panel/tiendas/${idTiendaActual}${ruta}`} className={claseEnlaceMenu}><span className="whitespace-nowrap">{nombre}</span></NavLink>)}
         </div>
       </header>
       <main className="mx-auto max-w-[1280px] space-y-6 px-5 py-8 lg:px-8"><Aviso error={error} /><Outlet /></main>

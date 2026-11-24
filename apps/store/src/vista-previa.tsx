@@ -5,7 +5,7 @@ import { ArrowRight, CakeSlice, ChevronLeft, ChevronRight, Coffee, Croissant, Dr
 import type { LucideIcon } from 'lucide-react'
 import { MarcoTienda } from './diseno'
 import { precio } from './api'
-import { plantillaDisponible } from './plantillas'
+import { PLANTILLA_POR_DEFECTO, plantillaDisponible } from './plantillas'
 
 /*
  * Vista previa de una plantilla con datos de ejemplo (no consulta la API).
@@ -102,8 +102,8 @@ function FotoSimulada({ demo, icono: Icono = ShoppingBag }: { demo: Demo; icono?
 }
 
 export function VistaPrevia() {
-  const { codigo = 'minimal' } = useParams()
-  const clave = plantillaDisponible(codigo) && demos[codigo] ? codigo : 'minimal'
+  const { codigo = PLANTILLA_POR_DEFECTO } = useParams()
+  const clave = plantillaDisponible(codigo) && demos[codigo] ? codigo : PLANTILLA_POR_DEFECTO
   const demo = demos[clave]
   const [parametros] = useSearchParams()
   const enMiniatura = parametros.get('miniatura') === '1'
