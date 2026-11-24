@@ -25,7 +25,7 @@ public class ColeccionProductoController {
     }
 
     // Agregar un producto a una colección.
-    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.puedeEditar(#idTienda, authentication)")
     @PostMapping("/colecciones/{idColeccion}/productos/{idProducto}")
     public ResponseEntity<ColeccionProductoResponse> agregarProducto(
             @PathVariable UUID idTienda,
@@ -40,7 +40,7 @@ public class ColeccionProductoController {
     }
 
     // Listar productos de una colección.
-    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.puedeVer(#idTienda, authentication)")
     @GetMapping("/colecciones/{idColeccion}/productos")
     public ResponseEntity<List<ProductoResponse>> listarProductosPorColeccion(
             @PathVariable UUID idTienda,
@@ -52,7 +52,7 @@ public class ColeccionProductoController {
     }
 
     // Listar colecciones de un producto.
-    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.puedeVer(#idTienda, authentication)")
     @GetMapping("/productos/{idProducto}/colecciones")
     public ResponseEntity<List<ColeccionResponse>> listarColeccionesPorProducto(
             @PathVariable UUID idTienda,
@@ -64,7 +64,7 @@ public class ColeccionProductoController {
     }
 
     // Quitar un producto de una colección.
-    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.puedeEditar(#idTienda, authentication)")
     @DeleteMapping("/colecciones/{idColeccion}/productos/{idProducto}")
     public ResponseEntity<Void> quitarProducto(
             @PathVariable UUID idTienda,

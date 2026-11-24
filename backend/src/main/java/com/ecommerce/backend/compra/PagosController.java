@@ -75,12 +75,12 @@ public class PagosController {
         return store.estado(pedido);
     }
     @GetMapping("/api/tiendas/{idTienda}/pedidos/{pedido}/pago")
-    @PreAuthorize("@tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
+    @PreAuthorize("@tiendaAuthorizationService.puedeVer(#idTienda, authentication)")
     public PagosStore.Estado consultarVendedor(@PathVariable UUID idTienda,@PathVariable UUID pedido) {
         verificarTienda(idTienda,pedido); verificarIntento(pedido); return store.estado(pedido);
     }
     @PostMapping("/api/tiendas/{idTienda}/pedidos/{pedido}/reembolsos")
-    @PreAuthorize("@tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
+    @PreAuthorize("@tiendaAuthorizationService.puedeVer(#idTienda, authentication)")
     public PagosStore.Estado reembolsar(@PathVariable UUID idTienda,@PathVariable UUID pedido,@Valid @RequestBody Devolucion cuerpo) {
         store.solicitarReembolso(idTienda,pedido,usuario(),cuerpo.clave(),cuerpo.reponerStock());
         procesador.procesar(pedido);

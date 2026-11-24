@@ -25,7 +25,7 @@ public class ColeccionController {
     }
 
     // Crear una colección.
-    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.puedeEditar(#idTienda, authentication)")
     @PostMapping
     public ResponseEntity<ColeccionResponse> crearColeccion(
             @PathVariable UUID idTienda,
@@ -38,7 +38,7 @@ public class ColeccionController {
     }
 
     // Listar todas las colecciones.
-    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.puedeVer(#idTienda, authentication)")
     @GetMapping
     public ResponseEntity<List<ColeccionResponse>> listarColecciones(
             @PathVariable UUID idTienda) {
@@ -48,7 +48,7 @@ public class ColeccionController {
     }
 
     // Listar únicamente las colecciones activas.
-    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.puedeVer(#idTienda, authentication)")
     @GetMapping("/activas")
     public ResponseEntity<List<ColeccionResponse>> listarColeccionesActivas(
             @PathVariable UUID idTienda) {
@@ -58,7 +58,7 @@ public class ColeccionController {
     }
 
     // Obtener una colección por su ID.
-    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.puedeVer(#idTienda, authentication)")
     @GetMapping("/{idColeccion}")
     public ResponseEntity<ColeccionResponse> obtenerColeccionPorId(
             @PathVariable UUID idTienda,
@@ -70,7 +70,7 @@ public class ColeccionController {
     }
 
     // Actualizar una colección.
-    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.puedeEditar(#idTienda, authentication)")
     @PutMapping("/{idColeccion}")
     public ResponseEntity<ColeccionResponse> actualizarColeccion(
             @PathVariable UUID idTienda,
@@ -83,7 +83,7 @@ public class ColeccionController {
     }
 
     // Cambiar el estado de una colección.
-    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.puedeEditar(#idTienda, authentication)")
     @PatchMapping("/{idColeccion}/estado")
     public ResponseEntity<ColeccionResponse> cambiarEstadoColeccion(
             @PathVariable UUID idTienda,

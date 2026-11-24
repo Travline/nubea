@@ -102,7 +102,7 @@ El carrito es libre y no reserva stock; el pedido congela precios, impuestos y d
 
 | Código | Regla | Control | Implementación |
 | --- | --- | --- | --- |
-| **RN-M4-01** | Las direcciones usan un UBIGEO válido y cada usuario tiene como máximo una dirección principal. | BD | FK a ubigeo + `uq_direccion_principal_usuario` |
+| **RN-M4-01** | La dirección se registra con Google Places (`place_id`) o como texto libre; `codigo_ubigeo` es opcional y, si se envía, debe existir. Cada usuario tiene como máximo una dirección principal. | BD + Backend | `uq_direccion_principal_usuario` + FK opcional a ubigeo; `DireccionesController` valida el UBIGEO cuando viene y desmarca la principal anterior |
 | **RN-M4-02** | Un carrito pertenece a un cliente de una tienda; máximo un carrito ACTIVO por pareja usuario-tienda. | BD | FK compuesta a `tienda_cliente` + `uq_carrito_activo_usuario_tienda` |
 | **RN-M4-03** | El carrito solo admite presentaciones de su tienda y cantidades mayores que cero. | BD | `trg_carrito_item_tienda` + CHECK `cantidad > 0` |
 | **RN-M4-04** | Solo se agregan al carrito presentaciones ACTIVAS de productos PUBLICADOS; el precio mostrado se recalcula hasta el checkout. | Backend | Servicio de carrito |
@@ -146,5 +146,6 @@ La v1.2 no agrega tablas: convierte en garantías de la BD las reglas que en v1.
 ### Trabajo futuro (se agrega sin modificar las tablas actuales):
 
 * **Envío:** Columna `estado_envio` en pedido o tabla `envio` 1:1; si se cobra, `costo_envio` y ajuste de `chk_pedido_total`.
+* **UBIGEO obligatorio para envíos (RN-M4-01):** Hoy `codigo_ubigeo` es opcional porque la dirección se toma de Google Places. Cuando se calculen y gestionen envíos, el UBIGEO pasará a ser obligatorio para las direcciones de entrega.
 * **Empleados por tienda:** Tabla `tienda_usuario` con rol por tienda.
 * **Cupones y descuentos:** Devoluciones e historial de movimientos de inventario.

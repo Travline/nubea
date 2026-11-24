@@ -18,7 +18,7 @@ public class InventarioGestionController {
     private final JdbcTemplate jdbc;
 
     @PutMapping("/{idPresentacion}")
-    @PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
+    @PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.puedeEditar(#idTienda, authentication)")
     @Transactional
     public ResponseEntity<Void> actualizar(@PathVariable UUID idTienda, @PathVariable UUID idPresentacion,
                                            @Valid @RequestBody ActualizarInventarioRequest request) {

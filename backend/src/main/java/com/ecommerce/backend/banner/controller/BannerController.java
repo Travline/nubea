@@ -33,13 +33,13 @@ public class BannerController {
     private final BannerService bannerService;
 
     @GetMapping
-    @PreAuthorize("@tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
+    @PreAuthorize("@tiendaAuthorizationService.puedeVer(#idTienda, authentication)")
     public ResponseEntity<List<BannerResponse>> listarBanners(@PathVariable UUID idTienda) {
         return ResponseEntity.ok(bannerService.listarBanners(idTienda));
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("@tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
+    @PreAuthorize("@tiendaAuthorizationService.puedeEditar(#idTienda, authentication)")
     public ResponseEntity<BannerResponse> crearBanner(
             @PathVariable UUID idTienda,
             @RequestParam("archivo") MultipartFile archivo,
@@ -50,7 +50,7 @@ public class BannerController {
     }
 
     @PatchMapping("/{idBanner}")
-    @PreAuthorize("@tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
+    @PreAuthorize("@tiendaAuthorizationService.puedeEditar(#idTienda, authentication)")
     public ResponseEntity<BannerResponse> actualizarBanner(
             @PathVariable UUID idTienda,
             @PathVariable UUID idBanner,
@@ -59,7 +59,7 @@ public class BannerController {
     }
 
     @PutMapping(value = "/{idBanner}/archivo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("@tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
+    @PreAuthorize("@tiendaAuthorizationService.puedeEditar(#idTienda, authentication)")
     public ResponseEntity<BannerResponse> sustituirImagen(
             @PathVariable UUID idTienda,
             @PathVariable UUID idBanner,
@@ -68,7 +68,7 @@ public class BannerController {
     }
 
     @PutMapping("/orden")
-    @PreAuthorize("@tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
+    @PreAuthorize("@tiendaAuthorizationService.puedeEditar(#idTienda, authentication)")
     public ResponseEntity<List<BannerResponse>> reordenarBanners(
             @PathVariable UUID idTienda,
             @RequestBody @Valid ReordenarBannersRequest request) {
@@ -76,7 +76,7 @@ public class BannerController {
     }
 
     @DeleteMapping("/{idBanner}")
-    @PreAuthorize("@tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
+    @PreAuthorize("@tiendaAuthorizationService.puedeEditar(#idTienda, authentication)")
     public ResponseEntity<Void> eliminarBanner(
             @PathVariable UUID idTienda,
             @PathVariable UUID idBanner) {

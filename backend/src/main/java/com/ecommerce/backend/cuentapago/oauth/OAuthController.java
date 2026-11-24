@@ -20,7 +20,7 @@ public class OAuthController {
     }
 
     @PostMapping("/api/tiendas/{idTienda}/cuenta-pago/mercado-pago/oauth/inicios")
-    @PreAuthorize("@tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
+    @PreAuthorize("@tiendaAuthorizationService.puedeEditar(#idTienda, authentication)")
     public ResponseEntity<InicioResponse> iniciar(@PathVariable UUID idTienda) {
         return ResponseEntity.status(HttpStatus.CREATED).cacheControl(org.springframework.http.CacheControl.noStore()).body(new InicioResponse(service.iniciar(idTienda)));
     }

@@ -35,11 +35,11 @@ public class PedidosController {
     @Transactional(readOnly=true)
     public Detalle miPedido(@PathVariable String slug,@PathVariable UUID id) { return detalle(tienda(slug),usuario(),id); }
     @GetMapping("/api/tiendas/{idTienda}/pedidos")
-    @PreAuthorize("@tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
+    @PreAuthorize("@tiendaAuthorizationService.puedeVer(#idTienda, authentication)")
     @Transactional(readOnly=true)
     public List<Pedido> pedidosTienda(@PathVariable UUID idTienda) { return listar(idTienda,null); }
     @GetMapping("/api/tiendas/{idTienda}/pedidos/{id}")
-    @PreAuthorize("@tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
+    @PreAuthorize("@tiendaAuthorizationService.puedeVer(#idTienda, authentication)")
     @Transactional(readOnly=true)
     public Detalle pedidoTienda(@PathVariable UUID idTienda,@PathVariable UUID id) { return detalle(idTienda,null,id); }
     private List<Pedido> listar(UUID tienda,UUID usuario) {

@@ -28,7 +28,7 @@ public class PresentacionProductoController {
     }
 
     // Crear presentación.
-    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.puedeEditar(#idTienda, authentication)")
     @PostMapping
     public ResponseEntity<PresentacionProductoResponse> crearPresentacion(
             @PathVariable UUID idTienda,
@@ -43,7 +43,7 @@ public class PresentacionProductoController {
     }
 
     // Listar presentaciones de un producto.
-    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.puedeVer(#idTienda, authentication)")
     @GetMapping
     public ResponseEntity<List<PresentacionProductoResponse>> listarPresentaciones(
             @PathVariable UUID idTienda,
@@ -57,7 +57,7 @@ public class PresentacionProductoController {
     }
 
     // Obtener presentación por ID.
-    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.puedeVer(#idTienda, authentication)")
     @GetMapping("/{idPresentacion}")
     public ResponseEntity<PresentacionProductoResponse> obtenerPresentacionPorId(
             @PathVariable UUID idTienda,
@@ -72,7 +72,7 @@ public class PresentacionProductoController {
     }
 
     // Actualizar presentación.
-    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.puedeEditar(#idTienda, authentication)")
     @PutMapping("/{idPresentacion}")
     public ResponseEntity<PresentacionProductoResponse> actualizarPresentacion(
             @PathVariable UUID idTienda,
@@ -88,7 +88,7 @@ public class PresentacionProductoController {
     }
 
     // Cambiar estado de la presentación.
-    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.puedeEditar(#idTienda, authentication)")
     @PatchMapping("/{idPresentacion}/estado")
     public ResponseEntity<PresentacionProductoResponse> cambiarEstadoPresentacion(
             @PathVariable UUID idTienda,
@@ -104,7 +104,7 @@ public class PresentacionProductoController {
     }
 
     // Actualizar valores de variantes de una presentación.
-    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.esPropietario(#idTienda, authentication)")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN_GENERAL') or @tiendaAuthorizationService.puedeEditar(#idTienda, authentication)")
     @PutMapping("/{idPresentacion}/valores")
     public ResponseEntity<PresentacionProductoResponse> actualizarValoresPresentacion(
             @PathVariable UUID idTienda,
