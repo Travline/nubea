@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { BotonGoogle, SeparadorCorreo } from '@/autenticacion/boton-google'
 import { useSesion } from '@/autenticacion/sesion'
 import { ErrorApi, apiAutenticacion } from '@/autenticacion/api'
 
@@ -40,6 +41,8 @@ export function PaginaRegistro() {
     <Card className="w-full max-w-md">
       <CardHeader><CardTitle className="text-2xl">Crea tu cuenta</CardTitle><p className="text-muted-foreground text-sm">Empieza a formar parte de Nubea.</p></CardHeader>
       <CardContent>
+        <BotonGoogle texto="Registrarte con Google" />
+        <SeparadorCorreo />
         <form onSubmit={enviar} className="space-y-5">
           <div className="grid gap-2"><Label htmlFor="nombres">Nombres</Label><Input id="nombres" autoComplete="given-name" maxLength={100} value={nombres} onChange={e => setNombres(e.target.value)} required /></div>
           <div className="grid gap-2"><Label htmlFor="email">Correo</Label><Input id="email" type="email" autoComplete="email" maxLength={100} value={correo} onChange={e => establecerCorreo(e.target.value)} required /></div>

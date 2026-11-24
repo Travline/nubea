@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { BotonGoogle, SeparadorCorreo } from '@/autenticacion/boton-google'
 import { ErrorApi, apiAutenticacion } from '@/autenticacion/api'
 import { useSesion } from '@/autenticacion/sesion'
 
@@ -36,6 +37,8 @@ export function PaginaInicioSesion() {
       <CardContent>
         {ubicacion.state?.sesionVencida && <p role="status" className="mb-4 text-sm">Inicia sesión para continuar. Si tu sesión venció, vuelve a ingresar.</p>}
         {ubicacion.state?.registroCompletado && <p role="status" className="mb-4 text-sm">Tu cuenta fue creada. Inicia sesión para continuar.</p>}
+        <BotonGoogle />
+        <SeparadorCorreo />
         <form onSubmit={enviar} className="space-y-5">
           <div className="grid gap-2"><Label htmlFor="email">Correo</Label><Input id="email" type="email" autoComplete="email" value={correo} onChange={e => establecerCorreo(e.target.value)} required /></div>
           <div className="grid gap-2"><Label htmlFor="password">Contraseña</Label><Input id="password" type="password" autoComplete="current-password" value={contrasena} onChange={e => establecerContrasena(e.target.value)} required /></div>
