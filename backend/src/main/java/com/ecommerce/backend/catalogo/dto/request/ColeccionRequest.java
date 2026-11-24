@@ -10,8 +10,8 @@ public class ColeccionRequest {
     @Size(max = 150, message = "El nombre no puede superar los 150 caracteres")
     private String nombre;
 
-    @NotBlank(message = "El slug de la colección es obligatorio")
-    @Size(max = 150, message = "El slug no puede superar los 150 caracteres")
+    // Opcional: si llega vacío se genera desde el nombre (al crear) o se conserva (al editar).
+    @Size(max = 150, message = "La dirección web no puede superar los 150 caracteres")
     private String slug;
 
     public ColeccionRequest() {

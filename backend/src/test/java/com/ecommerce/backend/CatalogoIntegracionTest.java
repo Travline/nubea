@@ -35,7 +35,8 @@ class CatalogoIntegracionTest {
         assertEquals(List.of(rojo), creada.getIdsValores());
         var duplicado = new PresentacionProductoRequest();
         duplicado.setSku("rojo"); duplicado.setIdsValores(List.of(rojo));
-        assertThrows(IllegalArgumentException.class, () -> presentaciones.crearPresentacion(producto, tienda, duplicado));
+        // SKU repetido: 409 DUPLICADO con campo (Bloque 1, decisión A)
+        assertThrows(com.ecommerce.backend.shared.exception.RecursosDuplicadosException.class, () -> presentaciones.crearPresentacion(producto, tienda, duplicado));
         assertEquals(0, jdbc.queryForObject("SELECT stock_actual FROM inventario WHERE id_presentacion = ?", Integer.class, creada.getIdPresentacion()));
         var otra = new PresentacionProductoRequest();
         otra.setSku("grande"); otra.setIdsValores(List.of(grande));
