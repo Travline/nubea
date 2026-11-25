@@ -3,9 +3,9 @@ package com.ecommerce.backend.cuentapago.dto;
 import java.time.OffsetDateTime;
 
 /**
- * {@code ambientePago}: PRUEBA | PRODUCCION. Se toma de la configuración de cobros de la tienda
- * (MERCADOPAGO_PAGOS_TIENDAS), que es la que usa el checkout; si la tienda no está habilitada, el último
- * ambiente con el que cobró; si no hay ninguno, null. Sin datos sensibles.
+ * {@code ambientePago} indica PRUEBA o PRODUCCION según la configuración del checkout, en modo
+ * global o por tienda. Con el checkout deshabilitado para esa tienda, indica el último ambiente
+ * en que cobró o {@code null} si aún no tiene cobros.
  */
 public record CuentaPagoResponse(String proveedor, String estado, String idCuentaExterna,
                                 OffsetDateTime fechaVinculacion, OffsetDateTime fechaActualizacion, String ambientePago) {

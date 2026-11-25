@@ -12,6 +12,7 @@ import com.ecommerce.backend.cuentapago.oauth.CredencialesVendedorService;
 import java.math.BigDecimal;
 import java.net.URI;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -21,6 +22,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,6 +35,7 @@ class PagosFlujoIntegracionTest {
     @Autowired MockMvc mvc;
     @Autowired PagosStore store;
     @Autowired PagosProcesador procesador;
+    @MockitoSpyBean PagosConfiguracion config;
     @MockitoBean MercadoPagoOrders mercado;
     @MockitoBean CredencialesVendedorService tokens;
     final UUID tienda=UUID.fromString("00000000-0000-0000-0000-000000000099");
@@ -77,8 +80,18 @@ class PagosFlujoIntegracionTest {
         verify(mercado,times(2)).crear(anyString(),claves.capture(),any(),any(),any(),any(),any());
         assertEquals(claves.getAllValues().get(0),claves.getAllValues().get(1));
     }
-    @Test void confirmaUnaVezYReembolsaConReposicionUnica() {
+    @Test void confirmaYReembolsaUnaSolaVezConElCheckoutPausado() throws Exception {
         UUID p=reservar();
+        doReturn(Optional.empty()).when(config).ambienteHabilitado(tienda);
+        var sesion=UsernamePasswordAuthenticationToken.authenticated(comprador,null,List.of());
+        String ruta="/api/compra/tiendas/pago-test/checkout";
+        mvc.perform(get(ruta).with(authentication(sesion)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.disponible").value(false));
+        mvc.perform(post(ruta).with(authentication(sesion)).with(csrf()).contentType("application/json")
+                .content("{\"idDireccion\":\""+direccion+"\",\"totalEsperado\":11.80,\"clave\":\"checkout_nuevo_pausado\"}"))
+                .andExpect(status().isUnprocessableContent())
+                .andExpect(jsonPath("$.mensaje").value("Los pagos aún no están habilitados en esta tienda"));
+
         when(mercado.consultar("token-vendedor","ORD123")).thenReturn(orden(p,"processed","accredited"));
         procesador.procesar(p); procesador.procesar(p);
         assertEquals("PAGADO",store.estado(p).estado()); assertEquals(2,stock());

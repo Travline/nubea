@@ -3,10 +3,12 @@ package com.ecommerce.backend.cuentapago;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+import com.ecommerce.backend.compra.PagosConfiguracion;
 import com.ecommerce.backend.cuentapago.repository.CuentaPagoConsultaRepository;
 import com.ecommerce.backend.cuentapago.repository.CuentaPagoConsultaRepository.DatosCuentaPago;
 import com.ecommerce.backend.cuentapago.service.CuentaPagoConsultaService;
 import com.ecommerce.backend.exception.CuentaPagoNoConfiguradaException;
+import com.ecommerce.backend.shared.exception.ReglaNegocioException;
 import java.time.OffsetDateTime;
 import java.util.Optional;
 import java.util.UUID;
@@ -47,11 +49,15 @@ class CuentaPagoConsultaServiceTest {
         // Sin configuración de cobros: último ambiente usado.
         assertEquals("PRUEBA", service.consultar(tienda).ambientePago());
         // Con la tienda habilitada en la configuración: manda la configuración.
-        var habilitada = new com.ecommerce.backend.compra.PagosConfiguracion(true, "https://nubea.test", tienda + ":PRODUCCION");
+        var habilitada = new PagosConfiguracion(true, "https://nubea.test", tienda + ":PRODUCCION", false);
         assertEquals("PRODUCCION", new CuentaPagoConsultaService(repository, habilitada).consultar(tienda).ambientePago());
+        // En modo global manda PRODUCCION incluso para una tienda antes configurada en PRUEBA.
+        var global = new PagosConfiguracion(true, "https://nubea.test", tienda + ":PRUEBA", true);
+        assertEquals("PRODUCCION", new CuentaPagoConsultaService(repository, global).consultar(tienda).ambientePago());
         // Cobros deshabilitados: vuelve al último ambiente usado.
-        var deshabilitada = new com.ecommerce.backend.compra.PagosConfiguracion(false, "https://nubea.test", tienda + ":PRODUCCION");
+        var deshabilitada = new PagosConfiguracion(false, "https://nubea.test", "", true);
         assertEquals("PRUEBA", new CuentaPagoConsultaService(repository, deshabilitada).consultar(tienda).ambientePago());
+        assertThrows(ReglaNegocioException.class, () -> deshabilitada.ambiente(tienda));
         // Nunca cobró y no está habilitada: null.
         when(repository.consultar(tienda)).thenReturn(Optional.of(new DatosCuentaPago("MERCADO_PAGO", "PENDIENTE", null, null, fecha)));
         assertNull(service.consultar(tienda).ambientePago());

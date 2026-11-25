@@ -12,13 +12,17 @@ Configurar en Render, nunca en variables `VITE_*`:
 MERCADOPAGO_OAUTH_ENABLED=true
 MERCADOPAGO_PAGOS_ENABLED=true
 MERCADOPAGO_PAGOS_CHECKOUT_ENABLED=false
+MERCADOPAGO_PAGOS_PRODUCCION_GLOBAL=false
 MERCADOPAGO_PAGOS_STORE_ORIGIN=https://nubea.vercel.app
-MERCADOPAGO_PAGOS_TIENDAS=<UUID_TIENDA_PRUEBA>:PRUEBA
+MERCADOPAGO_PAGOS_TIENDAS=
 MERCADOPAGO_NOTIFICACIONES_ENABLED=true
 MERCADOPAGO_NOTIFICACIONES_SECRET=<firma configurada en Mercado Pago>
 ```
 
-`PAGOS_ENABLED` inicia API y procesadores y requiere OAuth configurado. `CHECKOUT_ENABLED` habilita solamente nuevas compras de las tiendas enumeradas en `TIENDAS`, separadas por comas. Desactivar checkout conserva conciliación y reembolsos. No apagar los procesadores mientras haya operaciones sin resolver.
+`PAGOS_ENABLED` inicia la API y los procesadores y requiere OAuth configurado. `CHECKOUT_ENABLED` habilita las compras nuevas. Para pausarlas, configurar `CHECKOUT_ENABLED=false` y mantener `PAGOS_ENABLED=true` para que continúen la conciliación y los reembolsos.
+
+- **Producción.** Configurar `MERCADOPAGO_PAGOS_PRODUCCION_GLOBAL=true` y `MERCADOPAGO_PAGOS_CHECKOUT_ENABLED=true` al activar los cobros. El backend usa `PRODUCCION` para todas las tiendas e ignora `MERCADOPAGO_PAGOS_TIENDAS`, que puede quedar vacía. Una tienda activa puede cobrar en cuanto vincula su propia cuenta real de Mercado Pago y la cuenta queda activa.
+- **Entorno de pruebas.** Mantener `MERCADOPAGO_PAGOS_PRODUCCION_GLOBAL=false` y configurar `MERCADOPAGO_PAGOS_TIENDAS` con las tiendas habilitadas, usando `<UUID_TIENDA>:PRUEBA` y comas para separar las entradas.
 
 Configurar las notificaciones de Orders en la aplicación de Mercado Pago con URL:
 
@@ -30,12 +34,12 @@ Las variables completas, agrupadas, están en [`.env.render.example`](../../.env
 
 ## Secuencia de prueba publicada
 
-1. Crear una tienda Nubea separada y conectar un vendedor de prueba de Mercado Pago mediante OAuth. Usar un comprador de prueba distinto. Las credenciales de la aplicación ya configuradas no sustituyen estas cuentas.
-2. Agregar un producto con stock y una dirección válida. Incluir únicamente el UUID de esta tienda con ambiente `PRUEBA` en la lista y activar `CHECKOUT_ENABLED=true`.
+1. En el entorno de pruebas, crear una tienda Nubea y conectar un vendedor de prueba de Mercado Pago mediante OAuth. Usar un comprador de prueba distinto.
+2. Agregar un producto con stock y una dirección válida. Incluir únicamente el UUID de esta tienda con ambiente `PRUEBA` en la lista y activar `CHECKOUT_ENABLED=true` en ese entorno.
 3. Comprar desde `/tienda/<slug>/carrito`, comprobar el aviso de prueba y la redirección. Verificar el retorno a `/tienda/<slug>/pedidos/<id>`, el pago aprobado y su aparición en el panel.
 4. Comprobar rechazo, doble clic, recarga, abandono, vencimiento y notificaciones. Un fallo de red conserva la solicitud en la pestaña para «Recuperar compra». No debe aparecer un segundo pedido ni descontarse nuevamente stock.
 5. Desde el panel, reembolsar el pedido completo. La opción de reponer stock está desmarcada por defecto; confirmar que solo se repone una vez si se selecciona. Un reembolso pendiente no equivale a dinero devuelto.
-6. Después de validar el flujo, añadir la tienda real como `<UUID_TIENDA_REAL>:PRODUCCION`. Realizar una compra pequeña con un comprador distinto del vendedor, sin mezclar datos de prueba con datos reales.
+6. Después de validar el flujo, activar el modo global en producción. Realizar una compra pequeña en una tienda activa cuyo UUID no estuviera en la lista anterior, con una cuenta real vinculada y un comprador distinto del vendedor.
 7. Comparar la referencia del panel con la operación en la cuenta Mercado Pago del vendedor. Revisar importe bruto, comisiones, neto y disponibilidad del dinero allí. La aprobación del pedido no certifica por sí sola que el saldo esté disponible para retirar.
 8. Reembolsar esa compra desde el panel y verificar la devolución en Mercado Pago. No automatizar compras reales ni introducir datos de tarjetas desde scripts de prueba.
 
